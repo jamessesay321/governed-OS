@@ -342,6 +342,74 @@ export type ScenarioChangeLog = {
   created_at: string;
 };
 
+// === Interview Engine ===
+export const INTERVIEW_STAGES = [
+  'business_model_confirmation',
+  'goals_and_priorities',
+  'contextual_enrichment',
+  'benchmarking_baseline',
+] as const;
+export type InterviewStage = (typeof INTERVIEW_STAGES)[number];
+
+export const INTERVIEW_STATUSES = ['in_progress', 'completed', 'abandoned'] as const;
+export type InterviewStatus = (typeof INTERVIEW_STATUSES)[number];
+
+export type BusinessContextProfile = {
+  id: string;
+  org_id: string;
+  // Business model
+  revenue_model: string;
+  revenue_streams: string[];
+  seasonality_description: string | null;
+  key_clients_description: string | null;
+  industry: string | null;
+  business_stage: string | null;
+  // Goals & priorities
+  twelve_month_goals: string[];
+  biggest_challenges: string[];
+  success_definition: string | null;
+  // Context
+  team_size: number | null;
+  team_structure: string | null;
+  customer_concentration_risk: string | null;
+  competitive_positioning: string | null;
+  risk_tolerance: 'conservative' | 'moderate' | 'aggressive' | null;
+  // Baseline KPIs
+  target_revenue_growth: number | null;
+  target_gross_margin: number | null;
+  target_net_margin: number | null;
+  acceptable_burn_rate: number | null;
+  runway_requirement_months: number | null;
+  custom_kpis: Record<string, unknown>[];
+  // Metadata
+  interview_id: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InterviewMessage = {
+  id: string;
+  org_id: string;
+  interview_id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  stage: InterviewStage;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
+export type Interview = {
+  id: string;
+  org_id: string;
+  user_id: string;
+  status: InterviewStatus;
+  current_stage: InterviewStage;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 // === Database types (Supabase format) ===
 export type Database = {
   public: {
@@ -685,8 +753,223 @@ export type Database = {
           },
         ];
       };
+      intelligence_events: {
+        Row: IntelligenceEvent;
+        Insert: Omit<IntelligenceEvent, 'id' | 'created_at'>;
+        Update: Partial<Omit<IntelligenceEvent, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      intelligence_impacts: {
+        Row: IntelligenceImpact;
+        Insert: Omit<IntelligenceImpact, 'id' | 'created_at'>;
+        Update: Partial<Omit<IntelligenceImpact, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'intelligence_impacts_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'intelligence_events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'intelligence_impacts_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      benchmarks: {
+        Row: Benchmark;
+        Insert: Omit<Benchmark, 'id' | 'created_at'>;
+        Update: Partial<Omit<Benchmark, 'id' | 'created_at'>>;
+        Relationships: [];
+      };
+      kpi_snapshots: {
+        Row: KPISnapshot;
+        Insert: Omit<KPISnapshot, 'id' | 'created_at'>;
+        Update: Partial<Omit<KPISnapshot, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'kpi_snapshots_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      budget_lines: {
+        Row: BudgetLine;
+        Insert: Omit<BudgetLine, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<BudgetLine, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'budget_lines_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      financial_statements: {
+        Row: FinancialStatement;
+        Insert: Omit<FinancialStatement, 'id' | 'created_at'>;
+        Update: Partial<Omit<FinancialStatement, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'financial_statements_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      notifications: {
+        Row: Notification;
+        Insert: Omit<Notification, 'id' | 'created_at'>;
+        Update: Partial<Omit<Notification, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'notifications_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      reports: {
+        Row: ReportRow;
+        Insert: Omit<ReportRow, 'id' | 'created_at' | 'updated_at'> & { id?: string };
+        Update: Partial<Omit<ReportRow, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'reports_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {};
     Functions: {};
   };
+};
+
+// === Report (DB Row) ===
+export type ReportRow = {
+  id: string;
+  org_id: string;
+  report_type: string;
+  title: string;
+  status: string;
+  period_start: string;
+  period_end: string;
+  sections: Record<string, unknown>;
+  ai_commentary: string;
+  generated_by: string;
+  approved_by: string | null;
+  pdf_url: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// === Intelligence Layer ===
+
+export const INTELLIGENCE_SEVERITY = ['low', 'medium', 'high', 'critical'] as const;
+export type IntelligenceSeverity = (typeof INTELLIGENCE_SEVERITY)[number];
+
+export const IMPACT_TYPES = ['positive', 'negative', 'neutral', 'mixed'] as const;
+export type ImpactType = (typeof IMPACT_TYPES)[number];
+
+export const NOTIFICATION_TYPES = ['intelligence', 'kpi_alert', 'variance_alert', 'system'] as const;
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
+export const TREND_DIRECTIONS = ['up', 'down', 'flat'] as const;
+export type TrendDirection = (typeof TREND_DIRECTIONS)[number];
+
+export const STATEMENT_TYPES = ['profit_and_loss', 'balance_sheet', 'cash_flow'] as const;
+export type StatementType = (typeof STATEMENT_TYPES)[number];
+
+export type IntelligenceEvent = {
+  id: string;
+  event_type: string;
+  title: string;
+  summary: string;
+  source: string;
+  severity: IntelligenceSeverity;
+  sectors_affected: string[];
+  countries_affected: string[];
+  published_at: string;
+  created_at: string;
+};
+
+export type IntelligenceImpact = {
+  id: string;
+  event_id: string;
+  org_id: string;
+  relevance_score: number;
+  impact_type: ImpactType;
+  impact_narrative: string;
+  estimated_impact_pence: number;
+  created_at: string;
+};
+
+export type Benchmark = {
+  id: string;
+  sector: string;
+  metric_key: string;
+  percentiles: Record<string, number>;
+  source: string;
+  period: string;
+  created_at: string;
+};
+
+export type KPISnapshot = {
+  id: string;
+  org_id: string;
+  kpi_type: string;
+  value: number;
+  period: string;
+  trend_direction: TrendDirection;
+  trend_percentage: number;
+  benchmark_value: number | null;
+  created_at: string;
+};
+
+export type BudgetLine = {
+  id: string;
+  org_id: string;
+  category: string;
+  period: string;
+  amount_pence: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FinancialStatement = {
+  id: string;
+  org_id: string;
+  statement_type: StatementType;
+  period: string;
+  data: Record<string, unknown>;
+  created_at: string;
+};
+
+export type Notification = {
+  id: string;
+  user_id: string;
+  org_id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  action_url: string | null;
+  read: boolean;
+  created_at: string;
 };

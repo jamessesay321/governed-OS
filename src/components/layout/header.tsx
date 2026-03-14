@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { NotificationBell } from './notification-bell';
 
 interface HeaderProps {
   displayName: string;
@@ -39,7 +40,9 @@ export function Header({ displayName, orgName, role }: HeaderProps) {
       <div className="text-sm text-muted-foreground">
         {orgName} &middot; <span className="capitalize">{role}</span>
       </div>
-      <DropdownMenu>
+      <div className="flex items-center gap-2">
+        <NotificationBell />
+        <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="relative h-8 w-8 rounded-full">
             <Avatar className="h-8 w-8">
@@ -59,6 +62,7 @@ export function Header({ displayName, orgName, role }: HeaderProps) {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }
