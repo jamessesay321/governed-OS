@@ -4,6 +4,7 @@ import {
   getOrCreateInterview,
   loadInterviewMessages,
   loadFinancialContext,
+  loadBusinessScan,
   processInterviewMessage,
   generateOpeningMessage,
   skipStage,
@@ -36,8 +37,9 @@ export async function POST(request: Request, { params }: Params) {
     // Get or create interview
     const interview = await getOrCreateInterview(orgId, user.id);
 
-    // Load financial context
+    // Load financial context and business scan
     const financialContext = await loadFinancialContext(orgId);
+    const businessScan = await loadBusinessScan(orgId);
 
     // Handle "start" action — generate opening message
     if (action === 'start') {
@@ -59,7 +61,7 @@ export async function POST(request: Request, { params }: Params) {
         });
       }
 
-      const openingMessage = await generateOpeningMessage(orgId, interview.id, financialContext);
+      const openingMessage = await generateOpeningMessage(orgId, interview.id, financialContext, businessScan);
 
       await logAudit({
         orgId,
@@ -128,7 +130,8 @@ export async function POST(request: Request, { params }: Params) {
       message.trim(),
       stage,
       conversationHistory,
-      financialContext
+      financialContext,
+      businessScan
     );
 
     await logAudit({

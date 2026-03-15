@@ -13,6 +13,7 @@ type Props = {
   orgId: string;
   interviewId: string;
   profile?: Partial<BusinessContextProfile> | null;
+  redirectTo?: string;
 };
 
 type EditableProfile = {
@@ -30,7 +31,7 @@ type EditableProfile = {
   target_net_margin: string;
 };
 
-export function InterviewCompletion({ orgId, interviewId, profile }: Props) {
+export function InterviewCompletion({ orgId, interviewId, profile, redirectTo }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(!profile);
   const [extracting, setExtracting] = useState(!profile);
@@ -153,10 +154,10 @@ export function InterviewCompletion({ orgId, interviewId, profile }: Props) {
         });
       }
 
-      router.push('/dashboard');
+      router.push(redirectTo || '/dashboard');
     } catch {
       // Navigate anyway — profile save is best effort
-      router.push('/dashboard');
+      router.push(redirectTo || '/dashboard');
     } finally {
       setSaving(false);
     }
@@ -394,7 +395,7 @@ export function InterviewCompletion({ orgId, interviewId, profile }: Props) {
               Saving...
             </>
           ) : (
-            'Looks good, take me to my dashboard'
+            redirectTo ? 'Looks good, continue setup' : 'Looks good, take me to my dashboard'
           )}
         </Button>
       </div>

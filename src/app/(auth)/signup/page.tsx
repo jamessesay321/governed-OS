@@ -25,52 +25,74 @@ export default function SignupPage() {
     const orgName = formData.get('orgName') as string;
     const displayName = formData.get('displayName') as string;
 
-    const supabase = createClient();
+    try {
+      const supabase = createClient();
 
-    // 1. Sign up the user
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          org_name: orgName,
-          display_name: displayName,
+      // 1. Sign up the user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            org_name: orgName,
+            display_name: displayName,
+          },
         },
-      },
-    });
+      });
 
-    if (authError) {
-      setError(authError.message);
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (!authData.user) {
+        setError('Signup failed. Please try again.');
+        setLoading(false);
+        return;
+      }
+
+      // Supabase returns a fake user with empty identities when the email already exists
+      if (authData.user.identities && authData.user.identities.length === 0) {
+        setError('An account with this email already exists. Please log in instead.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Create organisation and profile via API route
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      const res = await fetch('/api/auth/setup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orgName,
+          displayName,
+          userId: authData.user.id,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to set up organisation');
+        setLoading(false);
+        return;
+      }
+
+      router.push('/');
+      router.refresh();
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') {
+        setError('Request timed out. Please check your connection and try again.');
+      } else {
+        setError('An unexpected error occurred. Please try again.');
+      }
       setLoading(false);
-      return;
     }
-
-    if (!authData.user) {
-      setError('Signup failed. Please try again.');
-      setLoading(false);
-      return;
-    }
-
-    // 2. Create organisation and profile via API route
-    const res = await fetch('/api/auth/setup', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        orgName,
-        displayName,
-        userId: authData.user.id,
-      }),
-    });
-
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.error || 'Failed to set up organisation');
-      setLoading(false);
-      return;
-    }
-
-    router.push('/');
-    router.refresh();
   }
 
   return (

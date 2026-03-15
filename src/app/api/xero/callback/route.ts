@@ -4,6 +4,7 @@ import { storeTokens } from '@/lib/xero/tokens';
 import { logAudit } from '@/lib/audit/log';
 import { xeroCallbackQuerySchema } from '@/lib/schemas';
 import { runFullSync } from '@/lib/xero/sync';
+import { createServiceClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/xero/callback
@@ -133,6 +134,28 @@ export async function GET(request: NextRequest) {
 
     if (!syncResult.success) {
       params.set('sync_warning', syncResult.error || 'Sync completed with issues');
+    }
+
+    // Check if user is still in onboarding — redirect accordingly
+    let isOnboarding = false;
+    try {
+      const service = await createServiceClient();
+      const { data: org } = await service
+        .from('organisations')
+        .select('has_completed_onboarding')
+        .eq('id', profile.org_id)
+        .single();
+      if (org && !(org as any).has_completed_onboarding) {
+        isOnboarding = true;
+      }
+    } catch {
+      // Column may not exist — default to normal flow
+    }
+
+    if (isOnboarding) {
+      return NextResponse.redirect(
+        new URL(`/welcome/connect?success=true&tenant=${encodeURIComponent(tenantName)}`, request.url)
+      );
     }
 
     return NextResponse.redirect(new URL(`/xero?${params.toString()}`, request.url));

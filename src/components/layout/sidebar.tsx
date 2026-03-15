@@ -14,6 +14,7 @@ const navItems = [
   { href: '/playbook', label: 'Playbook', icon: 'Compass' },
   { href: '/modules', label: 'Modules', icon: 'Grid' },
   { href: '/reports', label: 'Reports', icon: 'FileText' },
+  { href: '/interview', label: 'Business Profile', icon: 'MessageSquare' },
   { href: '/xero', label: 'Xero Integration', icon: 'Link' },
   { href: '/settings', label: 'Settings', icon: 'Settings' },
   { href: '/audit', label: 'Audit Log', icon: 'Shield' },
@@ -79,6 +80,11 @@ const icons: Record<string, React.ReactNode> = {
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <circle cx="12" cy="12" r="10" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" />
+    </svg>
+  ),
+  MessageSquare: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </svg>
   ),
   Grid: (

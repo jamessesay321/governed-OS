@@ -65,6 +65,30 @@ function cleanResponse(response: string): string {
 }
 
 /**
+ * Load business scan data for the organisation (from website scan during onboarding).
+ * Returns null if no scan has been performed.
+ */
+export async function loadBusinessScan(orgId: string): Promise<Record<string, unknown> | null> {
+  const supabase = await createServiceClient();
+
+  try {
+    const { data } = await supabase
+      .from('organisations')
+      .select('business_scan')
+      .eq('id', orgId)
+      .single();
+
+    if (data && (data as any).business_scan) {
+      return (data as any).business_scan as Record<string, unknown>;
+    }
+  } catch {
+    // Column may not exist yet
+  }
+
+  return null;
+}
+
+/**
  * Load or try to load financial context for the organisation.
  * Returns null if no financial data is available yet.
  */
@@ -278,10 +302,11 @@ export async function processInterviewMessage(
   userMessage: string,
   currentStage: InterviewStage,
   existingMessages: { role: 'user' | 'assistant'; content: string }[],
-  financialContext: FinancialContext | null
+  financialContext: FinancialContext | null,
+  businessScan?: Record<string, unknown> | null
 ): Promise<ProcessMessageResult> {
   // Build conversation history
-  const systemPrompt = getStagePrompt(currentStage, financialContext);
+  const systemPrompt = getStagePrompt(currentStage, financialContext, businessScan);
   const conversationMessages = [
     ...existingMessages,
     { role: 'user' as const, content: userMessage },
@@ -334,10 +359,11 @@ export async function processInterviewMessage(
 export async function generateOpeningMessage(
   orgId: string,
   interviewId: string,
-  financialContext: FinancialContext | null
+  financialContext: FinancialContext | null,
+  businessScan?: Record<string, unknown> | null
 ): Promise<string> {
-  const systemPrompt = getStagePrompt('business_model_confirmation', financialContext);
-  const instruction = getOpeningPromptInstruction(financialContext);
+  const systemPrompt = getStagePrompt('business_model_confirmation', financialContext, businessScan);
+  const instruction = getOpeningPromptInstruction(financialContext, businessScan);
 
   const response = await callLLMConversation({
     systemPrompt,

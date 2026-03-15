@@ -151,23 +151,91 @@ ${financialSummary}
 };
 
 /**
- * Get the system prompt for a given interview stage with financial context injected.
+ * Format business scan data into a readable summary for interview prompts.
+ */
+function formatBusinessScan(scan: Record<string, unknown>): string {
+  const lines: string[] = [];
+  lines.push('## Business Intelligence (from website scan)');
+  if (scan.company_name) lines.push(`Company: ${scan.company_name}`);
+  if (scan.industry) lines.push(`Industry: ${scan.industry}`);
+  if (scan.business_type) lines.push(`Business Type: ${scan.business_type}`);
+  if (scan.target_market) lines.push(`Target Market: ${scan.target_market}`);
+  if (scan.value_proposition) lines.push(`Value Proposition: ${scan.value_proposition}`);
+  if (scan.estimated_stage) lines.push(`Estimated Stage: ${scan.estimated_stage}`);
+  if (scan.estimated_team_size) lines.push(`Estimated Team Size: ${scan.estimated_team_size}`);
+
+  if (Array.isArray(scan.products_services) && scan.products_services.length > 0) {
+    lines.push('\n### Products/Services');
+    for (const p of scan.products_services) {
+      lines.push(`- ${p}`);
+    }
+  }
+
+  if (Array.isArray(scan.key_differentiators) && scan.key_differentiators.length > 0) {
+    lines.push('\n### Key Differentiators');
+    for (const d of scan.key_differentiators) {
+      lines.push(`- ${d}`);
+    }
+  }
+
+  if (Array.isArray(scan.potential_challenges) && scan.potential_challenges.length > 0) {
+    lines.push('\n### Potential Challenges to Explore');
+    for (const c of scan.potential_challenges) {
+      lines.push(`- ${c}`);
+    }
+  }
+
+  if (Array.isArray(scan.conversation_starters) && scan.conversation_starters.length > 0) {
+    lines.push('\n### Suggested Questions');
+    for (const q of scan.conversation_starters) {
+      lines.push(`- ${q}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Get the system prompt for a given interview stage with financial and business context injected.
  */
 export function getStagePrompt(
   stage: InterviewStage,
-  financialContext: FinancialContext | null
+  financialContext: FinancialContext | null,
+  businessScan?: Record<string, unknown> | null
 ): string {
   const financialSummary = financialContext
     ? formatFinancialSummary(financialContext)
     : '## Financial Data\nNo financial data available yet. Ask the user about their business without referencing specific numbers.';
 
-  return STAGE_PROMPTS[stage](financialSummary);
+  let prompt = STAGE_PROMPTS[stage](financialSummary);
+
+  // Inject business scan context if available
+  if (businessScan) {
+    const scanSummary = formatBusinessScan(businessScan);
+    prompt += `\n\n${scanSummary}\n\n## Important: Use this business intelligence to ask more specific, tailored questions. Reference their actual products, services, and market where relevant. This shows you have done your homework and builds trust.`;
+  }
+
+  return prompt;
 }
 
 /**
  * The opening message for the very first stage (sent by the AI to start the conversation).
  */
-export function getOpeningPromptInstruction(financialContext: FinancialContext | null): string {
+export function getOpeningPromptInstruction(
+  financialContext: FinancialContext | null,
+  businessScan?: Record<string, unknown> | null
+): string {
+  if (businessScan && businessScan.company_name) {
+    const parts = [`Start the onboarding conversation. You have researched their business — ${businessScan.company_name}`];
+    if (businessScan.business_type) parts.push(`(a ${businessScan.business_type} company`);
+    if (businessScan.industry) parts.push(`in ${businessScan.industry})`);
+    parts.push('. Reference specific details you know about their business from the scan data to show you have done your homework.');
+    if (financialContext && financialContext.avgMonthlyRevenue > 0) {
+      parts.push(' You also have their Xero data — mention a specific number or two.');
+    }
+    parts.push(' Then ask your first question about their revenue model, tailored to what you already know about them.');
+    return parts.join('');
+  }
   if (financialContext && financialContext.avgMonthlyRevenue > 0) {
     return 'Start the onboarding conversation. You have their Xero data — introduce yourself, mention that you have reviewed their financial data, and begin confirming what you see about their business. Reference a specific number or two from their data to build credibility. Then ask your first question about their revenue model.';
   }
