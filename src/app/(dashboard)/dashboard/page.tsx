@@ -49,7 +49,7 @@ export default async function DashboardPage() {
   const periods = getAvailablePeriods(financials || []);
   const defaultPeriod = periods[0] || '';
 
-  // Build P&L for all periods
+  // Build P&L for all periods (needed for previous period comparison)
   const pnlByPeriod: Record<string, ReturnType<typeof buildPnL>> = {};
   for (const period of periods) {
     pnlByPeriod[period] = buildPnL(financials || [], accounts || [], period);
@@ -57,6 +57,7 @@ export default async function DashboardPage() {
 
   return (
     <DashboardClient
+      orgId={profile.org_id}
       periods={periods}
       defaultPeriod={defaultPeriod}
       pnlByPeriod={pnlByPeriod}

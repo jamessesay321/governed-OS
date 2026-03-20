@@ -973,3 +973,63 @@ export type Notification = {
   read: boolean;
   created_at: string;
 };
+
+// === UK Tax Engine ===
+export type VATScheme = 'standard' | 'flat_rate' | 'cash' | 'annual';
+
+export type TaxSettings = {
+  id: string;
+  org_id: string;
+  // Corporation Tax
+  corporation_tax_rate: number;
+  // VAT
+  vat_registered: boolean;
+  vat_rate: number;
+  vat_flat_rate: number | null;
+  vat_quarter_start_month: number;
+  vat_scheme: VATScheme;
+  // PAYE / Employment
+  paye_rate: number;
+  employee_ni_rate: number;
+  employer_ni_rate: number;
+  employer_ni_threshold: number;
+  employer_pension_rate: number;
+  // HMRC Payment Plans
+  has_vat_payment_plan: boolean;
+  vat_payment_plan_balance: number;
+  vat_payment_plan_monthly: number;
+  has_corp_tax_payment_plan: boolean;
+  corp_tax_payment_plan_balance: number;
+  corp_tax_payment_plan_monthly: number;
+  has_paye_payment_plan: boolean;
+  paye_payment_plan_balance: number;
+  paye_payment_plan_monthly: number;
+  // Metadata
+  created_at: string;
+  updated_at: string;
+};
+
+export type PayrollGroup = {
+  id: string;
+  org_id: string;
+  name: string;
+  employer_ni_rate: number | null;
+  employer_pension_rate: number | null;
+  headcount: number;
+  total_annual_salary: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AccountMapping = {
+  id: string;
+  org_id: string;
+  account_id: string;
+  standard_category: string;
+  ai_confidence: number | null;
+  ai_suggested: boolean;
+  user_confirmed: boolean;
+  user_overridden: boolean;
+  created_at: string;
+  updated_at: string;
+};

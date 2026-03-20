@@ -250,6 +250,92 @@ const universalKPIs: KPIDefinition[] = [
     business_types: ['universal'],
     higher_is_better: false,
   },
+  {
+    key: 'current_ratio',
+    label: 'Current Ratio',
+    description: 'Current assets divided by current liabilities — measures short-term liquidity',
+    formula: (d) => round4(safeDivide(d.current_assets, d.current_liabilities)),
+    format: 'ratio',
+    business_types: ['universal'],
+    higher_is_better: true,
+  },
+  {
+    key: 'quick_ratio',
+    label: 'Quick Ratio',
+    description: 'Cash plus receivables divided by current liabilities — acid test of liquidity',
+    formula: (d) => round4(safeDivide(d.cash_position + d.accounts_receivable, d.current_liabilities)),
+    format: 'ratio',
+    business_types: ['universal'],
+    higher_is_better: true,
+  },
+  {
+    key: 'debt_to_equity',
+    label: 'Debt to Equity',
+    description: 'Total debt divided by equity (approximated as assets minus liabilities)',
+    formula: (d) => {
+      const equity = d.current_assets - d.current_liabilities;
+      if (equity <= 0) return null;
+      return round4(safeDivide(d.total_debt, equity));
+    },
+    format: 'ratio',
+    business_types: ['universal'],
+    higher_is_better: false,
+  },
+  {
+    key: 'ebitda',
+    label: 'EBITDA',
+    description: 'Earnings before interest, taxes, depreciation and amortisation',
+    formula: (d) => d.revenue - d.cost_of_sales - d.operating_expenses,
+    format: 'currency',
+    business_types: ['universal'],
+    higher_is_better: true,
+  },
+  {
+    key: 'ebitda_margin',
+    label: 'EBITDA Margin',
+    description: 'EBITDA as a percentage of revenue',
+    formula: (d) => {
+      const ebitda = d.revenue - d.cost_of_sales - d.operating_expenses;
+      return round4(safeDivide(ebitda, d.revenue));
+    },
+    format: 'percentage',
+    business_types: ['universal'],
+    higher_is_better: true,
+  },
+  {
+    key: 'cash_conversion_cycle',
+    label: 'Cash Conversion Cycle',
+    description: 'AR Days + Inventory Days - AP Days — how quickly cash cycles through the business',
+    formula: (d) => {
+      const dailyRevenue = safeDivide(d.revenue, 30);
+      const dailyCosts = safeDivide(d.cost_of_sales + d.operating_expenses, 30);
+      if (dailyRevenue === null || dailyCosts === null) return null;
+      const arDays = safeDivide(d.accounts_receivable, dailyRevenue) ?? 0;
+      const apDays = safeDivide(d.accounts_payable, dailyCosts) ?? 0;
+      return Math.round(arDays - apDays);
+    },
+    format: 'days',
+    business_types: ['universal'],
+    higher_is_better: false,
+  },
+  {
+    key: 'cost_of_revenue_ratio',
+    label: 'Cost of Revenue Ratio',
+    description: 'Cost of sales as a percentage of revenue',
+    formula: (d) => round4(safeDivide(d.cost_of_sales, d.revenue)),
+    format: 'percentage',
+    business_types: ['universal'],
+    higher_is_better: false,
+  },
+  {
+    key: 'employee_cost_ratio',
+    label: 'Employee Cost Ratio',
+    description: 'Staff costs as a percentage of revenue (approx from operating expenses)',
+    formula: (d) => round4(safeDivide(d.operating_expenses * 0.6, d.revenue)),
+    format: 'percentage',
+    business_types: ['universal'],
+    higher_is_better: false,
+  },
 ];
 
 // === SaaS KPIs ===

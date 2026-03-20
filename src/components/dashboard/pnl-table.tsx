@@ -8,22 +8,24 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { PnLSummary } from '@/lib/financial/aggregate';
+import { ChevronRight } from 'lucide-react';
+import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 
 interface PnLTableProps {
   pnl: PnLSummary;
+  onSectionClick?: (section: PnLSection) => void;
 }
 
 function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-AU', {
+  return new Intl.NumberFormat('en-GB', {
     style: 'currency',
-    currency: 'AUD',
+    currency: 'GBP',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(value);
 }
 
-export function PnLTable({ pnl }: PnLTableProps) {
+export function PnLTable({ pnl, onSectionClick }: PnLTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -36,10 +38,19 @@ export function PnLTable({ pnl }: PnLTableProps) {
       <TableBody>
         {pnl.sections.map((section) => (
           <>
-            {/* Section header */}
-            <TableRow key={`section-${section.class}`} className="bg-muted/50">
+            {/* Section header — clickable for drill-down */}
+            <TableRow
+              key={`section-${section.class}`}
+              className={`bg-muted/50 ${onSectionClick ? 'cursor-pointer hover:bg-muted/80' : ''}`}
+              onClick={() => onSectionClick?.(section)}
+            >
               <TableCell colSpan={2} className="font-semibold">
-                {section.label}
+                <span className="flex items-center gap-1">
+                  {section.label}
+                  {onSectionClick && (
+                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </span>
               </TableCell>
               <TableCell className="text-right font-semibold">
                 {formatCurrency(section.total)}

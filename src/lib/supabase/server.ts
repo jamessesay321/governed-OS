@@ -35,3 +35,15 @@ export async function createServiceClient() {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 }
+
+/**
+ * Service client without Database generic — for tables not yet in generated types.
+ * TODO: Remove after running migrations and regenerating Supabase types.
+ * Tables: tax_settings, payroll_groups, account_mappings
+ */
+export async function createUntypedServiceClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}

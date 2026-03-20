@@ -5,6 +5,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { KPIGrid } from '@/components/kpi/kpi-grid';
 import { KPIDetail } from '@/components/kpi/kpi-detail';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import type { KPISnapshot, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -14,6 +16,7 @@ interface KPIDashboardClientProps {
   periods: string[];
   defaultPeriod: string;
   role: string;
+  lastSync?: { completedAt: string | null } | null;
 }
 
 function hasMinRole(userRole: Role, minRole: Role): boolean {
@@ -25,6 +28,7 @@ export function KPIDashboardClient({
   periods,
   defaultPeriod,
   role,
+  lastSync,
 }: KPIDashboardClientProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
   const [kpis, setKPIs] = useState<CalculatedKPI[]>([]);
@@ -102,9 +106,14 @@ export function KPIDashboardClient({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">KPI Dashboard</h2>
-          <p className="text-sm text-muted-foreground">
-            Key performance indicators with sector benchmarks
-          </p>
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground">
+              Key performance indicators with sector benchmarks
+            </p>
+            {lastSync?.completedAt && (
+              <DataFreshness lastSyncAt={lastSync.completedAt} />
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-3">
           <select
@@ -133,6 +142,9 @@ export function KPIDashboardClient({
           )}
         </div>
       </div>
+
+      {/* Narrative-first: AI summary before numbers */}
+      <NarrativeSummary orgId={orgId} period={selectedPeriod} narrativeEndpoint="kpi/narrative" />
 
       {loading ? (
         <div className="py-12 text-center text-muted-foreground">
