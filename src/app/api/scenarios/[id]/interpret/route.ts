@@ -35,7 +35,7 @@ export async function POST(request: Request, { params }: Params) {
       return NextResponse.json({ error: 'Scenario is locked' }, { status: 400 });
     }
 
-    // Run interpretation engine
+    // Run interpretation engine (supports what_if and goalseek modes)
     const result = await interpretScenarioRequest({
       orgId: profile.org_id,
       naturalLanguageInput: input.naturalLanguageInput,
@@ -43,6 +43,7 @@ export async function POST(request: Request, { params }: Params) {
       basePeriodEnd: input.basePeriodEnd,
       forecastHorizonMonths: input.forecastHorizonMonths,
       currentAssumptionSetId: scenario.assumption_set_id,
+      mode: input.mode,
     });
 
     // Generate changeLogId and confirmation token before insert
@@ -89,6 +90,7 @@ export async function POST(request: Request, { params }: Params) {
       entityId: changeLogId,
       metadata: {
         scenarioId,
+        mode: input.mode,
         confidence: result.interpretation.confidence,
         needsClarification: result.needsClarification,
         changeCount: result.interpretation.assumption_changes.length,
@@ -101,6 +103,7 @@ export async function POST(request: Request, { params }: Params) {
       confirmationToken,
       changeLogId,
       warnings: result.warnings,
+      mode: input.mode,
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {

@@ -13,6 +13,7 @@ export type InterpretInput = {
   basePeriodEnd: string;
   forecastHorizonMonths: number;
   currentAssumptionSetId?: string;
+  mode: 'what_if' | 'goalseek';
 };
 
 export type InterpretResult = {
@@ -32,9 +33,23 @@ const VALID_ASSUMPTION_KEYS = [
   'capital_expenditure',
 ];
 
-function buildSystemPrompt(context: FinancialContext): string {
+function buildSystemPrompt(context: FinancialContext, mode: 'what_if' | 'goalseek'): string {
+  const modeInstructions = mode === 'goalseek'
+    ? `## MODE: GOALSEEK (Reverse Engineering)
+The user is asking "What do I need to achieve X?" — you must REVERSE ENGINEER the assumption changes required to hit their target.
+- Identify the target metric and desired value from the user's question.
+- Work backwards from the target to determine which assumptions need to change.
+- Show the REQUIRED assumption changes to achieve the goal.
+- In interpretation_summary, clearly state: "To achieve [target], you would need to [changes]."
+- If the goal is unrealistic given current data, set confidence below 0.5 and explain why in follow_up_questions.
+`
+    : `## MODE: WHAT-IF (Forward Projection)
+The user is asking "What happens if X?" — interpret the change and project its impact forward.
+`;
+
   return `You are a financial modelling assistant for SME advisory. Your role is to interpret natural language scenario requests and translate them into structured assumption changes.
 
+${modeInstructions}
 ## Rules
 - You MUST respond with valid JSON only — no markdown, no explanations outside the JSON.
 - Maximum 5 assumption changes per request.
@@ -42,6 +57,7 @@ function buildSystemPrompt(context: FinancialContext): string {
 - If you are unsure, set confidence below 0.7 and include follow-up questions.
 - Base period data is binding context — your proposals must be grounded in these actuals.
 - You propose changes ONLY. You never apply them.
+- Use £ currency. This is a UK business.
 
 ## Valid Assumption Keys
 The scenario engine uses these keys:
@@ -54,28 +70,28 @@ revenue_drivers, pricing, costs, growth_rates, headcount, marketing, capital, cu
 percentage, currency, integer, boolean, decimal
 
 ## Financial Context (Base Period Actuals)
-Average Monthly Revenue: $${context.avgMonthlyRevenue.toLocaleString()}
+Average Monthly Revenue: £${context.avgMonthlyRevenue.toLocaleString()}
 Revenue Growth Rate: ${(context.revenueGrowthRate * 100).toFixed(1)}%
 Average Gross Margin: ${(context.avgGrossMargin * 100).toFixed(1)}%
 Average Net Margin: ${(context.avgNetMargin * 100).toFixed(1)}%
 
 ### Monthly P&L Summary
 ${context.periodSummaries.map((p) =>
-  `${p.period}: Revenue $${p.revenue.toLocaleString()}, COGS $${p.costOfSales.toLocaleString()}, Expenses $${p.expenses.toLocaleString()}, Net $${p.netProfit.toLocaleString()}`
+  `${p.period}: Revenue £${p.revenue.toLocaleString()}, COGS £${p.costOfSales.toLocaleString()}, Expenses £${p.expenses.toLocaleString()}, Net £${p.netProfit.toLocaleString()}`
 ).join('\n')}
 
 ### Top Revenue Accounts
-${context.topRevenueAccounts.map((a) => `- ${a.name} (${a.code}): $${a.amount.toLocaleString()}`).join('\n') || 'None available'}
+${context.topRevenueAccounts.map((a) => `- ${a.name} (${a.code}): £${a.amount.toLocaleString()}`).join('\n') || 'None available'}
 
 ### Top Expense Accounts
-${context.topExpenseAccounts.map((a) => `- ${a.name} (${a.code}): $${a.amount.toLocaleString()}`).join('\n') || 'None available'}
+${context.topExpenseAccounts.map((a) => `- ${a.name} (${a.code}): £${a.amount.toLocaleString()}`).join('\n') || 'None available'}
 
 ${context.currentAssumptions.length > 0 ? `### Current Assumptions
 ${context.currentAssumptions.map((a) => `- ${a.label} (${a.key}): ${a.value}`).join('\n')}` : ''}
 
 ## Output JSON Schema
 {
-  "interpretation_summary": "string (1-2000 chars) — explain what you understood",
+  "interpretation_summary": "string (1-2000 chars) — explain what you understood${mode === 'goalseek' ? ' and the reverse-engineered requirements' : ''}",
   "confidence": number (0 to 1),
   "assumption_changes": [
     {
@@ -110,6 +126,7 @@ function extractJSON(text: string): string {
 
 /**
  * Orchestrate: context building → LLM call → output parsing → validation.
+ * Supports both what-if (forward projection) and goalseek (reverse engineering) modes.
  */
 export async function interpretScenarioRequest(
   input: InterpretInput
@@ -122,8 +139,8 @@ export async function interpretScenarioRequest(
     input.currentAssumptionSetId
   );
 
-  // Build prompt and call LLM
-  const systemPrompt = buildSystemPrompt(financialContext);
+  // Build prompt and call LLM — use opus for goalseek (more complex reasoning)
+  const systemPrompt = buildSystemPrompt(financialContext, input.mode);
   const rawResponse = await callLLM({
     systemPrompt,
     userMessage: input.naturalLanguageInput,

@@ -4,13 +4,13 @@ import {
   loadInterviewMessages,
   extractBusinessProfile,
   storeBusinessProfile,
-  getCompletedInterview,
 } from '@/lib/interview/engine';
+import { generateRecommendations } from '@/lib/interview/recommendations';
 import { logAudit } from '@/lib/audit/log';
 
 type Params = { params: Promise<{ orgId: string }> };
 
-// POST /api/interview/[orgId]/complete — Parse transcript into structured profile
+// POST /api/interview/[orgId]/complete — Parse transcript into structured profile + generate recommendations
 export async function POST(request: Request, { params }: Params) {
   try {
     const { orgId } = await params;
@@ -51,6 +51,9 @@ export async function POST(request: Request, { params }: Params) {
     // Store the profile
     const storedProfile = await storeBusinessProfile(orgId, interviewId, extractedProfile);
 
+    // Generate auto-suggested KPIs, dashboard layout, and playbook modules
+    const recommendations = await generateRecommendations(extractedProfile);
+
     await logAudit({
       orgId,
       userId: user.id,
@@ -60,11 +63,15 @@ export async function POST(request: Request, { params }: Params) {
       metadata: {
         interviewId,
         hasEdits: !!edits,
+        recommendedKPIs: recommendations.kpis.length,
+        recommendedTemplate: recommendations.dashboard.template_id,
+        recommendedModules: recommendations.playbook_modules.map((m) => m.module_slug),
       },
     });
 
     return NextResponse.json({
       profile: storedProfile,
+      recommendations,
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {

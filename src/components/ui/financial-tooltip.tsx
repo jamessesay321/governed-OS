@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { HelpCircle } from 'lucide-react';
+import { useState, useCallback } from 'react';
+import { HelpCircle, Loader2, Sparkles } from 'lucide-react';
 
 /**
  * Static plain English definitions for common financial terms.
- * These will be upgraded to Claude API-powered personalised explanations in Sprint 7.
+ * These serve as instant fallback while AI-powered personalised explanations load.
  */
 const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> = {
   revenue: {
@@ -84,20 +84,72 @@ const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> =
     short: 'Difference between actual and expected',
     detail: 'The gap between what actually happened and what was budgeted, forecast, or expected. Favourable variances (green) are good; unfavourable (red) need attention.',
   },
+  ebitda_margin: {
+    short: 'EBITDA as a % of revenue',
+    detail: 'How much of your revenue becomes operating profit before interest, tax, depreciation and amortisation. A key profitability measure for investors.',
+  },
+  quick_ratio: {
+    short: 'Acid test of liquidity',
+    detail: 'Cash plus receivables divided by current liabilities. More conservative than current ratio — excludes inventory. Above 1.0 is healthy.',
+  },
+  debt_to_equity: {
+    short: 'How leveraged the business is',
+    detail: 'Total debt divided by equity. Higher ratio means more debt-funded. Below 1.0 is generally conservative; above 2.0 may signal risk.',
+  },
+  cash_conversion_cycle: {
+    short: 'Speed of cash cycling through the business',
+    detail: 'AR Days minus AP Days. Lower is better — means you collect from customers faster than you pay suppliers.',
+  },
+};
+
+type AIExplanation = {
+  term: string;
+  plain_english: string;
+  personalised_explanation: string;
+  what_it_means: string;
+  benchmark_context: string;
+  tips: string[];
 };
 
 interface FinancialTooltipProps {
   term: string;
   children?: React.ReactNode;
   className?: string;
+  orgId?: string;
+  currentValue?: number;
 }
 
-export function FinancialTooltip({ term, children, className = '' }: FinancialTooltipProps) {
+export function FinancialTooltip({ term, children, className = '', orgId, currentValue }: FinancialTooltipProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const [aiExplanation, setAiExplanation] = useState<AIExplanation | null>(null);
+  const [loading, setLoading] = useState(false);
   const key = term.toLowerCase().replace(/\s+/g, '_');
   const definition = FINANCIAL_DEFINITIONS[key];
 
-  if (!definition) {
+  const fetchAIExplanation = useCallback(async () => {
+    if (!orgId || aiExplanation || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/explain/${orgId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          term,
+          currentValue,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAiExplanation(data.explanation);
+      }
+    } catch {
+      // Silently fail — static definition still shows
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, term, currentValue, aiExplanation, loading]);
+
+  if (!definition && !orgId) {
     return <>{children || term}</>;
   }
 
@@ -105,19 +157,65 @@ export function FinancialTooltip({ term, children, className = '' }: FinancialTo
     <span className={`relative inline-flex items-center gap-1 ${className}`}>
       {children || term}
       <button
-        onMouseEnter={() => setShowTooltip(true)}
+        onMouseEnter={() => {
+          setShowTooltip(true);
+          if (orgId) fetchAIExplanation();
+        }}
         onMouseLeave={() => setShowTooltip(false)}
-        onClick={() => setShowTooltip(!showTooltip)}
+        onClick={() => {
+          setShowTooltip(!showTooltip);
+          if (orgId && !showTooltip) fetchAIExplanation();
+        }}
         className="inline-flex text-muted-foreground hover:text-foreground transition-colors"
         aria-label={`Explain ${term}`}
       >
         <HelpCircle className="h-3.5 w-3.5" />
       </button>
       {showTooltip && (
-        <div className="absolute bottom-full left-0 z-50 mb-2 w-64 rounded-lg border bg-popover p-3 shadow-lg">
+        <div className="absolute bottom-full left-0 z-50 mb-2 w-80 rounded-lg border bg-popover p-3 shadow-lg">
           <p className="text-sm font-medium">{term}</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">{definition.short}</p>
-          <p className="mt-1.5 text-xs leading-relaxed">{definition.detail}</p>
+
+          {/* Static definition (always shown immediately) */}
+          {definition && (
+            <>
+              <p className="mt-0.5 text-xs text-muted-foreground">{definition.short}</p>
+              {!aiExplanation && (
+                <p className="mt-1.5 text-xs leading-relaxed">{definition.detail}</p>
+              )}
+            </>
+          )}
+
+          {/* AI-powered personalised explanation */}
+          {aiExplanation && (
+            <div className="mt-2 border-t pt-2">
+              <div className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 mb-1">
+                <Sparkles className="h-3 w-3" />
+                <span className="font-medium">Personalised for your business</span>
+              </div>
+              <p className="text-xs leading-relaxed">{aiExplanation.personalised_explanation}</p>
+              {aiExplanation.what_it_means && (
+                <p className="mt-1.5 text-xs font-medium">{aiExplanation.what_it_means}</p>
+              )}
+              {aiExplanation.benchmark_context && (
+                <p className="mt-1 text-xs text-muted-foreground">{aiExplanation.benchmark_context}</p>
+              )}
+              {aiExplanation.tips?.length > 0 && (
+                <ul className="mt-1.5 space-y-0.5">
+                  {aiExplanation.tips.map((tip, i) => (
+                    <li key={i} className="text-xs text-muted-foreground">• {tip}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {/* Loading state */}
+          {loading && !aiExplanation && (
+            <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground border-t pt-2">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Loading personalised explanation...</span>
+            </div>
+          )}
         </div>
       )}
     </span>

@@ -42,7 +42,9 @@ export async function GET(
 
     const orgName = org?.name || 'Organisation';
 
-    const html = generatePrintableHTML(report as unknown as Report, orgName);
+    // Support theme selection via query parameter
+    const themeId = request.nextUrl.searchParams.get('theme') ?? undefined;
+    const html = generatePrintableHTML(report as unknown as Report, orgName, themeId);
 
     return new NextResponse(html, {
       status: 200,

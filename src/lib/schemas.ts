@@ -97,6 +97,7 @@ export const interpretRequestSchema = z.object({
   basePeriodStart: z.string().regex(/^\d{4}-\d{2}-01$/, 'Must be YYYY-MM-01 format'),
   basePeriodEnd: z.string().regex(/^\d{4}-\d{2}-01$/, 'Must be YYYY-MM-01 format'),
   forecastHorizonMonths: z.number().int().min(1).max(60).default(12),
+  mode: z.enum(['what_if', 'goalseek']).default('what_if'),
 });
 
 export const confirmRequestSchema = z.object({

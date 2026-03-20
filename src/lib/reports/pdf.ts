@@ -1,11 +1,15 @@
 import type { Report, ReportSection } from '@/types/reports';
+import { getThemeById, generateThemeCSS, type ReportTheme } from './themes';
 
 /**
  * Generate print-friendly HTML for a report.
  * Uses @media print CSS for professional board-room quality output.
  * Users can print to PDF from the browser.
+ * Supports 7 theme presets (Corporate Blue, Forest, Midnight, Sunset, Ocean, Slate, Minimal).
  */
-export function generatePrintableHTML(report: Report, orgName: string): string {
+export function generatePrintableHTML(report: Report, orgName: string, themeId?: string): string {
+  const theme = getThemeById(themeId ?? 'corporate-blue');
+  const themeCSS = generateThemeCSS(theme);
   const sections = report.sections
     .sort((a, b) => a.order - b.order)
     .map((section, index) => renderSection(section, index + 1))
@@ -19,6 +23,8 @@ export function generatePrintableHTML(report: Report, orgName: string): string {
   <title>${escapeHtml(report.title)}</title>
   <style>
     ${PRINT_STYLES}
+    /* Theme: ${theme.name} */
+    ${themeCSS}
   </style>
 </head>
 <body>
