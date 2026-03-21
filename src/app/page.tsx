@@ -35,7 +35,7 @@ export default async function Home() {
     // New user — send to onboarding
     return redirect('/welcome');
   } catch {
-    // Column may not exist yet — default to home
-    return redirect('/home');
+    // Column may not exist yet — assume onboarding not done
+    return redirect('/welcome');
   }
 }
