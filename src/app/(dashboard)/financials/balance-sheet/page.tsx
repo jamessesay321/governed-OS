@@ -169,7 +169,7 @@ export default function BalanceSheetPage() {
       </div>
 
       {/* Key Ratios */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Current Ratio', value: (690 / 455).toFixed(2), good: 690 / 455 > 1.2 },
           { label: 'Quick Ratio', value: ((690 - 48 - 15) / 455).toFixed(2), good: (690 - 48 - 15) / 455 > 1 },

@@ -84,7 +84,7 @@ export default function HelpPage() {
   const [searchQuery, setSearchQuery] = useState('');
 
   return (
-    <div className="flex-1 space-y-8 p-6 max-w-5xl mx-auto">
+    <div className="flex-1 space-y-8 p-4 sm:p-6 max-w-5xl mx-auto">
       {/* Header */}
       <div className="text-center">
         <h1 className="text-3xl font-bold tracking-tight" style={{ color: '#1c1b1b' }}>

@@ -4,7 +4,7 @@ import Link from 'next/link';
 
 export default function VarianceBudgetPage() {
   return (
-    <div className="max-w-5xl space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <Link href="/variance" className="text-sm text-muted-foreground hover:text-foreground">&larr; Variance</Link>
       <h2 className="text-2xl font-bold">Budget vs Actual</h2>
       <p className="text-sm text-muted-foreground">Compare your budget against actual performance with AI-powered explanations</p>

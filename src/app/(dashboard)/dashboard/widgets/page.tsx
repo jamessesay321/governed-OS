@@ -10,7 +10,7 @@ export default function DashboardWidgetsPage() {
         <h2 className="text-2xl font-bold">Dashboard Widgets</h2>
         <p className="text-sm text-muted-foreground mt-1">Customise your dashboard by adding and arranging widgets</p>
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {[
           { name: 'Revenue Chart', desc: 'Monthly revenue trend line' },
           { name: 'P&L Summary', desc: 'Key P&L metrics at a glance' },

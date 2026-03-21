@@ -205,7 +205,7 @@ export default function IncomeStatementPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Revenue', value: sumRow(data.revenue), positive: true },
           { label: 'Gross Margin', value: `${((sumRow(grossProfit) / sumRow(data.revenue)) * 100).toFixed(1)}%`, positive: true },

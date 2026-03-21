@@ -73,7 +73,7 @@ const lines: BudgetLine[] = [
 
 export default function BudgetPage() {
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-5xl mx-auto">
       {/* Sample Data Banner */}
       <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">

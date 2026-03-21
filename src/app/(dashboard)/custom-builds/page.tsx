@@ -102,7 +102,7 @@ export default function CustomBuildsPage() {
       {/* Project templates */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-foreground">Popular Project Types</h3>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {TEMPLATES.map((t) => (
             <Card key={t.id} className={cn(t.popular && 'border-primary/30')}>
               <CardContent className="p-4 space-y-2">
