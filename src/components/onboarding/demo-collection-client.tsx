@@ -34,12 +34,23 @@ const TEAM_SIZES = [
   { value: '200+', label: '200+ people' },
 ];
 
+const REVENUE_RANGES = [
+  { value: 'pre-revenue', label: 'Pre-revenue' },
+  { value: '0-100k', label: 'Up to £100k' },
+  { value: '100k-500k', label: '£100k - £500k' },
+  { value: '500k-1m', label: '£500k - £1M' },
+  { value: '1m-5m', label: '£1M - £5M' },
+  { value: '5m-10m', label: '£5M - £10M' },
+  { value: '10m+', label: '£10M+' },
+];
+
 const LOADING_STEPS = [
-  'Setting up your company profile...',
-  'Generating realistic financial data...',
+  'Reading your company details...',
+  'Building a realistic chart of accounts...',
+  'Generating 12 months of financial data...',
   'Creating KPIs and targets...',
-  'Building your dashboard...',
-  'Almost there...',
+  'Setting up budgets and scenarios...',
+  'Preparing your dashboard...',
 ];
 
 export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
@@ -47,11 +58,15 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
   const [companyName, setCompanyName] = useState(orgName || '');
   const [industry, setIndustry] = useState('');
   const [teamSize, setTeamSize] = useState('');
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [socialUrl, setSocialUrl] = useState('');
+  const [revenueRange, setRevenueRange] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
-  const canSubmit = companyName.trim() && industry && teamSize;
+  // Company name and industry are required, everything else is optional
+  const canSubmit = companyName.trim() && industry;
 
   async function handleSubmit() {
     if (!canSubmit) return;
@@ -62,7 +77,7 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
     // Animate through loading steps
     const stepInterval = setInterval(() => {
       setLoadingStep((prev) => Math.min(prev + 1, LOADING_STEPS.length - 1));
-    }, 2000);
+    }, 2500);
 
     try {
       const res = await fetch('/api/onboarding/demo', {
@@ -71,7 +86,10 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
         body: JSON.stringify({
           companyName: companyName.trim(),
           industry,
-          teamSize,
+          teamSize: teamSize || '11-50',
+          websiteUrl: websiteUrl.trim() || undefined,
+          socialUrl: socialUrl.trim() || undefined,
+          revenueRange: revenueRange || undefined,
         }),
       });
 
@@ -106,7 +124,7 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
             </svg>
           </div>
           <h2 className="text-xl font-bold text-foreground mb-2">
-            Setting up your demo...
+            Building your demo...
           </h2>
           <p className="text-muted-foreground mb-8">
             Creating a personalised experience for {companyName}
@@ -162,20 +180,26 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
           🎯
         </div>
         <h1 className="text-2xl font-bold text-foreground">
-          Quick demo setup
+          Tell us about your business
         </h1>
         <p className="text-muted-foreground mt-2">
-          Just three quick details and we&apos;ll create a realistic dashboard for you.
+          The more you share, the more realistic your demo will be. Only company name and industry are required.
         </p>
       </div>
 
-      <Card className="mb-6">
+      {/* Section 1: The basics */}
+      <Card className="mb-4">
         <CardContent className="p-6 space-y-5">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">1</div>
+            <h3 className="text-sm font-semibold text-foreground">The basics</h3>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="company-name">Company name</Label>
             <Input
               id="company-name"
-              placeholder="e.g., Acme Ltd"
+              placeholder="e.g. Acme Ltd"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
             />
@@ -197,27 +221,82 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
             </Select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="team-size">Team size</Label>
-            <Select value={teamSize} onValueChange={setTeamSize}>
-              <SelectTrigger id="team-size">
-                <SelectValue placeholder="How many people?" />
-              </SelectTrigger>
-              <SelectContent>
-                {TEAM_SIZES.map((size) => (
-                  <SelectItem key={size.value} value={size.value}>
-                    {size.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="team-size">Team size</Label>
+              <Select value={teamSize} onValueChange={setTeamSize}>
+                <SelectTrigger id="team-size">
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEAM_SIZES.map((size) => (
+                    <SelectItem key={size.value} value={size.value}>
+                      {size.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+            <div className="space-y-2">
+              <Label htmlFor="revenue-range">Annual turnover</Label>
+              <Select value={revenueRange} onValueChange={setRevenueRange}>
+                <SelectTrigger id="revenue-range">
+                  <SelectValue placeholder="Optional" />
+                </SelectTrigger>
+                <SelectContent>
+                  {REVENUE_RANGES.map((rev) => (
+                    <SelectItem key={rev.value} value={rev.value}>
+                      {rev.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Section 2: Help us personalise */}
+      <Card className="mb-6">
+        <CardContent className="p-6 space-y-5">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold text-primary">2</div>
+            <h3 className="text-sm font-semibold text-foreground">Help us personalise</h3>
+            <span className="text-xs text-muted-foreground ml-auto">Optional</span>
+          </div>
+
+          <p className="text-sm text-muted-foreground -mt-2">
+            Share a link and we&apos;ll use it to make your demo feel like home
+          </p>
+
+          <div className="space-y-2">
+            <Label htmlFor="website-url">Website</Label>
+            <Input
+              id="website-url"
+              type="url"
+              placeholder="e.g. https://acme.com"
+              value={websiteUrl}
+              onChange={(e) => setWebsiteUrl(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="social-url">Social media or LinkedIn</Label>
+            <Input
+              id="social-url"
+              type="url"
+              placeholder="e.g. https://linkedin.com/company/acme"
+              value={socialUrl}
+              onChange={(e) => setSocialUrl(e.target.value)}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {error && (
+        <p className="text-sm text-destructive mb-4 text-center">{error}</p>
+      )}
 
       <Button
         size="lg"
@@ -229,7 +308,7 @@ export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
       </Button>
 
       <p className="text-xs text-center text-muted-foreground mt-4">
-        You can switch to real data anytime by connecting Xero.
+        You can switch to real data anytime by connecting Xero
       </p>
     </div>
   );
