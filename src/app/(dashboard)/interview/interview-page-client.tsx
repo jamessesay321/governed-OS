@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
-/*  Business Profile — Simplified Setup Flow                          */
+/*  Business Profile: Simplified Setup Flow                           */
 /* ------------------------------------------------------------------ */
 
 type Props = {
@@ -88,7 +88,7 @@ interface FormData {
 const STEPS = [
   { id: 'basics', label: 'Company Basics', description: 'Name, website, and socials' },
   { id: 'details', label: 'Business Details', description: 'Industry, size, and revenue' },
-  { id: 'context', label: 'Goals & Context', description: 'Optional — helps AI give better insights' },
+  { id: 'context', label: 'Goals & Context', description: 'Optional. Helps AI give better insights' },
 ];
 
 export function InterviewPageClient({
@@ -141,7 +141,7 @@ export function InterviewPageClient({
         setSaved(true);
       }
     } catch {
-      // silent fail — log server-side
+      // silent fail: log server-side
     } finally {
       setSaving(false);
     }

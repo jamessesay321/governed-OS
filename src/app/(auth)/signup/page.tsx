@@ -99,7 +99,7 @@ export default function SignupPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left Panel — Brand & Marketing */}
+      {/* Left Panel: Brand & Marketing */}
       <div
         className="hidden lg:flex lg:w-[55%] flex-col justify-between p-12 relative overflow-hidden"
         style={{ backgroundColor: '#1c1b1b' }}
@@ -178,7 +178,7 @@ export default function SignupPage() {
         </div>
       </div>
 
-      {/* Right Panel — Signup Form */}
+      {/* Right Panel: Signup Form */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12" style={{ backgroundColor: '#faf8f5' }}>
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">

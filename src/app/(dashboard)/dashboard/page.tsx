@@ -4,7 +4,7 @@ import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { DashboardClient } from './dashboard-client';
 
 export default async function DashboardPage() {
-  const { orgId, role } = await getUserProfile();
+  const { orgId, role, displayName } = await getUserProfile();
   const supabase = await createClient();
 
   // Fetch financial data
@@ -62,6 +62,7 @@ export default async function DashboardPage() {
           : null
       }
       role={role}
+      displayName={displayName}
     />
   );
 }

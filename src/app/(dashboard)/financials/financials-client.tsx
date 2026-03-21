@@ -172,7 +172,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
       {syncResult && (
         <div className={`rounded-lg border p-3 text-sm ${syncResult.success ? 'border-green-200 bg-green-50 text-green-800' : 'border-red-200 bg-red-50 text-red-800'}`}>
           {syncResult.success
-            ? `Sync complete — ${syncResult.records.toLocaleString()} records updated. Page will refresh with new data.`
+            ? `Sync complete: ${syncResult.records.toLocaleString()} records updated. Page will refresh with new data.`
             : `Sync failed: ${syncResult.error || 'Unknown error'}`}
         </div>
       )}
@@ -194,7 +194,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
                 {lastSync.status}
               </span>
               {lastSync.status === 'completed' && ` (${lastSync.recordsSynced} records)`}
-              {lastSync.status === 'failed' && lastSync.errorMessage && ` — ${lastSync.errorMessage}`}
+              {lastSync.status === 'failed' && lastSync.errorMessage && `: ${lastSync.errorMessage}`}
             </span>
           </>
         )}

@@ -54,7 +54,7 @@ export function ProposalCard({
                     <><span className="text-muted-foreground">{change.current_value}</span> → </>
                   ) : null}
                   <span className="font-medium">{change.new_value}</span>
-                  <span className="text-muted-foreground"> — {change.reasoning}</span>
+                  <span className="text-muted-foreground">: {change.reasoning}</span>
                 </span>
               </li>
             ))}

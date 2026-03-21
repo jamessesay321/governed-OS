@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/*  Agent Registry — AI agents that actively manage business operations */
+/*  Agent Registry: AI agents that actively manage business operations */
 /* ------------------------------------------------------------------ */
 
 export interface AgentDefinition {
@@ -54,7 +54,7 @@ export const AGENTS: AgentDefinition[] = [
     title: 'Your always-on CFO assistant',
     tagline: 'Your always-on CFO assistant',
     description:
-      'The Finance Agent handles your month-end close, reconciliation, cash flow monitoring, and vendor payments — so your team can focus on growth instead of bookkeeping. It watches every transaction, flags anomalies in real time, and generates the reports your board actually wants to read.',
+      'Your always-on CFO assistant. Handles month-end close, reconciliation, cash flow monitoring, and vendor payments so your team can focus on growth. Watches every transaction, flags anomalies in real time, and generates the reports your board actually wants to read.',
     icon: 'PoundSterling',
     color: 'blue',
     monthlyPrice: 149,
@@ -81,7 +81,7 @@ export const AGENTS: AgentDefinition[] = [
     title: 'AI-powered growth engine',
     tagline: 'AI-powered growth engine',
     description:
-      'The Marketing Agent runs your inbound engine end-to-end — from SEO and content strategy to lead scoring and email campaigns. It monitors competitors, identifies opportunities, and turns data into pipeline so your team can close deals instead of writing newsletters.',
+      'Runs your inbound engine end-to-end, from SEO and content strategy to lead scoring and email campaigns. Monitors competitors, identifies opportunities, and turns data into pipeline so your team can close deals instead of writing newsletters.',
     icon: 'Megaphone',
     color: 'purple',
     monthlyPrice: 129,
@@ -108,7 +108,7 @@ export const AGENTS: AgentDefinition[] = [
     title: 'EOS-powered execution system',
     tagline: 'EOS-powered execution system',
     description:
-      'The Project Management Agent implements the Entrepreneurial Operating System (EOS) methodology across your organisation. It tracks quarterly rocks, prepares L10 meetings, automates scorecards, and runs IDS (Identify, Discuss, Solve) issue resolution — keeping every team member accountable.',
+      'Implements the Entrepreneurial Operating System (EOS) methodology across your organisation. Tracks quarterly rocks, prepares L10 meetings, automates scorecards, and runs IDS (Identify, Discuss, Solve) issue resolution, keeping every team member accountable.',
     icon: 'Target',
     color: 'emerald',
     monthlyPrice: 119,
@@ -161,7 +161,7 @@ export const AGENTS: AgentDefinition[] = [
     title: 'Company admin on autopilot',
     tagline: 'Company admin on autopilot',
     description:
-      'The Secretarial Agent handles the admin that keeps your company legally compliant and operationally sound. It tracks Companies House filings, renews licences, manages insurance policies, monitors contract expiry dates, and maintains your compliance calendar — so nothing falls through the cracks.',
+      'Handles the admin that keeps your company legally compliant and operationally sound. Tracks Companies House filings, renews licences, manages insurance policies, monitors contract expiry dates, and maintains your compliance calendar so nothing falls through the cracks.',
     icon: 'Stamp',
     color: 'rose',
     monthlyPrice: 99,
@@ -188,7 +188,7 @@ export const AGENTS: AgentDefinition[] = [
     title: 'Your people operations partner',
     tagline: 'Your people operations partner',
     description:
-      'The HR & People Agent manages your team operations end-to-end — from leave tracking and payroll compliance to hiring pipeline management, employee onboarding, performance reviews, and HR policy enforcement. It keeps your people processes running smoothly so you can focus on building a great team.',
+      'Manages your team operations end-to-end, from leave tracking and payroll compliance to hiring pipeline management, employee onboarding, performance reviews, and HR policy enforcement. Keeps your people processes running smoothly so you can focus on building a great team.',
     icon: 'Users',
     color: 'indigo',
     monthlyPrice: 109,

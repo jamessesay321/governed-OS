@@ -41,7 +41,7 @@ export const REFERRAL_TIERS: ReferralTier[] = [
   { minReferrals: 1, reward: '50 credits', description: 'Your first referral earns you both 50 credits', icon: '🤝' },
   { minReferrals: 3, reward: '200 bonus credits', description: 'Unlock a bonus 200 credits on your third referral', icon: '⭐' },
   { minReferrals: 5, reward: 'Advisory Circle + priority support', description: 'Join the Advisory Circle with a profile badge and priority support access', icon: '🏅' },
-  { minReferrals: 10, reward: '1 month free agent subscription', description: 'Earn a full month of any agent subscription — on us', icon: '🎁' },
+  { minReferrals: 10, reward: '1 month free agent subscription', description: 'Earn a full month of any agent subscription, on us', icon: '🎁' },
 ];
 
 // === Mock Data ===

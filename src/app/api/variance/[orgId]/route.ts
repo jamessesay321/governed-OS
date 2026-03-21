@@ -3,7 +3,7 @@ import { requireRole } from '@/lib/supabase/roles';
 import { calculateVariances } from '@/lib/variance/engine';
 import { z } from 'zod';
 
-// GET /api/variance/[orgId]?period=YYYY-MM-01 — Get variance analysis (viewer+)
+// GET /api/variance/[orgId]?period=YYYY-MM-01: Get variance analysis (viewer+)
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ orgId: string }> }
@@ -46,7 +46,7 @@ const postSchema = z.object({
   variances: z.array(varianceItemSchema).max(20),
 });
 
-// POST /api/variance/[orgId] — Get AI explanation for top variances
+// POST /api/variance/[orgId]: Get AI explanation for top variances
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ orgId: string }> }

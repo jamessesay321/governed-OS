@@ -45,7 +45,7 @@ export default function ReferralsPage() {
         </h1>
         <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
           Introduce fellow finance leaders to Governed OS. When they join, you both receive credits
-          to unlock more of the platform. No gimmicks — just a stronger community.
+          to unlock more of the platform. No gimmicks, just a stronger community.
         </p>
       </div>
 

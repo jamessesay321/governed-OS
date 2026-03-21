@@ -270,7 +270,7 @@ export const SAMPLE_INTELLIGENCE_INSIGHTS: IntelligenceInsight[] = [
   {
     title: 'Seasonal Cash Flow Pattern',
     summary:
-      'Summer months (Jun-Aug) show 30% lower revenue — typical for bridal. Pre-collecting deposits and running a ready-to-wear capsule could smooth cash flow.',
+      'Summer months (Jun-Aug) show 30% lower revenue. Typical for bridal. Pre-collecting deposits and running a ready-to-wear capsule could smooth cash flow.',
     impact: 'neutral',
     category: 'cash',
     severity: 'medium',

@@ -59,7 +59,7 @@ export default function AIReviewPage() {
               Submit for Review
             </Button>
             <p className="text-xs text-muted-foreground">
-              Express interest — community reviews are coming soon.
+              Express interest. Community reviews are coming soon.
             </p>
           </CardContent>
         </Card>

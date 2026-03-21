@@ -1,0 +1,236 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+type Props = {
+  displayName: string;
+  orgName: string;
+  orgId: string;
+};
+
+const INDUSTRIES = [
+  { value: 'technology', label: 'Technology / SaaS' },
+  { value: 'retail', label: 'Retail / E-Commerce' },
+  { value: 'professional-services', label: 'Professional Services' },
+  { value: 'hospitality', label: 'Hospitality / Food & Drink' },
+  { value: 'healthcare', label: 'Healthcare' },
+  { value: 'creative-agency', label: 'Creative / Design Agency' },
+  { value: 'construction', label: 'Construction / Trades' },
+  { value: 'fashion', label: 'Fashion / Luxury' },
+  { value: 'education', label: 'Education / Training' },
+  { value: 'other', label: 'Other' },
+];
+
+const TEAM_SIZES = [
+  { value: '1-10', label: '1-10 people' },
+  { value: '11-50', label: '11-50 people' },
+  { value: '51-200', label: '51-200 people' },
+  { value: '200+', label: '200+ people' },
+];
+
+const LOADING_STEPS = [
+  'Setting up your company profile...',
+  'Generating realistic financial data...',
+  'Creating KPIs and targets...',
+  'Building your dashboard...',
+  'Almost there...',
+];
+
+export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
+  const router = useRouter();
+  const [companyName, setCompanyName] = useState(orgName || '');
+  const [industry, setIndustry] = useState('');
+  const [teamSize, setTeamSize] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSubmit = companyName.trim() && industry && teamSize;
+
+  async function handleSubmit() {
+    if (!canSubmit) return;
+
+    setLoading(true);
+    setError(null);
+
+    // Animate through loading steps
+    const stepInterval = setInterval(() => {
+      setLoadingStep((prev) => Math.min(prev + 1, LOADING_STEPS.length - 1));
+    }, 2000);
+
+    try {
+      const res = await fetch('/api/onboarding/demo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+          industry,
+          teamSize,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to generate demo data');
+      }
+
+      clearInterval(stepInterval);
+      setLoadingStep(LOADING_STEPS.length - 1);
+
+      // Brief pause on final step, then redirect
+      setTimeout(() => {
+        router.push('/dashboard');
+      }, 1000);
+    } catch (err) {
+      clearInterval(stepInterval);
+      setLoading(false);
+      setLoadingStep(0);
+      setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="max-w-lg mx-auto">
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-6">
+            <svg className="h-8 w-8 text-primary animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-bold text-foreground mb-2">
+            Setting up your demo...
+          </h2>
+          <p className="text-muted-foreground mb-8">
+            Creating a personalised experience for {companyName}
+          </p>
+
+          <div className="w-full max-w-xs space-y-3">
+            {LOADING_STEPS.map((step, i) => (
+              <div
+                key={step}
+                className={`flex items-center gap-3 text-sm transition-all duration-300 ${
+                  i <= loadingStep ? 'opacity-100' : 'opacity-30'
+                }`}
+              >
+                {i < loadingStep ? (
+                  <svg className="h-4 w-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : i === loadingStep ? (
+                  <div className="h-4 w-4 flex-shrink-0 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                  </div>
+                ) : (
+                  <div className="h-4 w-4 flex-shrink-0 flex items-center justify-center">
+                    <div className="h-2 w-2 rounded-full bg-muted" />
+                  </div>
+                )}
+                <span className={i <= loadingStep ? 'text-foreground' : 'text-muted-foreground'}>
+                  {step}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-lg mx-auto">
+      {/* Back button */}
+      <button
+        onClick={() => router.push('/welcome')}
+        className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+        </svg>
+        Back
+      </button>
+
+      <div className="text-center mb-8">
+        <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-amber-50 mb-4 text-2xl">
+          🎯
+        </div>
+        <h1 className="text-2xl font-bold text-foreground">
+          Quick demo setup
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Just three quick details and we&apos;ll create a realistic dashboard for you.
+        </p>
+      </div>
+
+      <Card className="mb-6">
+        <CardContent className="p-6 space-y-5">
+          <div className="space-y-2">
+            <Label htmlFor="company-name">Company name</Label>
+            <Input
+              id="company-name"
+              placeholder="e.g., Acme Ltd"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="industry">Industry</Label>
+            <Select value={industry} onValueChange={setIndustry}>
+              <SelectTrigger id="industry">
+                <SelectValue placeholder="Select your industry" />
+              </SelectTrigger>
+              <SelectContent>
+                {INDUSTRIES.map((ind) => (
+                  <SelectItem key={ind.value} value={ind.value}>
+                    {ind.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="team-size">Team size</Label>
+            <Select value={teamSize} onValueChange={setTeamSize}>
+              <SelectTrigger id="team-size">
+                <SelectValue placeholder="How many people?" />
+              </SelectTrigger>
+              <SelectContent>
+                {TEAM_SIZES.map((size) => (
+                  <SelectItem key={size.value} value={size.value}>
+                    {size.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Button
+        size="lg"
+        onClick={handleSubmit}
+        disabled={!canSubmit}
+        className="w-full"
+      >
+        Generate my dashboard
+      </Button>
+
+      <p className="text-xs text-center text-muted-foreground mt-4">
+        You can switch to real data anytime by connecting Xero.
+      </p>
+    </div>
+  );
+}

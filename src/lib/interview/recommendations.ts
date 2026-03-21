@@ -213,6 +213,6 @@ function getDefaultRecommendations(): InterviewRecommendations {
       { module_slug: 'health-check', module_name: 'Financial Health Check', reason: 'Essential diagnostic for all businesses', priority: 'high' },
       { module_slug: 'cash-forecaster', module_name: 'Cash Forecaster', reason: 'Cash flow visibility', priority: 'high' },
     ],
-    reasoning: 'Default recommendations — insufficient profile data for personalised suggestions.',
+    reasoning: 'Default recommendations. Insufficient profile data for personalised suggestions.',
   };
 }

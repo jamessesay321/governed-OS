@@ -44,7 +44,7 @@ const SEED_EVENTS: SeedEvent[] = [
   },
   {
     event_type: 'economic_indicator',
-    title: 'UK inflation falls to 3.4% — lowest in 18 months',
+    title: 'UK inflation falls to 3.4%, lowest in 18 months',
     summary:
       'CPI inflation dropped to 3.4% in the latest ONS release, down from 4.0% the previous month. Food prices remain elevated at 6.1% annual growth, while energy costs have stabilised. This may signal a pause in rate rises.',
     source: 'ONS',

@@ -258,7 +258,7 @@ function InvestmentSummary({
           Express Interest
         </Button>
         <p className="text-center text-[11px] text-muted-foreground">
-          Coming soon — we&apos;ll notify you when this is live.
+          Coming soon. We&apos;ll notify you when this is live.
         </p>
       </CardContent>
     </Card>

@@ -8,7 +8,7 @@ const MODULES = [
   { id: 'tax-calculator', name: 'Tax Calculator', description: 'Corp Tax, VAT, PAYE calculations for UK businesses', category: 'Finance', active: false },
   { id: 'debt-overview', name: 'Debt Overview', description: 'Loan tracking, repayment schedules, refinancing analysis', category: 'Finance', active: false },
   { id: 'working-capital', name: 'Working Capital', description: 'AR/AP days, cash conversion cycle, working capital trends', category: 'Finance', active: false },
-  { id: 'goalseek', name: 'Goalseek', description: 'Reverse scenario planning — "What do I need to hit target X?"', category: 'Intelligence', active: true },
+  { id: 'goalseek', name: 'Goalseek', description: 'Reverse scenario planning: "What do I need to hit target X?"', category: 'Intelligence', active: true },
   { id: 'benchmarks', name: 'Industry Benchmarks', description: 'Compare your metrics against industry averages', category: 'Intelligence', active: false },
   { id: 'headcount', name: 'Headcount Planning', description: 'Workforce planning, salary budgets, cost per hire', category: 'People', active: false },
   { id: 'consolidation', name: 'Multi-Entity', description: 'Group consolidation across multiple companies', category: 'Enterprise', active: false },

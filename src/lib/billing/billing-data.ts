@@ -1,5 +1,5 @@
 /* ------------------------------------------------------------------ */
-/*  Billing Data — mock billing, invoices, bundles, debt overview      */
+/*  Billing Data:mock billing, invoices, bundles, debt overview      */
 /* ------------------------------------------------------------------ */
 
 // === Invoice Types ===
@@ -110,21 +110,21 @@ export function getMockServiceBreakdown(): ServiceBreakdown {
 function buildInvoiceLineItems(includeAll: boolean): InvoiceLineItem[] {
   const items: InvoiceLineItem[] = [];
 
-  // Platform features — always included
+  // Platform features:always included
   for (const f of PLATFORM_FEATURES) {
     items.push({ description: f.name, fullValue: f.marketValue, amount: 0, included: true, complimentary: false });
   }
 
   // Modules
   items.push({ description: 'Financial Health Check (Complimentary)', fullValue: 29, amount: 0, included: false, complimentary: true });
-  items.push({ description: 'Cash Flow Forecaster — 5 credits', fullValue: 29, amount: 29, included: false, complimentary: false });
+  items.push({ description: 'Cash Flow Forecaster:5 credits', fullValue: 29, amount: 29, included: false, complimentary: false });
   if (includeAll) {
-    items.push({ description: 'SaaS Metrics Suite — 10 credits', fullValue: 49, amount: 49, included: false, complimentary: false });
+    items.push({ description: 'SaaS Metrics Suite:10 credits', fullValue: 49, amount: 49, included: false, complimentary: false });
   }
 
   // Agents
-  items.push({ description: 'Finance Agent — Monthly subscription', fullValue: 149, amount: 149, included: false, complimentary: false });
-  items.push({ description: 'Secretarial Agent — Monthly subscription', fullValue: 99, amount: 99, included: false, complimentary: false });
+  items.push({ description: 'Finance Agent:Monthly subscription', fullValue: 149, amount: 149, included: false, complimentary: false });
+  items.push({ description: 'Secretarial Agent:Monthly subscription', fullValue: 99, amount: 99, included: false, complimentary: false });
 
   // Plan
   items.push({ description: 'Professional Plan (250 credits)', fullValue: 79, amount: 79, included: false, complimentary: false });
@@ -161,7 +161,7 @@ export function getRecommendedBundles(): RecommendedBundle[] {
     {
       id: 'bundle-growth',
       name: 'Growth Essentials',
-      description: 'Perfect for scaling luxury brands — core financial tools with compliance autopilot.',
+      description: 'Perfect for scaling luxury brands:core financial tools with compliance autopilot.',
       tagline: 'Most popular with emerging brands',
       color: 'amber',
       modules: ['Cash Flow Forecaster', 'Budget Builder', 'Financial Health Check'],

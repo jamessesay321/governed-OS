@@ -198,7 +198,7 @@ export default function PricingPage() {
             </div>
             {allSelected && (
               <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700">
-                Bundle applied — saving £{bundleSavings}
+                Bundle applied, saving £{bundleSavings}
               </Badge>
             )}
           </div>

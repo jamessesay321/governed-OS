@@ -163,7 +163,7 @@ export function VaultBrowserClient({
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Knowledge Vault</h1>
           <p className="mt-1 text-sm text-gray-500">
-            Every document, report, and AI output — stored with full provenance chain.
+            Every document, report, and AI output, stored with full provenance chain.
           </p>
         </div>
         <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -250,7 +250,7 @@ export function VaultBrowserClient({
                         <span>v{item.current_version}</span>
                         <span>{formatDate(item.created_at)}</span>
                         {item.period_start && item.period_end && (
-                          <span>{item.period_start} — {item.period_end}</span>
+                          <span>{item.period_start} to {item.period_end}</span>
                         )}
                       </div>
                       {item.tags.length > 0 && (

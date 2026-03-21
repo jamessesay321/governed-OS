@@ -130,3 +130,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Celebration particle animation */
+@keyframes celebration-particle {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.animate-celebration-particle {
+  animation: celebration-particle 2s ease-out forwards;
+}

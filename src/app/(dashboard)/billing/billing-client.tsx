@@ -87,7 +87,7 @@ export function BillingClient() {
             <div>
               <h3 className="text-sm font-semibold text-foreground">Included Free Forever</h3>
               <p className="text-xs text-muted-foreground mt-1">
-                Your foundation — on top of your free tier, bundles add specialist capabilities.
+                Your foundation. On top of your free tier, bundles add specialist capabilities.
               </p>
               <div className="flex flex-wrap gap-1.5 mt-2">
                 {['AI Setup Assistant', 'Budget Manager', 'Chart of Accounts', 'Data Quality', 'Dashboard', 'KPI Tracker', 'Governance Centre'].map((f) => (

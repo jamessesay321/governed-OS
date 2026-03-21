@@ -75,7 +75,7 @@ export function ScenariosListClient({ scenarios, role, availablePeriods = [] }: 
         setError(data.error || `Failed to create scenario (${res.status})`);
       }
     } catch {
-      setError('Network error — failed to create scenario');
+      setError('Network error. Failed to create scenario');
     } finally {
       setCreating(false);
     }

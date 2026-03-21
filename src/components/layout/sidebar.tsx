@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
-/*  Navigation structure — grouped with collapsible sub-items         */
+/*  Navigation structure: grouped with collapsible sub-items         */
 /* ------------------------------------------------------------------ */
 
 interface NavChild {

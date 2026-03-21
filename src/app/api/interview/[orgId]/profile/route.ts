@@ -24,7 +24,7 @@ const profileSchema = z.object({
   challenges: z.string().max(2000).optional().default(''),
 });
 
-// POST /api/interview/[orgId]/profile — Save business profile form data
+// POST /api/interview/[orgId]/profile: Save business profile form data
 export async function POST(request: Request, { params }: Params) {
   try {
     const { orgId } = await params;
@@ -55,7 +55,7 @@ export async function POST(request: Request, { params }: Params) {
       .single();
 
     if (existing) {
-      // Update existing row — store form data in raw_interview_data and mapped columns
+      // Update existing row: store form data in raw_interview_data and mapped columns
       await service
         .from('business_context_profiles' as any)
         .update({
@@ -97,7 +97,7 @@ export async function POST(request: Request, { params }: Params) {
   }
 }
 
-// GET /api/interview/[orgId]/profile — Load saved business profile
+// GET /api/interview/[orgId]/profile: Load saved business profile
 export async function GET(_request: Request, { params }: Params) {
   try {
     const { orgId } = await params;

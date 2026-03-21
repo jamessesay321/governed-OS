@@ -45,7 +45,7 @@ export function DimensionCard({ score, onImprove }: DimensionCardProps) {
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
-          {MATURITY_LABELS[score.score]} — {score.label}
+          {MATURITY_LABELS[score.score]}: {score.label}
         </p>
       </CardHeader>
       <CardContent className="flex flex-1 flex-col gap-4">

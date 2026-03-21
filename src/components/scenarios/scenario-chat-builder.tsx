@@ -86,7 +86,7 @@ export function ScenarioChatBuilder({
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'Network error — please try again.' },
+        { role: 'assistant', content: 'Network error. Please try again.' },
       ]);
     } finally {
       setLoading(false);
@@ -123,7 +123,7 @@ export function ScenarioChatBuilder({
     } catch {
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', content: 'Network error — confirmation failed.' },
+        { role: 'assistant', content: 'Network error. Confirmation failed.' },
       ]);
     } finally {
       setConfirming(false);

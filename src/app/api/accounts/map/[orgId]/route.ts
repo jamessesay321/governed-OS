@@ -371,7 +371,7 @@ Output JSON schema:
       name: a.name,
       category: classToCategory(a.class),
       confidence: 0.3,
-      reasoning: 'AI mapping failed — using class-based heuristic',
+      reasoning: 'AI mapping failed, using class-based heuristic',
     }));
   }
 }

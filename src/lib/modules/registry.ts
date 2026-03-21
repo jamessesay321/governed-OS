@@ -1,6 +1,6 @@
 import type { ModuleDefinition } from '@/types/playbook';
 
-// === Module Definitions — 16 modules across 5 categories ===
+// === Module Definitions:16 modules across 5 categories ===
 
 const MODULES: ModuleDefinition[] = [
   // ─── Financial Analysis (5) ─────────────────────────────────
@@ -9,7 +9,7 @@ const MODULES: ModuleDefinition[] = [
     slug: 'health-check',
     name: 'Financial Health Check',
     description:
-      'Auto-generated financial health assessment with traffic light scoring across profitability, liquidity, efficiency, and growth — benchmarked against sector averages.',
+      'Auto-generated financial health assessment with traffic light scoring across profitability, liquidity, efficiency, and growth:benchmarked against sector averages.',
     category: 'financial-analysis',
     icon: 'HeartPulse',
     features: [
@@ -297,7 +297,7 @@ const MODULES: ModuleDefinition[] = [
     slug: 'ecommerce-analytics',
     name: 'E-Commerce Analytics',
     description:
-      'Purpose-built financial analytics for e-commerce businesses — unit economics, channel profitability and inventory forecasting.',
+      'Purpose-built financial analytics for e-commerce businesses:unit economics, channel profitability and inventory forecasting.',
     category: 'industry-packs',
     icon: 'ShoppingCart',
     features: [

@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
         if (!isUrlSafe(url)) {
           return NextResponse.json(
-            { error: 'Invalid or blocked URL — only public websites are allowed' },
+            { error: 'Invalid or blocked URL. Only public websites are allowed' },
             { status: 400 }
           );
         }
@@ -165,7 +165,7 @@ Rules:
     } catch {
       console.error('[SCAN] Failed to parse AI response:', responseText);
       return NextResponse.json(
-        { error: 'Failed to analyse business — please try again' },
+        { error: 'Failed to analyse business. Please try again' },
         { status: 500 }
       );
     }

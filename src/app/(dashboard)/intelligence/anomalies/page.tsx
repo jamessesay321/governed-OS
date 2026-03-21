@@ -14,7 +14,7 @@ export default function AnomaliesPage() {
       <div className="space-y-3">
         {[
           { title: 'Unusual spike in Travel expenses', detail: 'March travel costs were 340% above the 6-month average (£8,400 vs £1,900 avg). This may be due to a conference or team event.', severity: 'medium', impact: '£6,500 above baseline' },
-          { title: 'Revenue drop in Week 3', detail: 'Weekly revenue dipped 28% in the third week of the month. This pattern occurred last quarter too — may indicate seasonal client behaviour.', severity: 'low', impact: '£12,000 below weekly average' },
+          { title: 'Revenue drop in Week 3', detail: 'Weekly revenue dipped 28% in the third week of the month. This pattern occurred last quarter too. May indicate seasonal client behaviour.', severity: 'low', impact: '£12,000 below weekly average' },
           { title: 'Duplicate supplier payment detected', detail: 'Two payments of £2,150 to "CloudHost Ltd" within 3 days. May be intentional (different invoices) or a duplicate payment.', severity: 'high', impact: '£2,150 potential overpayment' },
         ].map((a, i) => (
           <div key={i} className="rounded-lg border bg-card p-4">

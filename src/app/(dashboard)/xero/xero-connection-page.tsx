@@ -33,11 +33,11 @@ type Props = {
 const ERROR_MESSAGES: Record<string, string> = {
   not_configured: 'Xero integration is not configured. Please contact your platform administrator.',
   insufficient_role: 'You need admin permissions to connect Xero. Ask an admin to set up the connection.',
-  missing_params: 'Connection failed — missing authorisation parameters from Xero.',
-  invalid_state: 'Connection failed — invalid security token. Please try again.',
-  org_mismatch: 'Connection failed — organisation mismatch. Please try again.',
-  token_exchange: 'Connection failed — could not exchange authorisation code. Check your Xero app credentials.',
-  connections_failed: 'Connection failed — could not fetch Xero tenant. Please try again.',
+  missing_params: 'Connection failed. Missing authorisation parameters from Xero.',
+  invalid_state: 'Connection failed. Invalid security token. Please try again.',
+  org_mismatch: 'Connection failed. Organisation mismatch. Please try again.',
+  token_exchange: 'Connection failed. Could not exchange authorisation code. Check your Xero app credentials.',
+  connections_failed: 'Connection failed. Could not fetch Xero tenant. Please try again.',
   no_tenants: 'No Xero organisations found. Ensure you have at least one organisation in your Xero account.',
   unexpected: 'An unexpected error occurred. Please try again.',
 };
@@ -100,7 +100,7 @@ export function XeroConnectionPage({ connected, connectionDate, canConnect, canS
           </div>
           {feedback.recordsSynced != null && feedback.recordsSynced > 0 && (
             <p className="text-sm text-green-700 mt-1 ml-7">
-              Initial sync complete — {feedback.recordsSynced.toLocaleString()} records imported.
+              Initial sync complete: {feedback.recordsSynced.toLocaleString()} records imported.
             </p>
           )}
           {feedback.syncWarning && (
@@ -215,7 +215,7 @@ export function XeroConnectionPage({ connected, connectionDate, canConnect, canS
             {syncResult && (
               <div className={`mt-4 rounded-lg p-3 text-sm ${syncResult.success ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'}`}>
                 {syncResult.success
-                  ? `Sync complete — ${syncResult.records.toLocaleString()} records updated.`
+                  ? `Sync complete: ${syncResult.records.toLocaleString()} records updated.`
                   : `Sync failed: ${syncResult.error || 'Unknown error'}`}
               </div>
             )}

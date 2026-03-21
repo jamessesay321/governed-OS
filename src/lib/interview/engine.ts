@@ -152,7 +152,7 @@ export async function getOrCreateInterview(
     .single();
 
   if (error) {
-    // Table may not exist yet — return a virtual interview object
+    // Table may not exist yet: return a virtual interview object
     return {
       id: crypto.randomUUID(),
       org_id: orgId,
@@ -238,8 +238,8 @@ async function storeMessage(
       metadata,
     });
   } catch {
-    // Table may not exist yet — silently continue
-    console.warn('Failed to store interview message — table may not exist');
+    // Table may not exist yet: silently continue
+    console.warn('Failed to store interview message: table may not exist');
   }
 }
 
@@ -258,7 +258,7 @@ async function updateInterviewStage(
       .update({ current_stage: stage, updated_at: new Date().toISOString() })
       .eq('id', interviewId);
   } catch {
-    console.warn('Failed to update interview stage — table may not exist');
+    console.warn('Failed to update interview stage: table may not exist');
   }
 }
 
@@ -278,7 +278,7 @@ async function completeInterview(interviewId: string): Promise<void> {
       })
       .eq('id', interviewId);
   } catch {
-    console.warn('Failed to complete interview — table may not exist');
+    console.warn('Failed to complete interview: table may not exist');
   }
 }
 
@@ -481,7 +481,7 @@ export async function storeBusinessProfile(
     if (error) throw error;
     return data as unknown as BusinessContextProfile;
   } catch {
-    // Table may not exist — return a virtual record
+    // Table may not exist: return a virtual record
     return {
       id: crypto.randomUUID(),
       org_id: orgId,

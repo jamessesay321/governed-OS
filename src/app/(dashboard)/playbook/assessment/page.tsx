@@ -18,7 +18,7 @@ export default function PlaybookAssessmentPage() {
         <h3 className="text-lg font-semibold mb-2">Run a Playbook Assessment</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
           Our AI analyses your financials and generates a prioritised list of actions with estimated monetary impact.
-          This is unique to Advisory OS — no competitor offers this.
+          This is unique to Advisory OS. No competitor offers this.
         </p>
         <button className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
           Run Assessment

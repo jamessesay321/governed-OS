@@ -84,7 +84,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex min-h-screen">
-      {/* Left Panel — Brand & Marketing */}
+      {/* Left Panel: Brand & Marketing */}
       <div
         className="hidden lg:flex lg:w-[55%] flex-col justify-between p-12 relative overflow-hidden"
         style={{ backgroundColor: '#2c2a29' }}
@@ -145,7 +145,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom — Trust stats */}
+        {/* Bottom: Trust stats */}
         <div className="relative z-10">
           <div className="flex items-center gap-8 mb-6">
             {TRUST_STATS.map((stat) => (
@@ -158,7 +158,7 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Right Panel — Login Form */}
+      {/* Right Panel: Login Form */}
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12" style={{ backgroundColor: '#faf8f5' }}>
         {/* Mobile logo */}
         <div className="lg:hidden flex items-center gap-2 mb-8">

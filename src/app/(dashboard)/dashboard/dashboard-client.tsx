@@ -14,10 +14,26 @@ import { VariancePanel } from '@/components/dashboard/variance-panel';
 import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
 import { ProposalWidget } from '@/components/dashboard/proposal-widget';
 import { Button } from '@/components/ui/button';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, TrendingUp, Target, Sparkles, FileText, PieChart } from 'lucide-react';
+import Link from 'next/link';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
+
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+const QUICK_ACTIONS = [
+  { label: 'View P&L', href: '/financials', icon: PieChart },
+  { label: 'Check KPIs', href: '/kpi', icon: Target },
+  { label: 'Run Scenario', href: '/scenarios', icon: TrendingUp },
+  { label: 'Generate Report', href: '/reports', icon: FileText },
+  { label: 'Ask AI', href: '/intelligence', icon: Sparkles },
+];
 
 function hasMinRole(userRole: Role, minRole: Role): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole];
@@ -37,6 +53,7 @@ interface DashboardClientProps {
     error: string | null;
   } | null;
   role: string;
+  displayName: string;
 }
 
 export function DashboardClient({
@@ -47,6 +64,7 @@ export function DashboardClient({
   connected,
   lastSync,
   role,
+  displayName,
 }: DashboardClientProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
   const [drillSection, setDrillSection] = useState<PnLSection | null>(null);
@@ -62,11 +80,14 @@ export function DashboardClient({
   const canSync = hasMinRole(userRole, 'advisor');
   const canConnect = hasMinRole(userRole, 'admin');
 
+  const firstName = displayName?.split(' ')[0] || 'there';
+
   if (!pnl || periods.length === 0) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Dashboard</h2>
+        <div>
+          <h2 className="text-2xl font-bold">{getGreeting()}, {firstName}</h2>
+          <p className="text-sm text-muted-foreground mt-1">Here&apos;s your financial overview.</p>
         </div>
 
         <SyncStatus
@@ -100,10 +121,10 @@ export function DashboardClient({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Greeting + Period */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold">Dashboard</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">{getGreeting()}, {firstName}</h2>
           <DataFreshness lastSyncAt={lastSync?.completedAt ?? null} />
         </div>
         <div className="flex items-center gap-2">
@@ -125,7 +146,21 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Narrative Summary — AI-generated insight leads the dashboard */}
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-2">
+        {QUICK_ACTIONS.map(({ label, href, icon: Icon }) => (
+          <Link
+            key={label}
+            href={href}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+          </Link>
+        ))}
+      </div>
+
+      {/* Narrative Summary:AI-generated insight leads the dashboard */}
       <NarrativeSummary orgId={orgId} period={selectedPeriod} />
 
       {/* KPI Cards with trend comparison */}
@@ -163,7 +198,7 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Waterfall Chart — Revenue to Net Profit bridge */}
+      {/* Waterfall Chart:Revenue to Net Profit bridge */}
       <WaterfallChart pnl={pnl} />
 
       {/* Drill-down slide-in panel */}

@@ -24,7 +24,7 @@ export default function TeamSettingsPage() {
       <div className="rounded-lg border bg-card p-4">
         <h3 className="text-sm font-semibold mb-3">Role Permissions</h3>
         <div className="space-y-2 text-xs text-muted-foreground">
-          <div className="flex justify-between"><span className="font-medium text-foreground">Admin</span><span>Full access — manage team, settings, billing</span></div>
+          <div className="flex justify-between"><span className="font-medium text-foreground">Admin</span><span>Full access: manage team, settings, billing</span></div>
           <div className="flex justify-between"><span className="font-medium text-foreground">Advisor</span><span>View all data, run assessments, create reports</span></div>
           <div className="flex justify-between"><span className="font-medium text-foreground">Viewer</span><span>View dashboards and reports only</span></div>
           <div className="flex justify-between"><span className="font-medium text-foreground">Investor</span><span>View shared reports and KPIs only</span></div>

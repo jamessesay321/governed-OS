@@ -99,7 +99,7 @@ async function xeroGet(
 
   if (!response.ok) {
     const body = await response.text().catch(() => '');
-    throw new Error(`Xero API error: ${response.status} ${response.statusText} — ${body.slice(0, 200)}`);
+    throw new Error(`Xero API error: ${response.status} ${response.statusText}: ${body.slice(0, 200)}`);
   }
 
   return response.json();
@@ -348,7 +348,7 @@ export async function runFullSync(
       metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, totalSynced },
     });
 
-    console.log(`[XERO SYNC] === Complete — ${totalSynced} total records, ${normalised} normalised ===`);
+    console.log(`[XERO SYNC] === Complete: ${totalSynced} total records, ${normalised} normalised ===`);
     return { success: true, recordsSynced: totalSynced };
   } catch (err) {
     const errorMessage =
