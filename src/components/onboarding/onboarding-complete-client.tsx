@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Celebration } from '@/components/ui/celebration';
 import { OnboardingProgress } from './onboarding-progress';
 
 type Props = {
@@ -30,6 +31,7 @@ export function OnboardingCompleteClient({ orgName, interviewCompleted, xeroConn
 
   return (
     <div>
+      <Celebration trigger={true} />
       <OnboardingProgress
         currentStep={3}
         completedSteps={{ interview: interviewCompleted, xero: xeroConnected }}

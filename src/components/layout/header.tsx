@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import {
@@ -337,5 +338,62 @@ export function Header({ displayName, orgName, role }: HeaderProps) {
         </DropdownMenu>
       </div>
     </header>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Mobile Floating Action Button for quick actions                   */
+/* ------------------------------------------------------------------ */
+
+const MOBILE_ACTIONS = [
+  { label: 'View P&L', href: '/financials', icon: '📊' },
+  { label: 'Check KPIs', href: '/kpi', icon: '🎯' },
+  { label: 'Run Scenario', href: '/scenarios', icon: '📈' },
+  { label: 'Generate Report', href: '/reports', icon: '📄' },
+  { label: 'Ask AI', href: '/intelligence', icon: '✨' },
+];
+
+export function MobileQuickActions() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="fixed bottom-6 right-6 z-40 sm:hidden">
+      {/* Action sheet */}
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/20 z-30"
+            onClick={() => setOpen(false)}
+          />
+          <div className="absolute bottom-16 right-0 w-48 rounded-xl border bg-card shadow-lg z-40 overflow-hidden mb-2">
+            {MOBILE_ACTIONS.map((action) => (
+              <Link
+                key={action.href}
+                href={action.href}
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+              >
+                <span className="text-base">{action.icon}</span>
+                {action.label}
+              </Link>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* FAB button */}
+      <button
+        onClick={() => setOpen(!open)}
+        className={cn(
+          'flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-transform active:scale-95',
+          open && 'rotate-45'
+        )}
+        aria-label="Quick actions"
+      >
+        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        </svg>
+      </button>
+    </div>
   );
 }

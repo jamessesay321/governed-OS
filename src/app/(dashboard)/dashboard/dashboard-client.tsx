@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { KPICards } from '@/components/dashboard/kpi-cards';
 import { PnLTable } from '@/components/dashboard/pnl-table';
@@ -13,6 +13,7 @@ import { WaterfallChart } from '@/components/dashboard/waterfall-chart';
 import { VariancePanel } from '@/components/dashboard/variance-panel';
 import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
 import { ProposalWidget } from '@/components/dashboard/proposal-widget';
+import { Celebration } from '@/components/ui/celebration';
 import { Button } from '@/components/ui/button';
 import { BarChart3, TrendingUp, Target, Sparkles, FileText, PieChart } from 'lucide-react';
 import Link from 'next/link';
@@ -34,6 +35,21 @@ const QUICK_ACTIONS = [
   { label: 'Generate Report', href: '/reports', icon: FileText },
   { label: 'Ask AI', href: '/intelligence', icon: Sparkles },
 ];
+
+function getContextualInsight(pnl?: PnLSummary, previousPnl?: PnLSummary | null): string | null {
+  if (!pnl || !previousPnl) return null;
+  if (pnl.revenue > 0 && previousPnl.revenue > 0) {
+    const change = ((pnl.revenue - previousPnl.revenue) / previousPnl.revenue) * 100;
+    if (change > 0) return `Your revenue is up ${change.toFixed(0)}% this period. Nice work.`;
+    if (change < -5) return `Revenue dipped ${Math.abs(change).toFixed(0)}% this period. Worth a closer look.`;
+  }
+  if (pnl.netProfit > 0 && previousPnl.netProfit <= 0) return 'You moved into profit this period. Great momentum.';
+  if (pnl.grossProfit > 0 && previousPnl.grossProfit > 0) {
+    const gpMargin = (pnl.grossProfit / pnl.revenue) * 100;
+    if (gpMargin > 60) return `Gross margin is strong at ${gpMargin.toFixed(0)}%. Keep it up.`;
+  }
+  return null;
+}
 
 function hasMinRole(userRole: Role, minRole: Role): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole];
@@ -69,7 +85,17 @@ export function DashboardClient({
   const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
   const [drillSection, setDrillSection] = useState<PnLSection | null>(null);
   const [showVariance, setShowVariance] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
   const pnl = pnlByPeriod[selectedPeriod];
+
+  // Celebrate on first visit (once per session)
+  useEffect(() => {
+    const key = 'dashboard-celebrated';
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1');
+      setShowCelebration(true);
+    }
+  }, []);
 
   // Get previous period P&L for trend comparison
   const periodIdx = periods.indexOf(selectedPeriod);
@@ -119,12 +145,19 @@ export function DashboardClient({
     setDrillSection(section);
   }
 
+  const insight = getContextualInsight(pnl, previousPnl);
+
   return (
     <div className="space-y-6">
+      <Celebration trigger={showCelebration} />
+
       {/* Greeting + Period */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold">{getGreeting()}, {firstName}</h2>
+          {insight && (
+            <p className="text-sm text-muted-foreground mt-0.5">{insight}</p>
+          )}
           <DataFreshness lastSyncAt={lastSync?.completedAt ?? null} />
         </div>
         <div className="flex items-center gap-2">
