@@ -23,7 +23,7 @@ export default function KPITargetsPage() {
         </div>
         <h3 className="text-lg font-semibold mb-2">Set Your KPI Targets</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto mb-4">
-          Define target values for your key metrics. Advisory OS will track your progress and alert you when KPIs cross thresholds.
+          Define target values for your key metrics. Grove will track your progress and alert you when KPIs cross thresholds.
         </p>
         <p className="text-xs text-muted-foreground">Connect your accounts first to see available KPIs</p>
       </div>

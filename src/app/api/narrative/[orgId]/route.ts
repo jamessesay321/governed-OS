@@ -126,7 +126,7 @@ export async function GET(
       netMargin: previousPnL.revenue > 0 ? ((previousPnL.netProfit / previousPnL.revenue) * 100).toFixed(1) : '0',
     } : null;
 
-    const systemPrompt = `You are the Advisory OS financial intelligence engine. Generate a concise dashboard narrative summary for a UK-based business owner.
+    const systemPrompt = `You are the Grove financial intelligence engine. Generate a concise dashboard narrative summary for a UK-based business owner.
 
 Rules:
 - Use £ currency, formatted with commas (e.g. £79,000)

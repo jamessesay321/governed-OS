@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Governed OS",
-  description: "Institutional-grade operating system for SME advisory",
+  title: "Grove",
+  description: "The financial operating system for ambitious businesses",
 };
 
 export default function RootLayout({

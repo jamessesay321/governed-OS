@@ -173,7 +173,7 @@ export default function ExportsPage() {
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Use this key to access the Governed OS API. See{' '}
+              Use this key to access the Grove API. See{' '}
               <button className="text-primary hover:underline">documentation</button> for endpoints.
             </p>
           </div>

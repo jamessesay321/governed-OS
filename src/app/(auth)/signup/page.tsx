@@ -9,9 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 const VALUE_PROPS = [
-  { title: 'Set up in under 3 minutes', description: 'Connect your accounting software and let our AI do the rest.' },
-  { title: 'No credit card required', description: 'Start with full access to explore every feature on the platform.' },
-  { title: 'Your data stays yours', description: 'Enterprise-grade security with SOC 2 compliance and full audit trails.' },
+  { title: 'Set up in under 3 minutes', description: 'Connect your accounting software and let our AI do the rest' },
+  { title: 'No credit card required', description: 'Start with full access to explore every feature on the platform' },
+  { title: 'Your data stays yours', description: 'Enterprise-grade security with SOC 2 compliance and full audit trails' },
 ];
 
 export default function SignupPage() {
@@ -120,7 +120,7 @@ export default function SignupPage() {
               </svg>
             </div>
             <span className="text-xl font-semibold tracking-tight" style={{ color: '#f5f0eb' }}>
-              Governed OS
+              Grove
             </span>
           </div>
 
@@ -130,10 +130,10 @@ export default function SignupPage() {
             <br />
             just got a lot
             <br />
-            more intelligent.
+            more intelligent
           </h1>
           <p className="text-lg mb-16" style={{ color: 'rgba(245,240,235,0.6)' }}>
-            Join hundreds of businesses using AI-powered financial governance to make smarter, faster decisions.
+            Join hundreds of businesses using AI-powered financial governance to make smarter, faster decisions
           </p>
 
           {/* Value props */}
@@ -163,7 +163,7 @@ export default function SignupPage() {
         <div className="relative z-10">
           <div className="rounded-xl p-6" style={{ backgroundColor: 'rgba(200,160,120,0.08)', border: '1px solid rgba(200,160,120,0.12)' }}>
             <p className="text-sm italic leading-relaxed" style={{ color: 'rgba(245,240,235,0.7)' }}>
-              &ldquo;Governed OS completely transformed how we understand our finances. The AI insights alone have saved us hours every week.&rdquo;
+              &ldquo;Grove completely transformed how we understand our finances. The AI insights alone have saved us hours every week&rdquo;
             </p>
             <div className="flex items-center gap-3 mt-4">
               <div className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold" style={{ backgroundColor: 'rgba(200,160,120,0.2)', color: '#c8a078' }}>
@@ -187,7 +187,7 @@ export default function SignupPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
             </svg>
           </div>
-          <span className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>Governed OS</span>
+          <span className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>Grove</span>
         </div>
 
         <div className="w-full max-w-sm">

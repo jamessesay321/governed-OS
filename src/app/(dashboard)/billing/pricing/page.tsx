@@ -383,7 +383,7 @@ export default function PricingPage() {
           Need custom limits or dedicated support?
         </h3>
         <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
-          We work with growing businesses that need tailored solutions. Let&apos;s discuss what Governed OS can do for you.
+          We work with growing businesses that need tailored solutions. Let&apos;s discuss what Grove can do for you.
         </p>
         <Button variant="outline" className="mt-4">
           Contact Us

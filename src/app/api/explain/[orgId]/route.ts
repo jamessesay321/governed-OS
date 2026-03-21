@@ -13,7 +13,7 @@ const explainSchema = z.object({
   context: z.string().max(500).optional(),
 });
 
-const EXPLAINER_PROMPT = `You are the Advisory OS financial explainer. Explain financial terms in plain English, personalised to the user's actual business data.
+const EXPLAINER_PROMPT = `You are the Grove financial explainer. Explain financial terms in plain English, personalised to the user's actual business data.
 
 ## Rules
 - Respond with valid JSON ONLY.

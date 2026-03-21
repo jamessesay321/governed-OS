@@ -104,7 +104,7 @@ export default function ConsultantsPage() {
   return (
     <IntelligencePageWrapper
       title="Consultants"
-      subtitle="Connect with vetted advisors who understand your business through Governed OS data"
+      subtitle="Connect with vetted advisors who understand your business through Grove data"
       section="consultants"
       showSearch={false}
       showRecommendations={false}

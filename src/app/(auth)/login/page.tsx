@@ -16,16 +16,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Real-Time Financial Intelligence',
-    description: 'AI-powered insights across your P&L, balance sheet, and cash flow, updated continuously.',
-  },
-  {
-    icon: (
-      <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
-      </svg>
-    ),
-    title: 'Five Specialist AI Agents',
-    description: 'Finance, marketing, compliance, strategy, and operations agents working as your digital team.',
+    description: 'AI-powered insights across your P&L, balance sheet, and cash flow, updated continuously',
   },
   {
     icon: (
@@ -34,7 +25,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Governance & Compliance Built In',
-    description: 'Full audit trail, role-based access, and regulatory-ready reporting from day one.',
+    description: 'Full audit trail, role-based access, and regulatory-ready reporting from day one',
   },
   {
     icon: (
@@ -43,13 +34,8 @@ const FEATURES = [
       </svg>
     ),
     title: 'Scenario Planning & Forecasting',
-    description: 'Model any business scenario instantly. See the financial impact before you commit.',
+    description: 'Model any business scenario instantly and see the financial impact before you commit',
   },
-];
-
-const TRUST_STATS = [
-  { value: '16+', label: 'Financial Modules' },
-  { value: '5', label: 'AI Agents' },
 ];
 
 export default function LoginPage() {
@@ -106,7 +92,7 @@ export default function LoginPage() {
               </svg>
             </div>
             <span className="text-xl font-semibold tracking-tight" style={{ color: '#f5f0eb' }}>
-              Governed OS
+              Grove
             </span>
           </div>
 
@@ -116,10 +102,10 @@ export default function LoginPage() {
             <br />
             system for ambitious
             <br />
-            businesses.
+            businesses
           </h1>
           <p className="text-lg mb-12" style={{ color: 'rgba(245,240,235,0.6)' }}>
-            AI-powered financial intelligence, governance, and strategic planning. All in one platform.
+            AI-powered financial intelligence, governance, and strategic planning — all in one place
           </p>
 
           {/* Feature list */}
@@ -145,17 +131,7 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Bottom: Trust stats */}
-        <div className="relative z-10">
-          <div className="flex items-center gap-8 mb-6">
-            {TRUST_STATS.map((stat) => (
-              <div key={stat.label}>
-                <p className="text-2xl font-bold" style={{ color: '#c8a078' }}>{stat.value}</p>
-                <p className="text-xs" style={{ color: 'rgba(245,240,235,0.4)' }}>{stat.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+        <div className="relative z-10" />
       </div>
 
       {/* Right Panel: Login Form */}
@@ -167,7 +143,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3v11.25A2.25 2.25 0 006 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0118 16.5h-2.25m-7.5 0h7.5m-7.5 0l-1 3m8.5-3l1 3m0 0l.5 1.5m-.5-1.5h-9.5m0 0l-.5 1.5" />
             </svg>
           </div>
-          <span className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>Governed OS</span>
+          <span className="text-lg font-semibold" style={{ color: '#1c1b1b' }}>Grove</span>
         </div>
 
         <div className="w-full max-w-sm">
@@ -283,7 +259,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-center text-sm mt-8" style={{ color: '#8a8580' }}>
-            New to Governed OS?{' '}
+            New to Grove?{' '}
             <Link href="/signup" className="font-semibold hover:underline" style={{ color: '#1c1b1b' }}>
               Start your free trial
             </Link>

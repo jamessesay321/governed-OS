@@ -5,7 +5,7 @@ const HEALTH_INDICATORS = [
   { label: 'Record completeness', description: 'Percentage of fields populated', status: 'none' },
   { label: 'Sync reliability', description: 'Success rate of recent syncs', status: 'none' },
   { label: 'Duplicate detection', description: 'Potential duplicate records found', status: 'none' },
-  { label: 'Schema mapping', description: 'Fields correctly mapped to Advisory OS', status: 'none' },
+  { label: 'Schema mapping', description: 'Fields correctly mapped to Grove', status: 'none' },
 ];
 
 export default function IntegrationHealthPage() {

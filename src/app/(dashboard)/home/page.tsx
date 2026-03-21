@@ -68,10 +68,10 @@ export default function HomePage() {
       {/* Welcome Header */}
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-          Welcome to Advisory OS
+          Welcome to Grove
         </h1>
         <p className="mt-1 text-gray-500">
-          Good to see you. Here is your command centre.
+          Good to see you — here's your command centre
         </p>
       </div>
 
@@ -185,9 +185,9 @@ export default function HomePage() {
         </div>
         <div className="mt-8 flex flex-col items-center justify-center py-6 text-center">
           <EmptyStateIllustration className="mb-3" />
-          <p className="text-sm font-medium text-gray-500">No activity yet.</p>
+          <p className="text-sm font-medium text-gray-500">No activity yet</p>
           <p className="mt-1 text-sm text-gray-400">
-            Complete setup to get started.
+            Complete setup to get started
           </p>
         </div>
       </div>

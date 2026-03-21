@@ -28,7 +28,7 @@ export type AnomalyDetectionResult = {
   analysed_at: string;
 };
 
-const ANOMALY_DETECTION_PROMPT = `You are the Advisory OS anomaly detection engine. Compare the latest month's financial data to the previous 6 months and identify unusual patterns.
+const ANOMALY_DETECTION_PROMPT = `You are the Grove anomaly detection engine. Compare the latest month's financial data to the previous 6 months and identify unusual patterns.
 
 ## Rules
 - Respond with valid JSON ONLY.

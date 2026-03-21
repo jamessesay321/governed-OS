@@ -40,7 +40,7 @@ export type InterviewRecommendations = {
   reasoning: string;
 };
 
-const RECOMMENDATION_PROMPT = `You are the Advisory OS recommendation engine. Based on the business profile from an onboarding interview, suggest:
+const RECOMMENDATION_PROMPT = `You are the Grove recommendation engine. Based on the business profile from an onboarding interview, suggest:
 
 1. **KPIs** (8-15 from the available list) ranked by relevance to this business
 2. **Dashboard template** (one of: owner-default, advisor-default, investor-default, bookkeeper-default) + any additional widgets

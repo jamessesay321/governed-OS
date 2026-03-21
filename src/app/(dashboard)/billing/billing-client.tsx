@@ -58,7 +58,7 @@ export function BillingClient() {
       <div>
         <h1 className="text-2xl font-bold">Billing &amp; Subscription</h1>
         <p className="text-muted-foreground">
-          Manage your subscription, review invoices, and track the value you receive from Governed OS.
+          Manage your subscription, review invoices, and track the value you receive from Grove.
         </p>
       </div>
 
@@ -405,7 +405,7 @@ export function BillingClient() {
             <CardHeader>
               <CardTitle className="text-lg">Invoice History</CardTitle>
               <p className="text-sm text-muted-foreground">
-                All invoices for your Governed OS subscription
+                All invoices for your Grove subscription
               </p>
             </CardHeader>
             <CardContent>

@@ -36,7 +36,7 @@ export default function ActivityPage() {
             No activity yet
           </h2>
           <p className="mt-2 max-w-sm text-sm text-gray-500">
-            Once you start using Advisory OS, your recent actions, system
+            Once you start using Grove, your recent actions, system
             events, and notifications will appear here.
           </p>
           <Link

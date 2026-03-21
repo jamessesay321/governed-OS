@@ -88,7 +88,7 @@ export async function GET(
       ? `Business: ${org.business_scan.company_name || org.name || 'Unknown'}, Industry: ${org.business_scan.industry || 'Unknown'}`
       : `Business: ${org?.name || 'Unknown'}`;
 
-    const systemPrompt = `You are the Advisory OS KPI intelligence engine. Generate a concise KPI performance narrative for a UK-based business owner.
+    const systemPrompt = `You are the Grove KPI intelligence engine. Generate a concise KPI performance narrative for a UK-based business owner.
 
 Rules:
 - Lead with the most actionable KPI insight

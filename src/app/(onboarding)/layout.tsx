@@ -44,7 +44,7 @@ export default async function OnboardingLayout({
       {/* Minimal header — logo only */}
       <header className="border-b">
         <div className="mx-auto max-w-4xl px-6 py-4">
-          <h1 className="text-lg font-semibold">Governed OS</h1>
+          <h1 className="text-lg font-semibold">Grove</h1>
         </div>
       </header>
 

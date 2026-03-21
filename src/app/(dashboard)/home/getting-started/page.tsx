@@ -107,7 +107,7 @@ export default function GettingStartedPage() {
           Getting Started
         </h1>
         <p className="mt-1 text-gray-500">
-          Follow these steps to set up Advisory OS for your business.
+          Follow these steps to set up Grove for your business.
         </p>
       </div>
 

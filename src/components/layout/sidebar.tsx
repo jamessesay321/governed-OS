@@ -502,9 +502,9 @@ export function Sidebar() {
       <Link href="/home" className="flex h-14 items-center border-b px-6 hover:bg-muted/50 transition-colors">
         <div className="flex items-center gap-2">
           <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-xs font-bold text-primary-foreground">AO</span>
+            <span className="text-xs font-bold text-primary-foreground">G</span>
           </div>
-          <h1 className="text-lg font-semibold">Advisory OS</h1>
+          <h1 className="text-lg font-semibold">Grove</h1>
         </div>
       </Link>
 

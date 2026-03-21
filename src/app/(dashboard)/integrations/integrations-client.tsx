@@ -248,7 +248,7 @@ export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName }: Pro
       <div>
         <h2 className="text-2xl font-bold">Integrations</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Connect your tools to power Advisory OS
+          Connect your tools to power Grove
         </p>
       </div>
 

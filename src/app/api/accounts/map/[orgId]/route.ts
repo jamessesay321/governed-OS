@@ -301,7 +301,7 @@ async function generateMappingSuggestions(
     reasoning: string;
   }>
 > {
-  const systemPrompt = `You are the Advisory OS account mapping engine. Your job is to map Xero chart of accounts to standard financial categories.
+  const systemPrompt = `You are the Grove account mapping engine. Your job is to map Xero chart of accounts to standard financial categories.
 
 Standard categories:
 ${STANDARD_CATEGORIES.join(', ')}

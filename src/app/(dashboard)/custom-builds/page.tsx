@@ -25,7 +25,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'custom-agent',
     title: 'Custom AI Agent',
-    description: 'A bespoke AI agent tailored to your specific business processes — from data collection to autonomous decision-making.',
+    description: 'A bespoke AI agent tailored to your specific business processes — from data collection to autonomous decision-making',
     category: 'AI Agent',
     startingFrom: 299900,
     timeline: '2-4 weeks',
@@ -34,7 +34,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'integration',
     title: 'Platform Integration',
-    description: 'Connect any third-party tool or API to Governed OS with full data governance and audit trails.',
+    description: 'Connect any third-party tool or API to Grove with full data governance and audit trails',
     category: 'Integration',
     startingFrom: 149900,
     timeline: '1-2 weeks',
@@ -42,7 +42,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'dashboard',
     title: 'Custom Dashboard',
-    description: 'Purpose-built analytics dashboard combining data from multiple sources with AI-powered insights.',
+    description: 'Purpose-built analytics dashboard combining data from multiple sources with AI-powered insights',
     category: 'Analytics',
     startingFrom: 199900,
     timeline: '1-3 weeks',
@@ -50,7 +50,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'automation',
     title: 'Business Automation',
-    description: 'End-to-end workflow automation — from invoice processing to report generation to client communications.',
+    description: 'End-to-end workflow automation — from invoice processing to report generation to client communications',
     category: 'Automation',
     startingFrom: 249900,
     timeline: '2-4 weeks',
@@ -58,7 +58,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'migration',
     title: 'Data Migration',
-    description: 'Safely migrate your data from legacy systems into Governed OS with validation and reconciliation.',
+    description: 'Safely migrate your data from legacy systems into Grove with validation and reconciliation',
     category: 'Data',
     startingFrom: 99900,
     timeline: '1-2 weeks',
@@ -66,7 +66,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'ai-model',
     title: 'Custom AI Model',
-    description: 'Train a model on your business data for forecasting, classification, or recommendation — fully governed.',
+    description: 'Train a model on your business data for forecasting, classification, or recommendation — fully governed',
     category: 'AI Model',
     startingFrom: 499900,
     timeline: '4-8 weeks',
@@ -232,7 +232,7 @@ export default function CustomBuildsPage() {
               { step: '1', title: 'Submit', desc: 'Describe your project and requirements' },
               { step: '2', title: 'Proposal', desc: 'We send a tailored scope and quote within 48hrs' },
               { step: '3', title: 'Build', desc: 'Our team builds with full governance baked in' },
-              { step: '4', title: 'Deploy', desc: 'Launch into your Governed OS instance' },
+              { step: '4', title: 'Deploy', desc: 'Launch into your Grove instance' },
             ].map((s) => (
               <div key={s.step} className="text-center">
                 <div className="mx-auto h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-sm font-bold text-primary mb-2">

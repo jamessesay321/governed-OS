@@ -44,7 +44,7 @@ export default function ReferralsPage() {
           Build Your Advisory Network
         </h1>
         <p className="mt-3 text-muted-foreground max-w-xl mx-auto">
-          Introduce fellow finance leaders to Governed OS. When they join, you both receive credits
+          Introduce fellow finance leaders to Grove. When they join, you both receive credits
           to unlock more of the platform. No gimmicks, just a stronger community.
         </p>
       </div>
