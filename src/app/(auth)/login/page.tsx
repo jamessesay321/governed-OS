@@ -16,7 +16,7 @@ const FEATURES = [
       </svg>
     ),
     title: 'Real-Time Financial Intelligence',
-    description: 'AI-powered insights across your P&L, balance sheet, and cash flow — updated continuously.',
+    description: 'AI-powered insights across your P&L, balance sheet, and cash flow, updated continuously.',
   },
   {
     icon: (
@@ -50,7 +50,6 @@ const FEATURES = [
 const TRUST_STATS = [
   { value: '16+', label: 'Financial Modules' },
   { value: '5', label: 'AI Agents' },
-  { value: '99.9%', label: 'Uptime SLA' },
 ];
 
 export default function LoginPage() {
@@ -88,7 +87,7 @@ export default function LoginPage() {
       {/* Left Panel — Brand & Marketing */}
       <div
         className="hidden lg:flex lg:w-[55%] flex-col justify-between p-12 relative overflow-hidden"
-        style={{ backgroundColor: '#1c1b1b' }}
+        style={{ backgroundColor: '#2c2a29' }}
       >
         {/* Subtle gradient overlay */}
         <div
@@ -120,7 +119,7 @@ export default function LoginPage() {
             businesses.
           </h1>
           <p className="text-lg mb-12" style={{ color: 'rgba(245,240,235,0.6)' }}>
-            AI-powered financial intelligence, governance, and strategic planning — all in one platform.
+            AI-powered financial intelligence, governance, and strategic planning. All in one platform.
           </p>
 
           {/* Feature list */}
@@ -155,28 +154,6 @@ export default function LoginPage() {
                 <p className="text-xs" style={{ color: 'rgba(245,240,235,0.4)' }}>{stat.label}</p>
               </div>
             ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5">
-              <svg className="h-4 w-4" style={{ color: '#c8a078' }} fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-              </svg>
-              <svg className="h-4 w-4" style={{ color: '#c8a078' }} fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-              </svg>
-              <svg className="h-4 w-4" style={{ color: '#c8a078' }} fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-              </svg>
-              <svg className="h-4 w-4" style={{ color: '#c8a078' }} fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-              </svg>
-              <svg className="h-4 w-4" style={{ color: '#c8a078' }} fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" />
-              </svg>
-            </div>
-            <span className="text-xs" style={{ color: 'rgba(245,240,235,0.4)' }}>
-              Built for finance leaders who demand precision
-            </span>
           </div>
         </div>
       </div>
