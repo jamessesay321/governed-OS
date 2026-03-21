@@ -118,6 +118,17 @@ const SECRETARIAL_TASKS: TimesheetTask[] = [
   { id: 'sec10', timestamp: '15:15', endTime: '15:45', durationMinutes: 30, title: 'Weekly compliance summary', description: 'Generated compliance status report — all green, 1 amber (textile licence)', category: 'reporting', revenueImpact: null, keyAction: false },
 ];
 
+const HR_TASKS: TimesheetTask[] = [
+  { id: 'hr1', timestamp: '07:00', endTime: '07:30', durationMinutes: 30, title: 'Leave request processing', description: 'Reviewed 3 pending leave requests — 2 approved (annual leave), 1 flagged for manager review (overlapping dates)', category: 'execution', revenueImpact: null, keyAction: true },
+  { id: 'hr2', timestamp: '07:45', endTime: '08:15', durationMinutes: 30, title: 'Payroll compliance check', description: 'Verified payroll data against HMRC requirements — all NI contributions and pension auto-enrolment compliant', category: 'monitoring', revenueImpact: null, keyAction: true },
+  { id: 'hr3', timestamp: '08:30', endTime: '09:00', durationMinutes: 30, title: 'Hiring pipeline review', description: 'Updated recruitment tracker — 2 new applications for senior seamstress role, 1 interview scheduled Thursday', category: 'analysis', revenueImpact: null, keyAction: false },
+  { id: 'hr4', timestamp: '09:15', endTime: '09:45', durationMinutes: 30, title: 'Onboarding checklist update', description: 'Prepared onboarding pack for new studio assistant starting Monday — IT, workspace, and training schedule confirmed', category: 'execution', revenueImpact: null, keyAction: true },
+  { id: 'hr5', timestamp: '10:00', endTime: '10:30', durationMinutes: 30, title: 'Performance review scheduling', description: 'Sent calendar invites for Q1 review cycle — 12 reviews scheduled across next 2 weeks', category: 'communication', revenueImpact: null, keyAction: false },
+  { id: 'hr6', timestamp: '10:45', endTime: '11:15', durationMinutes: 30, title: 'Absence pattern analysis', description: 'Analysed absence data for Q1 — average 2.1 days per employee, no Bradford Factor triggers detected', category: 'analysis', revenueImpact: null, keyAction: false },
+  { id: 'hr7', timestamp: '13:00', endTime: '13:30', durationMinutes: 30, title: 'HR policy compliance audit', description: 'Reviewed handbook against latest Employment Rights Act changes — 1 policy update recommended for flexible working', category: 'monitoring', revenueImpact: null, keyAction: true },
+  { id: 'hr8', timestamp: '13:45', endTime: '14:15', durationMinutes: 30, title: 'Team org chart & headcount report', description: 'Generated weekly headcount summary — 12 active, 1 pending start, 0 leavers. Org chart updated with reporting lines', category: 'reporting', revenueImpact: null, keyAction: false },
+];
+
 const DAILY_SUMMARIES: Record<string, string> = {
   setup: 'Platform health check complete. All 47 Xero account mappings verified and aligned. Data quality score improved to 82/100 (+3 from last week). Budget baselines regenerated with latest Q1 actuals. Zero duplicates and zero reconciliation discrepancies detected. Three missing vendor categorisations identified and auto-suggested. All assumptions within tolerance. System operating nominally.',
   finance: 'Today\'s focus was on maintaining financial hygiene ahead of quarter-end. Successfully reconciled all overnight transactions with zero discrepancies. Flagged a duplicate vendor invoice saving £1,200 in potential overpayment. Cash flow remains healthy with 28 weeks runway. Two overdue receivables were escalated with £2,220 expected recovery. VAT return preparation is on track for the April deadline.',
@@ -125,6 +136,7 @@ const DAILY_SUMMARIES: Record<string, string> = {
   'project-management': 'Operational efficiency remains high at 87% task completion rate (above 80% target). Prepared Thursday\'s L10 meeting agenda with 3 issues for IDS resolution. The US expansion rock is flagged at risk — recommending a focused discussion at L10. Identified a potential seamstress capacity bottleneck for April that needs early intervention. All other quarterly rocks remain on track.',
   strategy: 'Significant strategic insight today: pricing sensitivity analysis suggests a 5% price increase could add £65K annual revenue with minimal volume impact given ALONUKO\'s positioning in the luxury segment. Investment readiness score improved to 72/100. Board pack executive summary drafted for Q1 review. US trunk show market sizing looks promising at £280K addressable opportunity.',
   secretarial: 'All compliance obligations are current with one amber flag: textile import licence renewal due in 6 weeks. Identified a US trunk show insurance coverage gap that needs addressing before the next NY trip. GDPR audit flagged 23 client records past retention — recommending a data cleanse. Companies House confirmation statement is due 15 April. Trademark monitoring clear — no new conflicting marks detected.',
+  hr: 'People operations running smoothly. Processed 3 leave requests with 2 approved and 1 escalated for manager review due to date overlap. Payroll compliance verified — all NI and pension contributions on track. New studio assistant onboarding pack prepared for Monday start. Q1 performance review cycle scheduled across the next 2 weeks covering all 12 team members. Absence patterns healthy with no Bradford Factor triggers. One HR policy update recommended following recent flexible working legislation changes.',
 };
 
 /* ------------------------------------------------------------------ */
@@ -139,6 +151,7 @@ export function getTimesheetForDate(slug: string, _date: string): TimesheetDay {
     'project-management': PM_TASKS,
     strategy: STRATEGY_TASKS,
     secretarial: SECRETARIAL_TASKS,
+    hr: HR_TASKS,
   };
 
   const tasks = taskMap[slug] ?? FINANCE_TASKS;

@@ -319,30 +319,17 @@ export function InterviewPageClient({
             <p className="text-xs text-muted-foreground mb-3">
               Upload existing financial reports, business plans, or any relevant documents. Supports PDF, Excel, CSV, Word.
             </p>
-            <button
-              onClick={handleFileSelect}
-              className="w-full rounded-lg border-2 border-dashed border-border hover:border-primary/50 bg-muted/30 px-4 py-8 text-center transition-colors"
+            <div
+              className="w-full rounded-lg border-2 border-dashed border-border bg-muted/30 px-4 py-8 text-center opacity-60"
             >
               <div className="flex flex-col items-center gap-2">
                 <svg className="h-8 w-8 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                 </svg>
-                <span className="text-sm text-muted-foreground">Click to upload or drag and drop</span>
+                <span className="text-sm text-muted-foreground">Document upload coming soon</span>
                 <span className="text-xs text-muted-foreground">PDF, XLSX, CSV, DOCX up to 10MB</span>
               </div>
-            </button>
-            {uploadedFiles.length > 0 && (
-              <div className="mt-3 space-y-1">
-                {uploadedFiles.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-foreground bg-muted/50 rounded px-3 py-1.5">
-                    <svg className="h-4 w-4 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
-                    </svg>
-                    {f}
-                  </div>
-                ))}
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}

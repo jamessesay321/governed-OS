@@ -23,7 +23,15 @@ export function RecommendedForYou({ section }: { section: string }) {
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-medium text-muted-foreground">Recommended for you</h3>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-muted-foreground">Recommended for you</h3>
+        <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+          </svg>
+          Powered by Claude
+        </span>
+      </div>
       <div className="grid gap-3 sm:grid-cols-2">
         {items.map((item) => (
           <Link key={item.href} href={item.href}>

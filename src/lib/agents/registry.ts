@@ -181,6 +181,34 @@ export const AGENTS: AgentDefinition[] = [
       { label: 'Contracts expiring', value: '3 in Q2' },
     ],
   },
+  {
+    id: 'agent-hr',
+    slug: 'hr',
+    name: 'HR & People Agent',
+    title: 'Your people operations partner',
+    tagline: 'Your people operations partner',
+    description:
+      'The HR & People Agent manages your team operations end-to-end — from leave tracking and payroll compliance to hiring pipeline management, employee onboarding, performance reviews, and HR policy enforcement. It keeps your people processes running smoothly so you can focus on building a great team.',
+    icon: 'Users',
+    color: 'indigo',
+    monthlyPrice: 109,
+    isFree: false,
+    capabilities: [
+      'Team management & org charts',
+      'Leave tracking & approval workflows',
+      'Payroll compliance monitoring',
+      'Hiring pipeline & recruitment',
+      'Employee onboarding checklists',
+      'Performance review scheduling',
+    ],
+    category: 'operations',
+    status: 'available',
+    metrics: [
+      { label: 'Team size', value: '12' },
+      { label: 'Leave requests', value: '3 pending' },
+      { label: 'Next review cycle', value: 'In 2 weeks' },
+    ],
+  },
 ];
 
 /** Total price if all agents purchased individually */
