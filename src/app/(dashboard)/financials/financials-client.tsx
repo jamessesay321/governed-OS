@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
+import { EmptyStateIllustration } from '@/components/ui/illustrations';
 
 type PeriodSummary = {
   period: string;
@@ -189,7 +190,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
           <>
             <span className="text-muted-foreground">|</span>
             <span className="text-muted-foreground">
-              Last sync: {new Date(lastSync.startedAt).toLocaleString()} —{' '}
+              Last sync: {new Date(lastSync.startedAt).toLocaleString()} &middot;{' '}
               <span className={lastSync.status === 'completed' ? 'text-green-600' : lastSync.status === 'running' ? 'text-yellow-600' : 'text-red-600'}>
                 {lastSync.status}
               </span>
@@ -210,7 +211,8 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
 
       {/* Empty state */}
       {periods.length === 0 && accounts.length === 0 && (
-        <div className="rounded-lg border p-12 text-center">
+        <div className="rounded-lg border p-12 text-center flex flex-col items-center">
+          <EmptyStateIllustration className="mb-4" />
           <p className="text-muted-foreground">
             {connected
               ? 'No financial data yet. Click "Sync from Xero" to import your data.'

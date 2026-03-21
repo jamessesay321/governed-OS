@@ -17,6 +17,7 @@ import { Celebration } from '@/components/ui/celebration';
 import { Button } from '@/components/ui/button';
 import { BarChart3, TrendingUp, Target, Sparkles, FileText, PieChart } from 'lucide-react';
 import Link from 'next/link';
+import { WelcomeIllustration } from '@/components/ui/illustrations';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -125,6 +126,7 @@ export function DashboardClient({
 
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
+            <WelcomeIllustration className="mb-4" />
             <p className="text-lg text-muted-foreground">
               {connected
                 ? 'No financial data yet. Trigger a sync to pull data from Xero.'

@@ -27,7 +27,7 @@ export function ProposalWidget({ className }: { className?: string }) {
   );
 
   return (
-    <Card className={cn('w-full', className)}>
+    <Card variant="warm" className={cn('w-full', className)}>
       <CardHeader className="pb-0">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-sm">

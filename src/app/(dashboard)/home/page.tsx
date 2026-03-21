@@ -11,8 +11,8 @@ import {
   CheckCircle2,
   Circle,
   ArrowRight,
-  Activity,
 } from 'lucide-react'
+import { EmptyStateIllustration } from '@/components/ui/illustrations'
 
 const setupSteps = [
   { label: 'Set up your Business Profile', href: '/interview', id: 'profile' },
@@ -184,7 +184,7 @@ export default function HomePage() {
           </Link>
         </div>
         <div className="mt-8 flex flex-col items-center justify-center py-6 text-center">
-          <Activity className="mb-3 h-10 w-10 text-gray-300" />
+          <EmptyStateIllustration className="mb-3" />
           <p className="text-sm font-medium text-gray-500">No activity yet.</p>
           <p className="mt-1 text-sm text-gray-400">
             Complete setup to get started.

@@ -10,7 +10,7 @@ export function RoadmapWidget() {
   const nextStep = getNextStep(roadmap);
 
   return (
-    <Card>
+    <Card variant="warm">
       <CardContent className="pt-5 pb-4 space-y-3">
         {/* progress */}
         <div className="flex items-center justify-between gap-2">
@@ -42,7 +42,7 @@ export function RoadmapWidget() {
         <div className="flex items-center justify-between gap-2 pt-1 border-t border-border/40">
           <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
             <span className="inline-block size-1.5 rounded-full bg-teal-500 mr-1 align-middle" />
-            Setup Agent &mdash; 4 tasks today
+            Setup Agent: 4 tasks today
           </p>
           <Link
             href="/roadmap"
