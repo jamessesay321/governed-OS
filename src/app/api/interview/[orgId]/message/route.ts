@@ -12,9 +12,25 @@ import {
   getStageLabels,
 } from '@/lib/interview/engine';
 import { logAudit } from '@/lib/audit/log';
+import { z } from 'zod';
 import type { InterviewStage } from '@/types';
 
 type Params = { params: Promise<{ orgId: string }> };
+
+const VALID_STAGES = [
+  'business_model_confirmation',
+  'revenue_deep_dive',
+  'cost_structure',
+  'growth_goals',
+  'risk_and_challenges',
+  'team_and_operations',
+] as const;
+
+const interviewMessageSchema = z.object({
+  message: z.string().min(1).max(5000).optional(),
+  action: z.enum(['start', 'skip']).optional(),
+  currentStage: z.enum(VALID_STAGES).optional(),
+});
 
 // POST /api/interview/[orgId]/message — Send a message in the interview
 export async function POST(request: Request, { params }: Params) {
@@ -28,7 +44,12 @@ export async function POST(request: Request, { params }: Params) {
     }
 
     const body = await request.json();
-    const { message, action, currentStage } = body as {
+    const parsed = interviewMessageSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+
+    const { message, action, currentStage } = parsed.data as {
       message?: string;
       action?: 'start' | 'skip';
       currentStage?: InterviewStage;
@@ -159,10 +180,9 @@ export async function POST(request: Request, { params }: Params) {
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    console.error('Interview message error:', e);
-    const message = e instanceof Error ? e.message : 'Internal error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('Interview message error:', e instanceof Error ? e.message : e);
+    return NextResponse.json({ error: 'Failed to process interview message' }, { status: 500 });
   }
 }

@@ -25,8 +25,10 @@ export async function GET(
     const report = await calculateVariances(orgId, period);
     return NextResponse.json(report);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    const status = e instanceof Error && e.name === 'AuthorizationError' ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[variance] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -88,8 +88,17 @@ export type PlaybookAction = {
 
 // === Module Types ===
 
-export const MODULE_CATEGORIES = ['financial', 'operations', 'growth', 'governance'] as const;
+export const MODULE_CATEGORIES = [
+  'financial-analysis',
+  'forecasting-planning',
+  'compliance-governance',
+  'growth-strategy',
+  'industry-packs',
+] as const;
 export type ModuleCategory = (typeof MODULE_CATEGORIES)[number];
+
+export const MODULE_TIERS = ['free', 'starter', 'professional', 'enterprise'] as const;
+export type ModuleTier = (typeof MODULE_TIERS)[number];
 
 export type ModuleDefinition = {
   id: string;
@@ -100,6 +109,9 @@ export type ModuleDefinition = {
   icon: string;
   features: string[];
   isActive: boolean;
+  tier: ModuleTier;
+  credits: number; // monthly credits cost (0 = free/included)
+  monthlyPrice: number | null; // GBP price if sold standalone
 };
 
 export type ModuleActivation = {

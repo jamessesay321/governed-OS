@@ -31,12 +31,16 @@ export async function GET(_request: Request, { params }: Params) {
       .order('key');
 
     if (valError) {
-      return NextResponse.json({ error: valError.message }, { status: 500 });
+      console.error('[assumption-sets] GET values error:', valError.message);
+      return NextResponse.json({ error: 'Failed to fetch assumption values' }, { status: 500 });
     }
 
     return NextResponse.json({ assumptionSet, values });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[assumption-sets] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

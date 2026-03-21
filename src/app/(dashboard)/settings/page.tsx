@@ -1,5 +1,5 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { hasMinRole } from '@/lib/supabase/roles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,38 +7,27 @@ import { InviteForm } from './invite-form';
 import type { Role } from '@/types';
 
 export default async function SettingsPage() {
+  const { orgId, role, orgName: profileOrgName } = await getUserProfile();
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*, organisations(name)')
-    .eq('id', user.id)
-    .single();
-  if (!profile) return redirect('/login');
-
-  const userRole = profile.role as Role;
+  const userRole = role as Role;
   const canInvite = hasMinRole(userRole, 'admin');
 
   // Fetch team members
   const { data: members } = await supabase
     .from('profiles')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: true });
 
   // Fetch pending invitations
   const { data: invitations } = await supabase
     .from('org_invitations')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .eq('status', 'pending');
 
-  const orgName = profile.organisations?.name || 'Organisation';
+  const orgName = profileOrgName || 'Organisation';
 
   return (
     <div className="space-y-6">

@@ -35,7 +35,7 @@ export async function POST() {
     return NextResponse.json({ success: true });
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthorizationError') {
-      return NextResponse.json({ error: err.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     return NextResponse.json(
       { error: 'Internal server error' },

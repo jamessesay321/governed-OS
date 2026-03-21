@@ -1,6 +1,6 @@
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
-import { redirect, notFound } from 'next/navigation';
+import { getUserProfile } from '@/lib/auth/get-user-profile';
+import { notFound } from 'next/navigation';
 import { getModuleBySlug } from '@/lib/modules/registry';
 import { ModuleRenderer } from './module-renderer';
 
@@ -10,20 +10,7 @@ type PageProps = {
 
 export default async function ModulePage({ params }: PageProps) {
   const { slug } = await params;
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
+  const { orgId } = await getUserProfile();
 
   const mod = getModuleBySlug(slug);
   if (!mod) return notFound();
@@ -46,7 +33,7 @@ export default async function ModulePage({ params }: PageProps) {
         </div>
       </div>
 
-      <ModuleRenderer slug={slug} orgId={profile.org_id} />
+      <ModuleRenderer slug={slug} orgId={orgId} />
     </div>
   );
 }

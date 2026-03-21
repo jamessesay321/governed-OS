@@ -3,6 +3,7 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AIReasoning } from '@/components/ui/ai-reasoning';
 import type { IntelligenceImpact } from '@/types';
 
 interface ImpactCardProps {
@@ -54,6 +55,13 @@ export function ImpactCard({ impact, onModel }: ImpactCardProps) {
         </div>
 
         <p className="text-sm leading-relaxed">{impact.impact_narrative}</p>
+
+        <AIReasoning
+          reasoning={`Relevance score: ${Math.round(impact.relevance_score * 100)}%. This assessment is based on the event's sector overlap with your business, geographic relevance, and estimated financial exposure. The £${Math.abs(impact.estimated_impact_pence / 100).toLocaleString()} annual impact estimate uses your current revenue and cost structure as the baseline.`}
+          dataSources={['Event severity and sector classification', 'Your business financial profile', 'Historical impact patterns for similar events']}
+          confidence={impact.relevance_score >= 0.7 ? 'high' : impact.relevance_score >= 0.4 ? 'medium' : 'low'}
+          triggerLabel="Why this assessment?"
+        />
 
         {onModel && (
           <Button variant="outline" size="sm" onClick={onModel}>

@@ -48,7 +48,7 @@ export async function GET() {
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthorizationError') {
-      return NextResponse.json({ error: err.message }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     return NextResponse.json(
       { error: 'Internal server error' },

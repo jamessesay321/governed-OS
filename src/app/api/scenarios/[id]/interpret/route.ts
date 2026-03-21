@@ -6,6 +6,7 @@ import { interpretRequestSchema } from '@/lib/schemas';
 import { interpretScenarioRequest } from '@/lib/ai/interpret-scenario';
 import { generateConfirmationToken } from '@/lib/ai/confirmation-token';
 import { logAudit } from '@/lib/audit/log';
+import { llmLimiter } from '@/lib/rate-limit';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -14,6 +15,10 @@ export async function POST(request: Request, { params }: Params) {
   try {
     const { id: scenarioId } = await params;
     const { user, profile } = await requireRole('advisor');
+
+    // Rate limit: 10 LLM calls per minute per org
+    const limited = llmLimiter.check(profile.org_id);
+    if (limited) return limited;
 
     const body = await request.json();
     const input = interpretRequestSchema.parse(body);
@@ -76,8 +81,9 @@ export async function POST(request: Request, { params }: Params) {
       });
 
     if (clError) {
+      console.error('[scenarios/interpret] Change log insert error:', clError.message);
       return NextResponse.json(
-        { error: `Failed to log change: ${clError.message}` },
+        { error: 'Failed to log change' },
         { status: 500 }
       );
     }
@@ -107,9 +113,9 @@ export async function POST(request: Request, { params }: Params) {
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error('[scenarios/interpret] POST error:', e);
+    return NextResponse.json({ error: 'Failed to interpret scenario request' }, { status: 500 });
   }
 }

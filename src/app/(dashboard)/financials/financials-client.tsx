@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 
@@ -140,6 +141,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <VisualiseButton context="financials" />
           {connected && canSync && (
             <button
               onClick={handleSync}

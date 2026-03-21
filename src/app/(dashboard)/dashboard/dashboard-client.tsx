@@ -11,6 +11,8 @@ import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { DrillDownPanel } from '@/components/dashboard/drill-down-panel';
 import { WaterfallChart } from '@/components/dashboard/waterfall-chart';
 import { VariancePanel } from '@/components/dashboard/variance-panel';
+import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
+import { ProposalWidget } from '@/components/dashboard/proposal-widget';
 import { Button } from '@/components/ui/button';
 import { BarChart3 } from 'lucide-react';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
@@ -83,6 +85,11 @@ export function DashboardClient({
             </p>
           </CardContent>
         </Card>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <RoadmapWidget />
+          <ProposalWidget />
+        </div>
       </div>
     );
   }
@@ -94,9 +101,9 @@ export function DashboardClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Dashboard</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">Dashboard</h2>
           <DataFreshness lastSyncAt={lastSync?.completedAt ?? null} />
         </div>
         <div className="flex items-center gap-2">
@@ -144,13 +151,15 @@ export function DashboardClient({
           </CardContent>
         </Card>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           <SyncStatus
             connected={connected}
             lastSync={lastSync}
             canSync={canSync}
             canConnect={canConnect}
           />
+          <RoadmapWidget />
+          <ProposalWidget />
         </div>
       </div>
 

@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+/** Reusable UUID validation for route parameters */
+export const orgIdSchema = z.string().uuid('Invalid organisation ID');
+
 export const authSetupSchema = z.object({
   orgName: z.string().min(1, 'Organisation name is required').max(255),
   displayName: z.string().min(1, 'Display name is required').max(255),

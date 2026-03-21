@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { createClient } from '@/lib/supabase/server';
 import { addAssumptionValueSchema } from '@/lib/schemas';
+import { logAudit } from '@/lib/audit/log';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -46,15 +47,24 @@ export async function POST(request: Request, { params }: Params) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[assumption-values] POST error:', error.message);
+      return NextResponse.json({ error: 'Failed to add assumption value' }, { status: 500 });
     }
+
+    await logAudit({
+      orgId: profile.org_id,
+      userId: user.id,
+      action: 'assumption_value.created',
+      entityType: 'assumption_value',
+      entityId: data.id,
+      metadata: { assumptionSetId: id, key: parsed.key, category: parsed.category },
+    });
 
     return NextResponse.json(data, { status: 201 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 }

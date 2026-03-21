@@ -7,6 +7,7 @@ import {
 } from '@/lib/interview/engine';
 import { generateRecommendations } from '@/lib/interview/recommendations';
 import { logAudit } from '@/lib/audit/log';
+import { autoStoreToVault } from '@/lib/vault/auto-store';
 
 type Params = { params: Promise<{ orgId: string }> };
 
@@ -69,16 +70,37 @@ export async function POST(request: Request, { params }: Params) {
       },
     });
 
+    // Auto-store interview transcript to Knowledge Vault (best-effort)
+    autoStoreToVault({
+      orgId,
+      userId: user.id,
+      itemType: 'interview_transcript',
+      title: `Business Profile Interview`,
+      description: `AI interview with ${messages.length} messages — profile extracted`,
+      tags: ['interview', 'business-profile', 'auto-generated'],
+      content: {
+        interviewId,
+        messageCount: messages.length,
+        profile: storedProfile,
+        recommendations,
+      },
+      provenance: {
+        source_entity_type: 'interview',
+        source_entity_id: interviewId,
+      },
+      sourceEntityType: 'interview',
+      sourceEntityId: storedProfile.id,
+    });
+
     return NextResponse.json({
       profile: storedProfile,
       recommendations,
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    console.error('Interview complete error:', e);
-    const message = e instanceof Error ? e.message : 'Internal error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[interview/complete] POST error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

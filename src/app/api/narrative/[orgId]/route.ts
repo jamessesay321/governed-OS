@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/supabase/roles';
 import { createServiceClient } from '@/lib/supabase/server';
 import { callLLM } from '@/lib/ai/llm';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { llmLimiter } from '@/lib/rate-limit';
 import { z } from 'zod';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 
@@ -26,6 +27,10 @@ export async function GET(
     if (profile.org_id !== orgId) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
+
+    // Rate limit: 10 LLM calls per minute per org
+    const limited = llmLimiter.check(orgId);
+    if (limited) return limited;
 
     const url = new URL(request.url);
     const parsed = querySchema.safeParse({

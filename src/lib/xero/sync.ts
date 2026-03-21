@@ -120,30 +120,30 @@ async function syncChartOfAccounts(
   console.log(`[XERO SYNC] Received ${accounts.length} accounts from Xero`);
 
   const supabase = await createServiceClient();
-  let synced = 0;
 
-  for (const account of accounts) {
-    const { error } = await supabase.from('chart_of_accounts').upsert(
-      {
-        org_id: orgId,
-        xero_account_id: account.AccountID,
-        code: account.Code || '',
-        name: account.Name,
-        type: account.Type,
-        class: account.Class || '',
-        status: account.Status,
-      },
-      { onConflict: 'org_id,xero_account_id' }
-    );
+  if (accounts.length === 0) return 0;
 
-    if (error) {
-      console.warn(`[XERO SYNC] Failed to upsert account ${account.Code}: ${error.message}`);
-    } else {
-      synced++;
-    }
+  // Batch upsert all accounts in one query instead of N+1
+  const rows = accounts.map((account) => ({
+    org_id: orgId,
+    xero_account_id: account.AccountID,
+    code: account.Code || '',
+    name: account.Name,
+    type: account.Type,
+    class: account.Class || '',
+    status: account.Status,
+  }));
+
+  const { error, count } = await supabase
+    .from('chart_of_accounts')
+    .upsert(rows, { onConflict: 'org_id,xero_account_id', count: 'exact' });
+
+  if (error) {
+    console.warn(`[XERO SYNC] Batch upsert accounts failed: ${error.message}`);
+    return 0;
   }
 
-  return synced;
+  return count ?? rows.length;
 }
 
 /**
@@ -172,30 +172,29 @@ async function syncInvoices(
 
     if (invoices.length === 0) break;
 
-    for (const invoice of invoices) {
-      const type = invoice.Type === 'ACCREC' ? 'invoice' : 'bill';
+    // Batch upsert all invoices for this page
+    const now = new Date().toISOString();
+    const rows = invoices.map((invoice) => ({
+      org_id: orgId,
+      xero_id: invoice.InvoiceID,
+      date: extractDate(invoice),
+      type: (invoice.Type === 'ACCREC' ? 'invoice' : 'bill') as 'invoice' | 'bill',
+      contact_name: invoice.Contact?.Name || null,
+      line_items: invoice.LineItems || [],
+      total: invoice.Total,
+      currency: invoice.CurrencyCode || 'AUD',
+      raw_payload: invoice as unknown as Record<string, unknown>,
+      synced_at: now,
+    }));
 
-      const { error } = await supabase.from('raw_transactions').upsert(
-        {
-          org_id: orgId,
-          xero_id: invoice.InvoiceID,
-          date: extractDate(invoice),
-          type: type as 'invoice' | 'bill',
-          contact_name: invoice.Contact?.Name || null,
-          line_items: invoice.LineItems || [],
-          total: invoice.Total,
-          currency: invoice.CurrencyCode || 'AUD',
-          raw_payload: invoice as unknown as Record<string, unknown>,
-          synced_at: new Date().toISOString(),
-        },
-        { onConflict: 'org_id,xero_id' }
-      );
+    const { error, count } = await supabase
+      .from('raw_transactions')
+      .upsert(rows, { onConflict: 'org_id,xero_id', count: 'exact' });
 
-      if (error) {
-        console.warn(`[XERO SYNC] Failed to upsert invoice ${invoice.InvoiceID}: ${error.message}`);
-      } else {
-        synced++;
-      }
+    if (error) {
+      console.warn(`[XERO SYNC] Batch upsert invoices page ${page} failed: ${error.message}`);
+    } else {
+      synced += count ?? rows.length;
     }
 
     // Xero returns up to 100 per page — if fewer, we've reached the end
@@ -232,28 +231,29 @@ async function syncBankTransactions(
 
     if (transactions.length === 0) break;
 
-    for (const tx of transactions) {
-      const { error } = await supabase.from('raw_transactions').upsert(
-        {
-          org_id: orgId,
-          xero_id: tx.BankTransactionID,
-          date: extractDate(tx),
-          type: 'bank_transaction',
-          contact_name: tx.Contact?.Name || null,
-          line_items: tx.LineItems || [],
-          total: tx.Total,
-          currency: tx.CurrencyCode || 'AUD',
-          raw_payload: tx as unknown as Record<string, unknown>,
-          synced_at: new Date().toISOString(),
-        },
-        { onConflict: 'org_id,xero_id' }
-      );
+    // Batch upsert all bank transactions for this page
+    const now = new Date().toISOString();
+    const rows = transactions.map((tx) => ({
+      org_id: orgId,
+      xero_id: tx.BankTransactionID,
+      date: extractDate(tx),
+      type: 'bank_transaction' as const,
+      contact_name: tx.Contact?.Name || null,
+      line_items: tx.LineItems || [],
+      total: tx.Total,
+      currency: tx.CurrencyCode || 'AUD',
+      raw_payload: tx as unknown as Record<string, unknown>,
+      synced_at: now,
+    }));
 
-      if (error) {
-        console.warn(`[XERO SYNC] Failed to upsert bank tx ${tx.BankTransactionID}: ${error.message}`);
-      } else {
-        synced++;
-      }
+    const { error, count } = await supabase
+      .from('raw_transactions')
+      .upsert(rows, { onConflict: 'org_id,xero_id', count: 'exact' });
+
+    if (error) {
+      console.warn(`[XERO SYNC] Batch upsert bank tx page ${page} failed: ${error.message}`);
+    } else {
+      synced += count ?? rows.length;
     }
 
     if (transactions.length < 100) break;

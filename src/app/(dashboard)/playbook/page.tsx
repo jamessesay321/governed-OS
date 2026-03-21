@@ -1,28 +1,14 @@
-import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { getLatestAssessment } from '@/lib/playbook/assessment';
 import { PlaybookClient } from '@/components/playbook/playbook-client';
 
 export default async function PlaybookPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
+  const { orgId } = await getUserProfile();
 
   // Try to load existing assessment
   let assessment = null;
   try {
-    assessment = await getLatestAssessment(profile.org_id);
+    assessment = await getLatestAssessment(orgId);
   } catch {
     // No assessment yet - that's fine
   }
@@ -39,7 +25,7 @@ export default async function PlaybookPage() {
       <PlaybookClient
         initialAssessment={assessment}
         initialActions={[]}
-        orgId={profile.org_id}
+        orgId={orgId}
       />
     </div>
   );

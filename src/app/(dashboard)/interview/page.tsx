@@ -1,24 +1,9 @@
-import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createServiceClient } from '@/lib/supabase/server';
 import { InterviewPageClient } from './interview-page-client';
 
 export default async function InterviewPage() {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
+  const { orgId } = await getUserProfile();
 
   const service = await createServiceClient();
 
@@ -30,7 +15,7 @@ export default async function InterviewPage() {
     const { data: completedInterview } = await service
       .from('business_context_profiles' as any)
       .select('id, status')
-      .eq('org_id', profile.org_id)
+      .eq('org_id', orgId)
       .eq('status', 'completed')
       .order('completed_at', { ascending: false })
       .limit(1)
@@ -70,7 +55,7 @@ export default async function InterviewPage() {
       const { data: activeInterview } = await service
         .from('business_context_profiles' as any)
         .select('*')
-        .eq('org_id', profile.org_id)
+        .eq('org_id', orgId)
         .eq('status', 'in_progress')
         .order('created_at', { ascending: false })
         .limit(1)
@@ -98,7 +83,7 @@ export default async function InterviewPage() {
 
   return (
     <InterviewPageClient
-      orgId={profile.org_id}
+      orgId={orgId}
       interviewCompleted={interviewCompleted}
       completedInterviewId={completedInterviewId}
       existingProfile={existingProfile}

@@ -14,7 +14,10 @@ export async function GET(_request: Request, { params }: Params) {
 
     return NextResponse.json({ snapshots, modelVersionId });
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[scenarios/snapshots] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

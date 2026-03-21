@@ -157,8 +157,10 @@ Overall: ${overallStatus}`,
 
     return NextResponse.json({ result });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    const status = message.includes('authenticated') ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (error instanceof Error && error.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[health-check] GET error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

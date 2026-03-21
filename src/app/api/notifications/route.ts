@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/roles';
 import { getNotifications, getUnreadNotifications, markAllAsRead } from '@/lib/notifications/notify';
+import { z } from 'zod';
+
+const notificationActionSchema = z.object({
+  action: z.enum(['mark_all_read']),
+});
 
 /**
  * GET /api/notifications - Get notifications for the authenticated user.
@@ -20,7 +25,7 @@ export async function GET(request: NextRequest) {
     if ((error as Error).name === 'AuthorizationError') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to fetch notifications' }, { status: 500 });
   }
 }
 
@@ -32,7 +37,12 @@ export async function POST(request: NextRequest) {
     const { user } = await getAuthenticatedUser();
     const body = await request.json();
 
-    if (body.action === 'mark_all_read') {
+    const parsed = notificationActionSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    }
+
+    if (parsed.data.action === 'mark_all_read') {
       await markAllAsRead(user.id);
       return NextResponse.json({ success: true });
     }
@@ -42,6 +52,6 @@ export async function POST(request: NextRequest) {
     if ((error as Error).name === 'AuthorizationError') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to update notifications' }, { status: 500 });
   }
 }

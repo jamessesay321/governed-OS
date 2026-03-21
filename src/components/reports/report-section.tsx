@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { AIReasoning } from '@/components/ui/ai-reasoning';
 import type { ReportSection } from '@/types/reports';
 
 interface ReportSectionProps {
@@ -72,6 +73,21 @@ export function ReportSectionCard({ section, editable = false, onCommentaryUpdat
 
         {/* Section data rendering */}
         <SectionDataView type={section.type} data={section.data} />
+
+        {/* AI Reasoning for this section */}
+        {section.commentary && (
+          <AIReasoning
+            reasoning={`This ${section.type.replace('_', ' ')} section was generated from your financial data for the selected reporting period. The AI commentary above synthesises key trends and highlights areas requiring attention.`}
+            dataSources={[
+              'Xero normalised financial data',
+              'Budget lines (if set)',
+              `Section type: ${section.type.replace('_', ' ')}`,
+            ]}
+            confidence="medium"
+            modelId="claude-sonnet-4-20250514"
+            triggerLabel="How was this section generated?"
+          />
+        )}
       </CardContent>
     </Card>
   );

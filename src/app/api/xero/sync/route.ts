@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { runFullSync } from '@/lib/xero/sync';
+import { syncLimiter } from '@/lib/rate-limit';
 
 /**
  * POST /api/xero/sync
@@ -9,6 +10,10 @@ import { runFullSync } from '@/lib/xero/sync';
 export async function POST() {
   try {
     const { user, profile } = await requireRole('advisor');
+
+    // Rate limit: 3 syncs per minute per org
+    const limited = syncLimiter.check(profile.org_id);
+    if (limited) return limited;
 
     const result = await runFullSync(profile.org_id, user.id);
 
@@ -25,7 +30,7 @@ export async function POST() {
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthorizationError') {
-      return NextResponse.json({ error: err.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
     console.error('[XERO SYNC] Error:', err);
     return NextResponse.json(

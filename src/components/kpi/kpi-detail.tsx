@@ -19,6 +19,7 @@ import {
 } from 'recharts';
 import { formatKPIValue } from '@/lib/kpi/format';
 import type { CalculatedKPI } from '@/lib/kpi/format';
+import { AIReasoning } from '@/components/ui/ai-reasoning';
 import type { KPISnapshot } from '@/types';
 
 interface KPIDetailProps {
@@ -165,6 +166,24 @@ export function KPIDetail({ kpi, history, onClose }: KPIDetailProps) {
             </span>
           </div>
         )}
+
+        {/* AI Reasoning */}
+        <AIReasoning
+          reasoning={`${kpi.label} is currently ${kpi.formatted_value}, ${
+            kpi.trend_direction === 'up' ? 'up' : kpi.trend_direction === 'down' ? 'down' : 'flat'
+          } ${Math.abs(kpi.trend_percentage).toFixed(1)}% vs prior period.${
+            kpi.benchmark_value !== null
+              ? ` Compared to the sector benchmark of ${formatKPIValue(kpi.benchmark_value, kpi.format)}, your performance is ${kpi.benchmark_status}.`
+              : ''
+          } ${kpi.higher_is_better ? 'For this metric, higher values indicate stronger performance.' : 'For this metric, lower values indicate stronger performance.'}`}
+          dataSources={[
+            'Xero financial data (current period)',
+            'Historical KPI snapshots',
+            ...(kpi.benchmark_value !== null ? ['Industry benchmark dataset'] : []),
+          ]}
+          confidence={kpi.benchmark_status === 'green' ? 'high' : kpi.benchmark_status === 'red' ? 'low' : 'medium'}
+          triggerLabel="Why this KPI result?"
+        />
       </CardContent>
     </Card>
   );

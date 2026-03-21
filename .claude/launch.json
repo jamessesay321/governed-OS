@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "governed-os-dev",
+      "runtimeExecutable": "/usr/local/bin/node",
+      "runtimeArgs": ["/Users/james/projects/governed-os/node_modules/.bin/next", "dev", "--port", "3000"],
+      "port": 3000
+    }
+  ]
+}

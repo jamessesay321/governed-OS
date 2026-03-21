@@ -112,14 +112,15 @@ Advisory OS does NOT build custom analysis, narrative generation, or financial r
 | Sprint | Focus | Status |
 |--------|-------|--------|
 | 1 | Foundation (Auth, Xero, Dashboard, Onboarding) | COMPLETE |
-| 2 | Xero Integration with Governed Data Pipeline | NEXT |
-| 3 | KPI Engine with Variance Analysis | PLANNED |
-| 4 | AI Onboarding Interview Enhancement | PLANNED |
-| 5 | NL Scenario Engine | PLANNED |
-| 6 | Modules and Playbook Maturity Scoring | PLANNED |
-| 7 | Macro-to-Micro Intelligence Layer | PLANNED |
-| 8 | Board Pack PDF Generation | PLANNED |
-| 9 | Knowledge Vault Foundations | PLANNED |
+| 2 | Xero Integration with Governed Data Pipeline | COMPLETE |
+| 3 | KPI Engine with Variance Analysis | COMPLETE |
+| 4 | AI Onboarding Interview Enhancement | COMPLETE |
+| 5 | NL Scenario Engine (what-if + goalseek) | COMPLETE |
+| 6 | Modules and Playbook Maturity Scoring | COMPLETE |
+| 7 | Macro-to-Micro Intelligence Layer (anomaly detection, AI explainers) | COMPLETE |
+| 8 | Board Pack PDF Generation (7 themes, white-label) | COMPLETE |
+| 9 | Knowledge Vault Foundations | COMPLETE |
+| — | Security hardening (audit logging, error sanitisation, rate limiting, Zod coverage) | COMPLETE |
 
 Full sprint specifications are in the CLAUDE_MD_ADDITIONS document at `/Users/james/Downloads/CLAUDE_MD_ADDITIONS_FINAL.md`.
 Reference `/docs/FPA_COMPETITIVE_AUDIT.md` for competitive context before each sprint.

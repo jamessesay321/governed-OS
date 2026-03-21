@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { getBudgetLines, upsertBudgetLines } from '@/lib/variance/engine';
+import { logAudit } from '@/lib/audit/log';
 import { z } from 'zod';
 
 // GET /api/budget/[orgId]?period=YYYY-MM-01 — Get budget lines (viewer+)
@@ -22,9 +23,10 @@ export async function GET(
     const lines = await getBudgetLines(orgId, period);
     return NextResponse.json(lines);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    const status = e instanceof Error && e.name === 'AuthorizationError' ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Failed to fetch budget lines' }, { status: 500 });
   }
 }
 
@@ -44,7 +46,7 @@ export async function POST(
   { params }: { params: Promise<{ orgId: string }> }
 ) {
   try {
-    const { profile } = await requireRole('advisor');
+    const { user, profile } = await requireRole('advisor');
     const { orgId } = await params;
 
     if (profile.org_id !== orgId) {
@@ -56,15 +58,22 @@ export async function POST(
 
     const upserted = await upsertBudgetLines(orgId, parsed.lines);
 
+    await logAudit({
+      orgId,
+      userId: user.id,
+      action: 'budget.lines_upserted',
+      entityType: 'budget_line',
+      metadata: { lineCount: parsed.lines.length, upserted },
+    });
+
     return NextResponse.json(
       { message: `Upserted ${upserted} budget lines` },
       { status: 201 }
     );
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid budget data' }, { status: 400 });
   }
 }

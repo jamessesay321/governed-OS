@@ -3,6 +3,41 @@ import { requireRole } from '@/lib/supabase/roles';
 import { createServiceClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit/log';
 import Anthropic from '@anthropic-ai/sdk';
+import { z } from 'zod';
+
+const scanRequestSchema = z.object({
+  websiteUrl: z.string().max(2048).optional(),
+  businessDescription: z.string().max(5000).optional(),
+}).refine(data => data.websiteUrl || data.businessDescription, {
+  message: 'Please provide a website URL or business description',
+});
+
+/** Validate a URL is safe to fetch (prevent SSRF attacks). */
+function isUrlSafe(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    if (!['http:', 'https:'].includes(url.protocol)) return false;
+    const hostname = url.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname.endsWith('.local') ||
+      hostname.endsWith('.internal') ||
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2\d|3[01])\./.test(hostname) ||
+      hostname === 'metadata.google.internal' ||
+      hostname === '169.254.169.254'
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * POST /api/onboarding/scan
@@ -13,17 +48,16 @@ export async function POST(request: NextRequest) {
   try {
     const { user, profile } = await requireRole('admin');
     const body = await request.json();
-    const { websiteUrl, businessDescription } = body as {
-      websiteUrl?: string;
-      businessDescription?: string;
-    };
 
-    if (!websiteUrl && !businessDescription) {
+    const parsed = scanRequestSchema.safeParse(body);
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: 'Please provide a website URL or business description' },
+        { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
         { status: 400 }
       );
     }
+
+    const { websiteUrl, businessDescription } = parsed.data;
 
     // Fetch website content if URL provided
     let websiteContent = '';
@@ -33,28 +67,34 @@ export async function POST(request: NextRequest) {
           ? websiteUrl
           : `https://${websiteUrl}`;
 
+        if (!isUrlSafe(url)) {
+          return NextResponse.json(
+            { error: 'Invalid or blocked URL — only public websites are allowed' },
+            { status: 400 }
+          );
+        }
+
         const response = await fetch(url, {
           headers: {
             'User-Agent': 'Governed-OS-Onboarding/1.0',
             Accept: 'text/html',
           },
           signal: AbortSignal.timeout(10000),
+          redirect: 'follow',
         });
 
         if (response.ok) {
           const html = await response.text();
-          // Strip HTML tags and extract text content (basic extraction)
           websiteContent = html
             .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
             .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '')
             .replace(/<[^>]+>/g, ' ')
             .replace(/\s+/g, ' ')
             .trim()
-            .slice(0, 8000); // Limit to ~8k chars to stay within token limits
+            .slice(0, 8000);
         }
       } catch (fetchError) {
         console.warn('[SCAN] Failed to fetch website:', fetchError);
-        // Continue without website content — we can still use the description
       }
     }
 
@@ -116,7 +156,6 @@ Rules:
 
     let scanResult;
     try {
-      // Try to parse JSON from the response (handle markdown code blocks)
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         scanResult = JSON.parse(jsonMatch[0]);
@@ -138,7 +177,7 @@ Rules:
       .update({
         website_url: websiteUrl || null,
         business_scan: scanResult,
-      } as any)
+      } as Record<string, unknown>)
       .eq('id', profile.org_id);
 
     await logAudit({

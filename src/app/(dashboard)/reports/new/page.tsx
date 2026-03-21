@@ -1,35 +1,23 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { getAvailablePeriods } from '@/lib/financial/aggregate';
 import { ReportBuilder } from '@/components/reports/report-builder';
 
 export default async function NewReportPage() {
+  const { orgId } = await getUserProfile();
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
 
   // Fetch available periods from financial data
   const { data: financials } = await supabase
     .from('normalised_financials')
     .select('period')
-    .eq('org_id', profile.org_id);
+    .eq('org_id', orgId);
 
   const periods = getAvailablePeriods(
     (financials || []).map((f) => ({
       ...f,
       id: '',
-      org_id: profile.org_id,
+      org_id: orgId,
       account_id: '',
       amount: 0,
       transaction_count: 0,
@@ -48,7 +36,7 @@ export default async function NewReportPage() {
         </p>
       </div>
 
-      <ReportBuilder orgId={profile.org_id} availablePeriods={periods} />
+      <ReportBuilder orgId={orgId} availablePeriods={periods} />
     </div>
   );
 }

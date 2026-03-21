@@ -1,5 +1,5 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { hasMinRole } from '@/lib/supabase/roles';
 import { XeroConnectionPage } from './xero-connection-page';
 import type { Role } from '@/types';
@@ -9,34 +9,23 @@ type Props = {
 };
 
 export default async function XeroPage({ searchParams }: Props) {
+  const { orgId, role } = await getUserProfile();
   const supabase = await createClient();
   const params = await searchParams;
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-  if (!profile) return redirect('/login');
-
-  const userRole = profile.role as Role;
+  const userRole = role as Role;
 
   const { data: connection } = await supabase
     .from('xero_connections')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .eq('status', 'active')
     .single();
 
   const { data: syncLogs } = await supabase
     .from('sync_log')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('started_at', { ascending: false })
     .limit(10);
 

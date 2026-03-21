@@ -3,6 +3,7 @@ import { createClient, createServiceClient } from '@/lib/supabase/server';
 import { getAuthenticatedUser } from '@/lib/supabase/roles';
 import { generateReport } from '@/lib/reports/generator';
 import { logAudit } from '@/lib/audit/log';
+import { autoStoreToVault } from '@/lib/vault/auto-store';
 import type { GenerateReportOptions } from '@/types/reports';
 
 /**
@@ -104,6 +105,23 @@ export async function POST(
       entityType: 'report',
       entityId: report.id,
       metadata: { reportType: options.reportType, periodStart: options.periodStart, periodEnd: options.periodEnd },
+    });
+
+    // Auto-store to Knowledge Vault (best-effort, non-blocking)
+    const vaultItemType = options.reportType === 'board_pack' ? 'board_pack' as const : 'custom_report' as const;
+    autoStoreToVault({
+      orgId,
+      userId: user.id,
+      itemType: vaultItemType,
+      title: report.title,
+      description: `${options.reportType} report for ${options.periodStart} to ${options.periodEnd}`,
+      tags: [options.reportType, 'report', 'auto-generated'],
+      content: { sections: report.sections, ai_commentary: report.ai_commentary },
+      provenance: { source_entity_type: 'report', source_entity_id: report.id },
+      sourceEntityType: 'report',
+      sourceEntityId: report.id,
+      periodStart: options.periodStart,
+      periodEnd: options.periodEnd,
     });
 
     return NextResponse.json({ report }, { status: 201 });

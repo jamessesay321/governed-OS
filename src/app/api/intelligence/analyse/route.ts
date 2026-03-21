@@ -39,9 +39,9 @@ export async function POST(request: Request) {
     return NextResponse.json(impact, { status: 201 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Failed to analyse impact';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[intelligence/analyse] POST error:', e);
+    return NextResponse.json({ error: 'Failed to analyse impact' }, { status: 500 });
   }
 }

@@ -2,26 +2,306 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
-const navItems = [
-  { href: '/dashboard', label: 'Dashboard', icon: 'BarChart3' },
-  { href: '/intelligence', label: 'Intelligence', icon: 'Lightbulb' },
-  { href: '/kpi', label: 'KPIs', icon: 'Activity' },
-  { href: '/variance', label: 'Variance', icon: 'GitCompare' },
-  { href: '/financials', label: 'Financials', icon: 'Table' },
-  { href: '/scenarios', label: 'Scenarios', icon: 'Layers' },
-  { href: '/playbook', label: 'Playbook', icon: 'Compass' },
-  { href: '/modules', label: 'Modules', icon: 'Grid' },
-  { href: '/reports', label: 'Reports', icon: 'FileText' },
-  { href: '/interview', label: 'Business Profile', icon: 'MessageSquare' },
-  { href: '/xero', label: 'Xero Integration', icon: 'Link' },
-  { href: '/settings', label: 'Settings', icon: 'Settings' },
-  { href: '/audit', label: 'Audit Log', icon: 'Shield' },
+/* ------------------------------------------------------------------ */
+/*  Navigation structure — grouped with collapsible sub-items         */
+/* ------------------------------------------------------------------ */
+
+interface NavChild {
+  href: string;
+  label: string;
+  free?: boolean;
+}
+
+interface NavGroup {
+  group: string;
+  icon: string;
+  children: NavChild[];
+  /** If set, the group label itself is a link (e.g. Dashboard) */
+  href?: string;
+  free?: boolean;
+}
+
+const navigation: NavGroup[] = [
+  // ── GET STARTED ──
+  {
+    group: 'Home',
+    icon: 'Home',
+    href: '/home',
+    children: [
+      { href: '/home', label: 'Overview' },
+      { href: '/home/getting-started', label: 'Getting Started' },
+      { href: '/home/activity', label: 'Recent Activity' },
+    ],
+  },
+  {
+    group: 'Business Profile',
+    icon: 'Building',
+    href: '/interview',
+    children: [
+      { href: '/interview', label: 'Company Info' },
+      { href: '/interview/team', label: 'Team' },
+      { href: '/interview/documents', label: 'Documents' },
+    ],
+  },
+  // ── OVERVIEW ──
+  {
+    group: 'Dashboard',
+    icon: 'BarChart3',
+    href: '/dashboard',
+    children: [
+      { href: '/dashboard', label: 'CEO Overview' },
+      { href: '/dashboard/widgets', label: 'Widgets' },
+      { href: '/dashboard/alerts', label: 'Alerts' },
+    ],
+  },
+  {
+    group: 'Financials',
+    icon: 'Table',
+    href: '/financials',
+    children: [
+      { href: '/financials', label: 'Summary' },
+      { href: '/financials/income-statement', label: 'Income Statement' },
+      { href: '/financials/balance-sheet', label: 'Balance Sheet' },
+      { href: '/financials/cash-flow', label: 'Cash Flow' },
+      { href: '/financials/budget', label: 'Budget vs Actual' },
+    ],
+  },
+  {
+    group: 'KPIs',
+    icon: 'Activity',
+    href: '/kpi',
+    children: [
+      { href: '/kpi', label: 'Dashboard' },
+      { href: '/kpi/targets', label: 'Targets' },
+      { href: '/kpi/custom', label: 'Custom KPIs' },
+    ],
+  },
+  // ── ANALYTICS ──
+  {
+    group: 'Variance',
+    icon: 'GitCompare',
+    href: '/variance',
+    children: [
+      { href: '/variance', label: 'Period Comparison' },
+      { href: '/variance/budget', label: 'Budget vs Actual' },
+      { href: '/variance/drill-down', label: 'Drill-Down' },
+    ],
+  },
+  {
+    group: 'Graph Studio',
+    icon: 'TrendingUp',
+    href: '/graphs',
+    children: [
+      { href: '/graphs', label: 'Gallery' },
+      { href: '/graphs/builder', label: 'Graph Builder' },
+      { href: '/graphs/saved', label: 'Saved Charts' },
+    ],
+  },
+  {
+    group: 'Intelligence',
+    icon: 'Lightbulb',
+    href: '/intelligence',
+    children: [
+      { href: '/intelligence', label: 'AI Insights' },
+      { href: '/intelligence/anomalies', label: 'Anomalies' },
+      { href: '/intelligence/trends', label: 'Trends' },
+    ],
+  },
+  {
+    group: 'Financial Health',
+    icon: 'HeartPulse',
+    href: '/health',
+    children: [
+      { href: '/health', label: 'Health Score' },
+      { href: '/health/benchmarks', label: 'Benchmarks' },
+      { href: '/health/recommendations', label: 'Recommendations' },
+    ],
+  },
+  // ── STRATEGY ──
+  {
+    group: 'Scenarios',
+    icon: 'Layers',
+    href: '/scenarios',
+    children: [
+      { href: '/scenarios', label: 'Scenario Builder' },
+      { href: '/scenarios/goalseek', label: 'Goalseek' },
+      { href: '/scenarios/compare', label: 'Compare' },
+    ],
+  },
+  {
+    group: 'Playbook',
+    icon: 'Compass',
+    href: '/playbook',
+    children: [
+      { href: '/playbook', label: 'Actions' },
+      { href: '/playbook/assessment', label: 'Assessment' },
+      { href: '/playbook/history', label: 'History' },
+    ],
+  },
+  // ── OUTPUTS ──
+  {
+    group: 'Reports',
+    icon: 'FileText',
+    href: '/reports',
+    children: [
+      { href: '/reports', label: 'Board Packs' },
+      { href: '/reports/new', label: 'Custom Reports' },
+      { href: '/reports/templates', label: 'Templates' },
+    ],
+  },
+  {
+    group: 'Knowledge Vault',
+    icon: 'Archive',
+    href: '/vault',
+    children: [
+      { href: '/vault', label: 'Documents' },
+      { href: '/vault/guides', label: 'Guides' },
+      { href: '/vault/ai-outputs', label: 'AI Outputs' },
+    ],
+  },
+  {
+    group: 'AI Stack Audit',
+    icon: 'Search',
+    href: '/ai-solutions/audit',
+    free: true,
+    children: [],
+  },
+  // ── GROWTH ──
+  {
+    group: 'Roadmap',
+    icon: 'Rocket',
+    href: '/roadmap',
+    free: true,
+    children: [],
+  },
+  {
+    group: 'AI Strategy',
+    icon: 'Sparkles',
+    href: '/ai-solutions',
+    children: [
+      { href: '/ai-solutions', label: 'Overview' },
+      { href: '/proposal', label: 'Your Proposal' },
+      { href: '/ai-solutions/integration', label: 'Integration' },
+      { href: '/ai-solutions/packages', label: 'Packages' },
+    ],
+  },
+  // ── MARKETPLACE ──
+  {
+    group: 'Modules',
+    icon: 'Blocks',
+    href: '/modules',
+    children: [
+      { href: '/modules', label: 'Marketplace' },
+      { href: '/modules/active', label: 'Active Modules' },
+      { href: '/modules/credits', label: 'Credits' },
+      { href: '/modules/browse', label: 'Browse by Category' },
+    ],
+  },
+  {
+    group: 'AI Agents',
+    icon: 'Bot',
+    href: '/agents',
+    children: [
+      { href: '/agents', label: 'Overview' },
+      { href: '/agents/activity', label: 'Agent Activity' },
+    ],
+  },
+  {
+    group: 'Consultants',
+    icon: 'MessageSquare',
+    href: '/consultants',
+    children: [
+      { href: '/consultants', label: 'Browse Consultants' },
+      { href: '/consultants/requests', label: 'My Requests' },
+    ],
+  },
+  {
+    group: 'Custom AI Builds',
+    icon: 'Wrench',
+    href: '/custom-builds',
+    children: [
+      { href: '/custom-builds', label: 'Submit Project' },
+      { href: '/custom-builds/projects', label: 'My Projects' },
+    ],
+  },
+  {
+    group: 'Billing & Plans',
+    icon: 'CreditCard',
+    href: '/billing',
+    children: [
+      { href: '/billing', label: 'Overview' },
+      { href: '/billing/pricing', label: 'Pricing & Bundles' },
+      { href: '/billing/referrals', label: 'Referrals' },
+    ],
+  },
+  // ── GOVERNANCE ──
+  {
+    group: 'Trust Centre',
+    icon: 'Lock',
+    href: '/governance',
+    children: [
+      { href: '/governance?tab=privacy', label: 'Data & Privacy' },
+      { href: '/governance?tab=activity', label: 'Agent Activity' },
+      { href: '/governance?tab=compliance', label: 'Compliance' },
+      { href: '/governance?tab=preferences', label: 'Preferences' },
+    ],
+  },
+  {
+    group: 'AI Stack Review',
+    icon: 'Brain',
+    href: '/governance/ai-review',
+    children: [],
+  },
+  {
+    group: 'Audit Log',
+    icon: 'Shield',
+    href: '/audit',
+    children: [],
+  },
+  // ── SETUP ──
+  {
+    group: 'Integrations',
+    icon: 'Plug',
+    href: '/integrations',
+    children: [
+      { href: '/integrations', label: 'Connected' },
+      { href: '/integrations/catalogue', label: 'Catalogue' },
+      { href: '/integrations/health', label: 'Data Health' },
+    ],
+  },
+  {
+    group: 'Settings',
+    icon: 'Settings',
+    href: '/settings',
+    children: [
+      { href: '/settings', label: 'Account' },
+      { href: '/settings/team', label: 'Team & Roles' },
+      { href: '/settings/preferences', label: 'Preferences' },
+      { href: '/settings/exports', label: 'Data Exports' },
+    ],
+  },
+  // ── ADMIN ──
+  {
+    group: 'Help & Support',
+    icon: 'Help',
+    href: '/help',
+    children: [],
+  },
 ];
 
-// Simple SVG icons to avoid adding lucide-react dependency weight
+/* ------------------------------------------------------------------ */
+/*  SVG Icons                                                         */
+/* ------------------------------------------------------------------ */
+
 const icons: Record<string, React.ReactNode> = {
+  Home: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+    </svg>
+  ),
   BarChart3: (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M18 20V10M12 20V4M6 20v-6" />
@@ -37,7 +317,7 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
     </svg>
   ),
-  Link: (
+  Plug: (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
     </svg>
@@ -87,38 +367,255 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
     </svg>
   ),
-  Grid: (
+  Archive: (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+    </svg>
+  ),
+  Building: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+    </svg>
+  ),
+  TrendingUp: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+    </svg>
+  ),
+  HeartPulse: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 12h4l2-4 3 8 2-4h7" />
+    </svg>
+  ),
+  Blocks: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <rect x="2" y="2" width="8" height="8" rx="1" />
+      <rect x="14" y="2" width="8" height="8" rx="1" />
+      <rect x="2" y="14" width="8" height="8" rx="1" />
+      <rect x="14" y="14" width="8" height="8" rx="1" />
+    </svg>
+  ),
+  Bot: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <rect x="3" y="11" width="18" height="10" rx="2" />
+      <circle cx="12" cy="5" r="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v4M8 16h.01M16 16h.01" />
+    </svg>
+  ),
+  CreditCard: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M1 10h22" />
+    </svg>
+  ),
+  Help: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <circle cx="12" cy="12" r="10" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01" />
+    </svg>
+  ),
+  Rocket: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.59 14.37a6 6 0 01-5.84 7.38v-4.8m5.84-2.58a14.98 14.98 0 006.16-12.12A14.98 14.98 0 009.631 8.41m5.96 5.96a14.926 14.926 0 01-5.841 2.58m-.119-8.54a6 6 0 00-7.381 5.84h4.8m2.581-5.84a14.927 14.927 0 00-2.58 5.84m2.699 2.7c-.103.021-.207.041-.311.06a15.09 15.09 0 01-2.448-2.448 14.9 14.9 0 01.06-.312m-2.24 2.39a4.493 4.493 0 00-6.233 0c-1.174 1.174-2.272 6.233 0 6.233 1.174-1.174 6.233-2.272 6.233 0z" />
+    </svg>
+  ),
+  Brain: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  ),
+  Sparkles: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+    </svg>
+  ),
+  Lock: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  ),
+  Search: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+  ),
+  Wrench: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" />
+    </svg>
+  ),
+  ChevronDown: (
+    <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
     </svg>
   ),
 };
 
+/* ------------------------------------------------------------------ */
+/*  Section labels for visual grouping                                */
+/* ------------------------------------------------------------------ */
+
+const sectionBreaks: Record<number, string> = {
+  0: 'GET STARTED',
+  2: 'OVERVIEW',
+  5: 'ANALYTICS',
+  9: 'STRATEGY',
+  11: 'OUTPUTS',
+  14: 'GROWTH',
+  16: 'MARKETPLACE',
+  21: 'GOVERNANCE',
+  24: 'SETUP',
+  26: 'ADMIN',
+};
+
+/* ------------------------------------------------------------------ */
+/*  Sidebar Component                                                 */
+/* ------------------------------------------------------------------ */
+
 export function Sidebar() {
   const pathname = usePathname();
 
+  // Track which groups are expanded
+  const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
+    // Auto-expand the group that contains the current path
+    const initial: Record<string, boolean> = {};
+    for (const nav of navigation) {
+      const isActive =
+        (nav.href && (pathname === nav.href || pathname.startsWith(nav.href + '/'))) ||
+        nav.children.some(
+          (c) => pathname === c.href || pathname.startsWith(c.href + '/')
+        );
+      if (isActive) initial[nav.group] = true;
+    }
+    return initial;
+  });
+
+  const toggleGroup = (group: string) => {
+    setExpanded((prev) => ({ ...prev, [group]: !prev[group] }));
+  };
+
   return (
-    <aside className="flex h-full w-64 flex-col border-r bg-muted/30">
-      <div className="flex h-14 items-center border-b px-6">
-        <h1 className="text-lg font-semibold">Governed OS</h1>
-      </div>
-      <nav className="flex-1 space-y-1 p-4">
-        {navItems.map((item) => (
-          <Link
-            key={item.href}
-            href={item.href}
-            className={cn(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              pathname === item.href || pathname.startsWith(item.href + '/')
-                ? 'bg-primary text-primary-foreground'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            )}
-          >
-            {icons[item.icon]}
-            {item.label}
-          </Link>
-        ))}
+    <aside className="flex h-full w-64 flex-col border-r bg-muted/30 overflow-y-auto">
+      {/* Logo / Brand */}
+      <Link href="/home" className="flex h-14 items-center border-b px-6 hover:bg-muted/50 transition-colors">
+        <div className="flex items-center gap-2">
+          <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
+            <span className="text-xs font-bold text-primary-foreground">AO</span>
+          </div>
+          <h1 className="text-lg font-semibold">Advisory OS</h1>
+        </div>
+      </Link>
+
+      <nav className="flex-1 py-2 px-3">
+        {navigation.map((nav, idx) => {
+          const isGroupActive =
+            (nav.href && (pathname === nav.href || pathname.startsWith(nav.href + '/'))) ||
+            nav.children.some(
+              (c) => pathname === c.href || pathname.startsWith(c.href + '/')
+            );
+          const isOpen = expanded[nav.group] || false;
+          const hasChildren = nav.children.length > 0;
+
+          // Section label
+          const sectionLabel = sectionBreaks[idx];
+
+          return (
+            <div key={nav.group}>
+              {/* Section divider */}
+              {sectionLabel && (
+                <div className={cn('px-3 pt-4 pb-1', idx === 0 && 'pt-2')}>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+                    {sectionLabel}
+                  </span>
+                </div>
+              )}
+
+              {/* Group header */}
+              <div className="flex items-center">
+                <Link
+                  href={nav.href || nav.children[0]?.href || '#'}
+                  className={cn(
+                    'flex flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
+                    isGroupActive
+                      ? 'bg-primary/10 text-primary font-semibold'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                  )}
+                >
+                  {icons[nav.icon]}
+                  {nav.group}
+                  {nav.free && (
+                    <span className="ml-auto rounded-full bg-emerald-100 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                      Free
+                    </span>
+                  )}
+                </Link>
+                {hasChildren && (
+                  <button
+                    onClick={() => toggleGroup(nav.group)}
+                    className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors mr-1"
+                    aria-label={`Toggle ${nav.group}`}
+                  >
+                    <div
+                      className={cn(
+                        'transition-transform duration-200',
+                        isOpen ? 'rotate-0' : '-rotate-90'
+                      )}
+                    >
+                      {icons.ChevronDown}
+                    </div>
+                  </button>
+                )}
+              </div>
+
+              {/* Sub-items */}
+              {hasChildren && isOpen && (
+                <div className="ml-5 border-l border-muted pl-3 mt-0.5 mb-1 space-y-0.5">
+                  {nav.children.map((child) => {
+                    const isChildActive =
+                      pathname === child.href ||
+                      pathname.startsWith(child.href + '/');
+                    return (
+                      <Link
+                        key={child.href}
+                        href={child.href}
+                        className={cn(
+                          'flex items-center rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                          isChildActive
+                            ? 'bg-primary text-primary-foreground'
+                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                        )}
+                      >
+                        {child.label}
+                        {child.free && (
+                          <span className={cn(
+                            'ml-auto rounded-full px-1.5 py-0.5 text-[9px] font-semibold',
+                            isChildActive
+                              ? 'bg-primary-foreground/20 text-primary-foreground'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                          )}>
+                            Free
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
+
+      {/* Data completeness indicator */}
+      <div className="border-t p-4">
+        <div className="text-xs font-medium text-muted-foreground mb-2">Data Completeness</div>
+        <div className="w-full bg-muted rounded-full h-2 mb-1">
+          <div className="bg-primary h-2 rounded-full transition-all duration-500" style={{ width: '0%' }} />
+        </div>
+        <div className="text-[10px] text-muted-foreground">Connect integrations to get started</div>
+      </div>
     </aside>
   );
 }

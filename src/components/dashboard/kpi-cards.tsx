@@ -1,6 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface KPICardData {
@@ -137,7 +138,7 @@ export function KPICards({
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
-                {card.label}
+                <FinancialTooltip term={card.label}>{card.label}</FinancialTooltip>
               </CardTitle>
               {variance.direction !== 'flat' && (
                 <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${bg} ${color}`}>

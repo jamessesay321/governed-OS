@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { createClient } from '@/lib/supabase/server';
 import { addSegmentInputSchema } from '@/lib/schemas';
+import { logAudit } from '@/lib/audit/log';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -22,13 +23,16 @@ export async function GET(_request: Request, { params }: Params) {
       .order('key');
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[segments] GET error:', error.message);
+      return NextResponse.json({ error: 'Failed to fetch segments' }, { status: 500 });
     }
 
     return NextResponse.json(data);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -85,15 +89,23 @@ export async function POST(request: Request, { params }: Params) {
       .select();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[segments] POST error:', error.message);
+      return NextResponse.json({ error: 'Failed to upsert segment values' }, { status: 500 });
     }
+
+    await logAudit({
+      orgId: profile.org_id,
+      userId: user.id,
+      action: 'segment.upserted',
+      entityType: 'assumption_value',
+      metadata: { assumptionSetId: id, segmentKey: parsed.segmentKey, fieldCount: rows.length },
+    });
 
     return NextResponse.json({ segmentKey: parsed.segmentKey, values: data }, { status: 201 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 }

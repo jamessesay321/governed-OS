@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireRole } from '@/lib/supabase/roles';
 import { callLLM } from '@/lib/ai/llm';
 import { buildFinancialContext } from '@/lib/ai/financial-context';
+import { llmLimiter } from '@/lib/rate-limit';
 
 type Params = { params: Promise<{ orgId: string }> };
 
@@ -41,6 +42,10 @@ export async function POST(request: Request, { params }: Params) {
     if (profile.org_id !== orgId) {
       return NextResponse.json({ error: 'Not a member of this organisation' }, { status: 403 });
     }
+
+    // Rate limit: 10 LLM calls per minute per org
+    const limited = llmLimiter.check(orgId);
+    if (limited) return limited;
 
     const body = await request.json();
     const input = explainSchema.parse(body);
@@ -101,9 +106,9 @@ ${financialSummary}`;
     }
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error('[explain] POST error:', e);
+    return NextResponse.json({ error: 'Failed to generate explanation' }, { status: 500 });
   }
 }

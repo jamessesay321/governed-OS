@@ -11,9 +11,11 @@ export async function GET() {
     const events = await fetchLatestEvents(50);
     return NextResponse.json(events);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    const status = e instanceof Error && e.name === 'AuthorizationError' ? 401 : 500;
-    return NextResponse.json({ error: message }, { status });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[intelligence/events] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -29,9 +31,9 @@ export async function POST() {
     );
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Failed to seed events';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[intelligence/events] POST error:', e);
+    return NextResponse.json({ error: 'Failed to seed events' }, { status: 500 });
   }
 }

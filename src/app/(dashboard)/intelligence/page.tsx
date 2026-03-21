@@ -1,23 +1,11 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { fetchLatestEvents } from '@/lib/intelligence/events';
 import { IntelligenceClient } from './intelligence-client';
 
 export default async function IntelligencePage() {
+  const { orgId, role } = await getUserProfile();
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
 
   // Fetch events
   let events: Awaited<ReturnType<typeof fetchLatestEvents>> = [];
@@ -33,7 +21,7 @@ export default async function IntelligencePage() {
     const { data } = await supabase
       .from('intelligence_impacts' as any)
       .select('*')
-      .eq('org_id', profile.org_id);
+      .eq('org_id', orgId);
     impacts = (data as unknown as Array<Record<string, unknown>>) ?? [];
   } catch {
     // Table may not exist yet
@@ -54,8 +42,8 @@ export default async function IntelligencePage() {
   return (
     <IntelligenceClient
       events={eventsWithImpacts}
-      orgId={profile.org_id}
-      role={profile.role}
+      orgId={orgId}
+      role={role}
     />
   );
 }

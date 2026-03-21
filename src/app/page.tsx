@@ -27,14 +27,15 @@ export default async function Home() {
       .eq('id', profile.org_id)
       .single();
 
-    if (org && (org as any).has_completed_onboarding) {
-      return redirect('/dashboard');
+    // TODO: Regenerate Supabase types after migration to remove this cast
+    if (org && (org as unknown as Record<string, unknown>).has_completed_onboarding) {
+      return redirect('/home');
     }
 
     // New user — send to onboarding
     return redirect('/welcome');
   } catch {
-    // Column may not exist yet — default to dashboard
-    return redirect('/dashboard');
+    // Column may not exist yet — default to home
+    return redirect('/home');
   }
 }

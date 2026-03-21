@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { createClient } from '@/lib/supabase/server';
 import { createAssumptionSetSchema } from '@/lib/schemas';
+import { logAudit } from '@/lib/audit/log';
 
 // GET /api/scenarios/assumption-sets — List assumption sets (viewer+)
 export async function GET() {
@@ -16,13 +17,16 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[assumption-sets] GET error:', error.message);
+      return NextResponse.json({ error: 'Failed to fetch assumption sets' }, { status: 500 });
     }
 
     return NextResponse.json(data);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -51,15 +55,24 @@ export async function POST(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[assumption-sets] POST error:', error.message);
+      return NextResponse.json({ error: 'Failed to create assumption set' }, { status: 500 });
     }
+
+    await logAudit({
+      orgId: profile.org_id,
+      userId: user.id,
+      action: 'assumption_set.created',
+      entityType: 'assumption_set',
+      entityId: data.id,
+      metadata: { name: parsed.name },
+    });
 
     return NextResponse.json(data, { status: 201 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 }

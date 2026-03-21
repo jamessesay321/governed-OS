@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { ConfirmDialog } from '@/components/ui/ai-reasoning';
 import { REPORT_TEMPLATES } from '@/lib/reports/templates';
 import type { ReportType, ReportSectionType } from '@/types/reports';
 
@@ -27,6 +28,7 @@ export function ReportBuilder({ orgId, availablePeriods }: ReportBuilderProps) {
   const [selectedSections, setSelectedSections] = useState<ReportSectionType[]>([]);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showGenerateConfirm, setShowGenerateConfirm] = useState(false);
 
   const template = REPORT_TEMPLATES.find((t) => t.type === selectedType);
 
@@ -260,7 +262,7 @@ export function ReportBuilder({ orgId, availablePeriods }: ReportBuilderProps) {
             <Button variant="outline" onClick={() => setStep('config')}>
               Back
             </Button>
-            <Button onClick={handleGenerate} disabled={generating}>
+            <Button onClick={() => setShowGenerateConfirm(true)} disabled={generating}>
               {generating ? (
                 <span className="flex items-center gap-2">
                   <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -274,6 +276,20 @@ export function ReportBuilder({ orgId, availablePeriods }: ReportBuilderProps) {
               )}
             </Button>
           </div>
+
+          {/* Confirmation dialog */}
+          <ConfirmDialog
+            open={showGenerateConfirm}
+            title="Generate Report"
+            description={`This will generate a "${title || template?.label || 'report'}" covering ${periodStart} to ${periodEnd} with ${selectedSections.length} sections. This uses AI credits and may take a moment.`}
+            confirmLabel="Generate Report"
+            variant="default"
+            onConfirm={() => {
+              setShowGenerateConfirm(false);
+              handleGenerate();
+            }}
+            onCancel={() => setShowGenerateConfirm(false)}
+          />
         </div>
       )}
     </div>

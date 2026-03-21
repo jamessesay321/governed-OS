@@ -1,27 +1,16 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { FinancialsClient } from './financials-client';
 
 export default async function FinancialsPage() {
+  const { orgId, role } = await getUserProfile();
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-  if (!profile) return redirect('/login');
 
   // Check Xero connection
   const { data: xeroConnection } = await supabase
     .from('xero_connections')
     .select('id, status')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .eq('status', 'active')
     .single();
 
@@ -29,27 +18,27 @@ export default async function FinancialsPage() {
   const { data: accounts } = await supabase
     .from('chart_of_accounts')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('code');
 
   // Fetch normalised financials with account info
   const { data: financials } = await supabase
     .from('normalised_financials')
     .select('*, chart_of_accounts!inner(code, name, type, class)')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('period', { ascending: false });
 
   // Fetch raw transaction count
   const { count: rawCount } = await supabase
     .from('raw_transactions')
     .select('*', { count: 'exact', head: true })
-    .eq('org_id', profile.org_id);
+    .eq('org_id', orgId);
 
   // Fetch last sync
   const { data: lastSync } = await supabase
     .from('sync_log')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('started_at', { ascending: false })
     .limit(1)
     .single();
@@ -91,7 +80,7 @@ export default async function FinancialsPage() {
       financials={financials ?? []}
       rawTransactionCount={rawCount ?? 0}
       connected={!!xeroConnection}
-      role={profile.role}
+      role={role}
       lastSync={lastSync ? {
         status: lastSync.status,
         recordsSynced: lastSync.records_synced,

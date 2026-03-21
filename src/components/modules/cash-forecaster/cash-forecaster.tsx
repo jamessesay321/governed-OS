@@ -12,6 +12,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { cn } from '@/lib/utils';
 import type { CashForecastResult } from '@/types/playbook';
 
@@ -247,7 +248,9 @@ function KPICard({
   return (
     <Card>
       <CardContent className="pt-6">
-        <p className="text-xs font-medium text-muted-foreground">{title}</p>
+        <p className="text-xs font-medium text-muted-foreground">
+          <FinancialTooltip term={title}>{title}</FinancialTooltip>
+        </p>
         <p className={cn('mt-1 text-2xl font-bold', danger && 'text-destructive')}>
           {value}
         </p>

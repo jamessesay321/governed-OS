@@ -7,6 +7,7 @@ import { KPIGrid } from '@/components/kpi/kpi-grid';
 import { KPIDetail } from '@/components/kpi/kpi-detail';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import type { KPISnapshot, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -116,6 +117,7 @@ export function KPIDashboardClient({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <VisualiseButton context="kpi" />
           <select
             value={selectedPeriod}
             onChange={(e) => setSelectedPeriod(e.target.value)}

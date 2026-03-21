@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { detectAnomalies } from '@/lib/ai/anomaly-detection';
 import { logAudit } from '@/lib/audit/log';
+import { llmLimiter } from '@/lib/rate-limit';
 
 type Params = { params: Promise<{ orgId: string }> };
 
@@ -14,6 +15,10 @@ export async function GET(request: Request, { params }: Params) {
     if (profile.org_id !== orgId) {
       return NextResponse.json({ error: 'Not a member of this organisation' }, { status: 403 });
     }
+
+    // Rate limit: 10 LLM calls per minute per org
+    const limited = llmLimiter.check(orgId);
+    if (limited) return limited;
 
     const { searchParams } = new URL(request.url);
     const periodEnd = searchParams.get('periodEnd') ?? new Date().toISOString().slice(0, 7) + '-01';
@@ -38,9 +43,9 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Internal error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[anomalies] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

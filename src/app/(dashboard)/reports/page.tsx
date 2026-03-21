@@ -1,28 +1,16 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { ReportList } from '@/components/reports/report-list';
 
 export default async function ReportsPage() {
+  const { orgId } = await getUserProfile();
   const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
 
   const { data: reports } = await supabase
     .from('reports' as any)
     .select('id, org_id, report_type, title, status, period_start, period_end, generated_by, created_at')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false });
 
   return (
@@ -45,7 +33,7 @@ export default async function ReportsPage() {
         </Link>
       </div>
 
-      <ReportList reports={(reports as any) || []} orgId={profile.org_id} />
+      <ReportList reports={(reports as any) || []} orgId={orgId} />
     </div>
   );
 }

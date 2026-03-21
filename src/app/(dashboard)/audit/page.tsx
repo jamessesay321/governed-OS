@@ -1,5 +1,5 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { hasMinRole } from '@/lib/supabase/roles';
 import {
   Card,
@@ -20,21 +20,10 @@ import { Badge } from '@/components/ui/badge';
 import type { Role } from '@/types';
 
 export default async function AuditPage() {
+  const { orgId, role } = await getUserProfile();
   const supabase = await createClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-  if (!profile) return redirect('/login');
-
-  const userRole = profile.role as Role;
+  const userRole = role as Role;
   if (!hasMinRole(userRole, 'advisor')) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -48,7 +37,7 @@ export default async function AuditPage() {
   const { data: logs } = await supabase
     .from('audit_logs')
     .select('*')
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -56,7 +45,7 @@ export default async function AuditPage() {
   const { data: profiles } = await supabase
     .from('profiles')
     .select('id, display_name')
-    .eq('org_id', profile.org_id);
+    .eq('org_id', orgId);
 
   const nameMap = new Map<string, string>();
   for (const p of profiles || []) {

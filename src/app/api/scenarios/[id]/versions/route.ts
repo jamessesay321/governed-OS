@@ -19,12 +19,16 @@ export async function GET(_request: Request, { params }: Params) {
       .order('version', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[scenarios/versions] GET query error:', error.message);
+      return NextResponse.json({ error: 'Failed to fetch versions' }, { status: 500 });
     }
 
     return NextResponse.json(data);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[scenarios/versions] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

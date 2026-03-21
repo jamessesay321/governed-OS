@@ -1,3 +1,4 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { getLatestModelSnapshots } from '@/lib/scenarios/snapshots';
@@ -9,36 +10,26 @@ type Props = {
 
 export default async function ScenarioDetailPage({ params }: Props) {
   const { id } = await params;
+  const { orgId, role } = await getUserProfile();
   const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return redirect('/login');
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile) return redirect('/login');
 
   const { data: scenario } = await supabase
     .from('scenarios')
     .select('*, assumption_sets(*)')
     .eq('id', id)
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .single();
 
   if (!scenario) return redirect('/scenarios');
 
-  const { snapshots, modelVersionId } = await getLatestModelSnapshots(profile.org_id, id);
+  const { snapshots, modelVersionId } = await getLatestModelSnapshots(orgId, id);
 
   // Fetch assumption values
   const { data: assumptionValues } = await supabase
     .from('assumption_values')
     .select('*')
     .eq('assumption_set_id', scenario.assumption_set_id)
-    .eq('org_id', profile.org_id)
+    .eq('org_id', orgId)
     .order('category')
     .order('key');
 
@@ -49,7 +40,7 @@ export default async function ScenarioDetailPage({ params }: Props) {
       .from('unit_economics_snapshots')
       .select('*')
       .eq('model_version_id', modelVersionId)
-      .eq('org_id', profile.org_id);
+      .eq('org_id', orgId);
     unitEconomics = data;
   }
 
@@ -60,7 +51,7 @@ export default async function ScenarioDetailPage({ params }: Props) {
       .from('ai_commentary')
       .select('*')
       .eq('model_version_id', modelVersionId)
-      .eq('org_id', profile.org_id)
+      .eq('org_id', orgId)
       .order('confidence_score', { ascending: false });
     commentary = data;
   }
@@ -72,7 +63,7 @@ export default async function ScenarioDetailPage({ params }: Props) {
       assumptionValues={assumptionValues ?? []}
       unitEconomics={unitEconomics ?? []}
       commentary={commentary ?? []}
-      role={profile.role}
+      role={role}
     />
   );
 }

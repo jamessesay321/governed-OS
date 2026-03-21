@@ -11,10 +11,12 @@ import {
   Tooltip,
   Cell,
 } from 'recharts';
+import { AIReasoning } from '@/components/ui/ai-reasoning';
 import type { VarianceLine } from '@/lib/variance/engine';
 
 interface VarianceDetailProps {
   line: VarianceLine;
+  explanation?: string | null;
   onExplain?: () => void;
   onClose?: () => void;
 }
@@ -36,7 +38,7 @@ function formatCategory(category: string): string {
     .join(' ');
 }
 
-export function VarianceDetail({ line, onExplain, onClose }: VarianceDetailProps) {
+export function VarianceDetail({ line, explanation, onExplain, onClose }: VarianceDetailProps) {
   const chartData = [
     { name: 'Budget', value: line.budget_pence / 100 },
     { name: 'Actual', value: line.actual_pence / 100 },
@@ -144,8 +146,22 @@ export function VarianceDetail({ line, onExplain, onClose }: VarianceDetailProps
           </ResponsiveContainer>
         </div>
 
-        {/* AI explanation button */}
-        {line.is_material && onExplain && (
+        {/* AI explanation */}
+        {explanation && (
+          <AIReasoning
+            reasoning={explanation}
+            dataSources={[
+              `Budget: ${formatPence(line.budget_pence)}`,
+              `Actual: ${formatPence(line.actual_pence)}`,
+              'Xero transaction data for the period',
+            ]}
+            confidence={line.is_material ? 'high' : 'medium'}
+            triggerLabel="Why this variance?"
+          />
+        )}
+
+        {/* AI explanation button (when no explanation loaded yet) */}
+        {!explanation && line.is_material && onExplain && (
           <button
             onClick={onExplain}
             className="w-full rounded-md border border-dashed border-muted-foreground/30 p-3 text-center text-sm text-muted-foreground transition-colors hover:border-primary hover:text-primary"

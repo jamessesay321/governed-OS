@@ -8,7 +8,10 @@ export async function GET() {
     const modules = getModulesForOrg(profile.org_id);
     return NextResponse.json({ modules });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (error instanceof Error && error.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    console.error('[modules] GET error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

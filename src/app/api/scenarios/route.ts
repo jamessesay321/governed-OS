@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/supabase/roles';
 import { createClient } from '@/lib/supabase/server';
 import { createScenarioSchema } from '@/lib/schemas';
 import { createScenario } from '@/lib/scenarios/scenario-pipeline';
+import { logAudit } from '@/lib/audit/log';
 
 // GET /api/scenarios — List scenarios (viewer+)
 export async function GET() {
@@ -17,13 +18,16 @@ export async function GET() {
       .order('created_at', { ascending: false });
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      console.error('[scenarios] GET error:', error.message);
+      return NextResponse.json({ error: 'Failed to fetch scenarios' }, { status: 500 });
     }
 
     return NextResponse.json(data);
   } catch (e) {
-    const message = e instanceof Error ? e.message : 'Unauthorized';
-    return NextResponse.json({ error: message }, { status: 401 });
+    if (e instanceof Error && e.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -36,12 +40,20 @@ export async function POST(request: Request) {
 
     const result = await createScenario(profile.org_id, user.id, parsed);
 
+    await logAudit({
+      orgId: profile.org_id,
+      userId: user.id,
+      action: 'scenario.created',
+      entityType: 'scenario',
+      entityId: result.scenario.id,
+      metadata: { name: parsed.name },
+    });
+
     return NextResponse.json(result, { status: 201 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
   }
 }

@@ -20,7 +20,7 @@ type Props = {
 
 export function OnboardingProgress({ currentStep, completedSteps }: Props) {
   return (
-    <div className="mb-8">
+    <div className="mb-6 sm:mb-8 px-4 sm:px-0">
       <div className="flex items-center justify-between">
         {STEPS.map((step, index) => {
           const stepNumber = index + 1;
@@ -37,7 +37,7 @@ export function OnboardingProgress({ currentStep, completedSteps }: Props) {
               <div className="flex flex-col items-center flex-shrink-0">
                 <div
                   className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-semibold transition-colors',
+                    'flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 text-xs sm:text-sm font-semibold transition-colors',
                     isCompleted &&
                       'border-primary bg-primary text-primary-foreground',
                     isCurrent &&
@@ -48,7 +48,7 @@ export function OnboardingProgress({ currentStep, completedSteps }: Props) {
                 >
                   {isCompleted ? (
                     <svg
-                      className="h-5 w-5"
+                      className="h-4 w-4 sm:h-5 sm:w-5"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -64,10 +64,10 @@ export function OnboardingProgress({ currentStep, completedSteps }: Props) {
                     stepNumber
                   )}
                 </div>
-                <div className="mt-2 text-center">
+                <div className="mt-1.5 sm:mt-2 text-center max-w-[80px] sm:max-w-none">
                   <p
                     className={cn(
-                      'text-xs font-medium',
+                      'text-[10px] sm:text-xs font-medium leading-tight',
                       isCurrent || isCompleted
                         ? 'text-foreground'
                         : 'text-muted-foreground'
@@ -85,7 +85,7 @@ export function OnboardingProgress({ currentStep, completedSteps }: Props) {
               {index < STEPS.length - 1 && (
                 <div
                   className={cn(
-                    'h-0.5 flex-1 mx-3 mt-[-1.5rem]',
+                    'h-0.5 flex-1 mx-2 sm:mx-3 mt-[-1rem] sm:mt-[-1.5rem]',
                     isCompleted || (isCurrent && index === 0)
                       ? 'bg-primary'
                       : 'bg-muted-foreground/20'

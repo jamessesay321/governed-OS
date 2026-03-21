@@ -66,9 +66,9 @@ export async function POST(request: Request) {
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error('[scenarios/compare] POST error:', e);
+    return NextResponse.json({ error: 'Failed to compare scenarios' }, { status: 500 });
   }
 }

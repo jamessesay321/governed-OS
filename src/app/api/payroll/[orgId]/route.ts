@@ -44,7 +44,8 @@ export async function GET(request: Request, { params }: Params) {
       .order('name');
 
     if (gError) {
-      return NextResponse.json({ error: gError.message }, { status: 500 });
+      console.error('[payroll] GET groups error:', gError.message);
+      return NextResponse.json({ error: 'Failed to fetch payroll groups' }, { status: 500 });
     }
 
     const { data: members, error: mError } = await supabase
@@ -54,7 +55,8 @@ export async function GET(request: Request, { params }: Params) {
       .order('name');
 
     if (mError) {
-      return NextResponse.json({ error: mError.message }, { status: 500 });
+      console.error('[payroll] GET members error:', mError.message);
+      return NextResponse.json({ error: 'Failed to fetch payroll members' }, { status: 500 });
     }
 
     // Calculate fully loaded costs for each group
@@ -96,10 +98,10 @@ export async function GET(request: Request, { params }: Params) {
     return NextResponse.json({ groups: enrichedGroups });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Internal error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[payroll] GET error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -134,7 +136,8 @@ export async function POST(request: Request, { params }: Params) {
         .single();
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[payroll] POST create_group error:', error.message);
+        return NextResponse.json({ error: 'Failed to create payroll group' }, { status: 500 });
       }
 
       await logAudit({
@@ -168,7 +171,8 @@ export async function POST(request: Request, { params }: Params) {
         .single();
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[payroll] POST add_member error:', error.message);
+        return NextResponse.json({ error: 'Failed to add payroll member' }, { status: 500 });
       }
 
       await logAudit({
@@ -190,10 +194,10 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ error: 'Invalid action. Use create_group or add_member.' }, { status: 400 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error('[payroll] POST error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -220,7 +224,8 @@ export async function DELETE(request: Request, { params }: Params) {
         .eq('org_id', orgId);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[payroll] DELETE member error:', error.message);
+        return NextResponse.json({ error: 'Failed to delete payroll member' }, { status: 500 });
       }
 
       await logAudit({
@@ -243,7 +248,8 @@ export async function DELETE(request: Request, { params }: Params) {
         .eq('org_id', orgId);
 
       if (error) {
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('[payroll] DELETE group error:', error.message);
+        return NextResponse.json({ error: 'Failed to delete payroll group' }, { status: 500 });
       }
 
       await logAudit({
@@ -260,9 +266,9 @@ export async function DELETE(request: Request, { params }: Params) {
     return NextResponse.json({ error: 'Provide groupId or memberId query parameter' }, { status: 400 });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Internal error';
-    return NextResponse.json({ error: message }, { status: 500 });
+    console.error('[payroll] DELETE error:', e);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

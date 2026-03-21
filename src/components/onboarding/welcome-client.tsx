@@ -224,40 +224,63 @@ export function WelcomeClient({ displayName, orgName }: Props) {
         </CardContent>
       </Card>
 
-      {/* What happens next */}
-      <Card className="mb-8 bg-muted/30">
-        <CardContent className="p-5">
-          <h4 className="text-sm font-medium text-foreground mb-3">What happens next:</h4>
-          <div className="space-y-2.5">
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">1</span>
-              <span>We scan your website and tailor the interview to your business</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">2</span>
-              <span>A quick AI conversation about your goals, challenges, and KPIs (~3 min)</span>
-            </div>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">3</span>
-              <span>Connect your Xero account — your data stays private to your org</span>
-            </div>
+      {/* What's Included */}
+      <Card className="mb-6 border-emerald-200">
+        <CardContent className="p-4 sm:p-5">
+          <h4 className="text-sm font-medium text-foreground mb-3">What&apos;s included — free forever:</h4>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {[
+              { icon: '\uD83D\uDD27', label: 'AI Setup Assistant' },
+              { icon: '\uD83D\uDCCA', label: '5 Essential Modules' },
+              { icon: '\uD83E\uDD16', label: 'AI-Powered Interview' },
+              { icon: '\uD83D\uDEE1\uFE0F', label: 'Governance Centre' },
+              { icon: '\uD83D\uDE80', label: 'Activation Roadmap' },
+              { icon: '\uD83D\uDD0D', label: 'Free AI Stack Audit' },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="text-base flex-shrink-0">{item.icon}</span>
+                <span>{item.label}</span>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
 
+      {/* How it works */}
+      <Card className="mb-8 bg-muted/30">
+        <CardContent className="p-4 sm:p-5">
+          <h4 className="text-sm font-medium text-foreground mb-3">How it works:</h4>
+          <div className="space-y-2.5">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">1</span>
+              <span><span className="font-medium text-foreground">Connect Xero</span> (~2 min) — we pull your data securely</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">2</span>
+              <span><span className="font-medium text-foreground">Setup Agent configures</span> (~5 min) — AI maps accounts, sets budgets, checks quality</span>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">3</span>
+              <span><span className="font-medium text-foreground">You&apos;re live</span> — dashboard, KPIs, and intelligence ready to go</span>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3">Most businesses are up and running in under 15 minutes.</p>
+        </CardContent>
+      </Card>
+
       {/* Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
           onClick={handleSkip}
           disabled={skipping}
-          className="text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline text-center sm:text-left"
         >
           {skipping ? 'Redirecting...' : 'Skip setup for now'}
         </button>
         <Button
           size="lg"
           onClick={handleScanAndContinue}
-          className="px-8"
+          className="px-8 w-full sm:w-auto"
         >
           {websiteUrl.trim() || businessDescription.trim()
             ? 'Scan & get started'

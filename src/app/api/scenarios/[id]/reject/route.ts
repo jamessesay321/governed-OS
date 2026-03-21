@@ -57,9 +57,9 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ success: true });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
-      return NextResponse.json({ error: e.message }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    const message = e instanceof Error ? e.message : 'Bad request';
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error('[scenarios/reject] POST error:', e);
+    return NextResponse.json({ error: 'Failed to reject changes' }, { status: 500 });
   }
 }

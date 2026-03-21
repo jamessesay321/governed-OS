@@ -3,12 +3,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { VarianceTable } from '@/components/variance/variance-table';
 import { VarianceDetail } from '@/components/variance/variance-detail';
 import { AIExplanationCard } from '@/components/variance/ai-explanation';
+import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
+
+type CompareMode = 'budget' | 'prev_month' | 'prev_quarter' | 'prev_year';
+
+const COMPARE_LABELS: Record<CompareMode, string> = {
+  budget: 'Budget',
+  prev_month: 'Previous Month',
+  prev_quarter: 'Previous Quarter',
+  prev_year: 'Same Month Last Year',
+};
 
 interface VarianceClientProps {
   orgId: string;
@@ -38,17 +49,18 @@ export function VarianceClient({
   role,
 }: VarianceClientProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
+  const [compareMode, setCompareMode] = useState<CompareMode>('budget');
   const [report, setReport] = useState<VarianceReport | null>(null);
   const [selectedLine, setSelectedLine] = useState<VarianceLine | null>(null);
   const [loading, setLoading] = useState(false);
 
   const canViewDetails = hasMinRole(role as Role, 'viewer');
 
-  const fetchVariance = useCallback(async (period: string) => {
+  const fetchVariance = useCallback(async (period: string, compare: CompareMode) => {
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/variance/${orgId}?period=${period}`
+        `/api/variance/${orgId}?period=${period}&compare=${compare}`
       );
       if (res.ok) {
         const data = await res.json();
@@ -61,9 +73,9 @@ export function VarianceClient({
 
   useEffect(() => {
     if (selectedPeriod) {
-      fetchVariance(selectedPeriod);
+      fetchVariance(selectedPeriod, compareMode);
     }
-  }, [selectedPeriod, fetchVariance]);
+  }, [selectedPeriod, compareMode, fetchVariance]);
 
   if (periods.length === 0) {
     return (
@@ -84,28 +96,59 @@ export function VarianceClient({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Variance Analysis</h2>
+          <h2 className="text-2xl font-bold">
+            <FinancialTooltip term="Variance" orgId={orgId}>Variance Analysis</FinancialTooltip>
+          </h2>
           <p className="text-sm text-muted-foreground">
-            Budget vs actual comparison with AI explanations
+            {COMPARE_LABELS[compareMode]} comparison with AI explanations
           </p>
         </div>
-        <select
-          value={selectedPeriod}
-          onChange={(e) => {
-            setSelectedPeriod(e.target.value);
-            setSelectedLine(null);
-          }}
-          className="rounded-md border bg-background px-3 py-2 text-sm"
-        >
-          {periods.map((p) => (
-            <option key={p} value={p}>
-              {new Date(p).toLocaleDateString('en-GB', {
-                month: 'long',
-                year: 'numeric',
-              })}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-3">
+          <VisualiseButton context="variance" />
+          {/* Compare mode selector */}
+          <div className="flex flex-col items-end gap-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Compare to
+            </label>
+            <select
+              value={compareMode}
+              onChange={(e) => {
+                setCompareMode(e.target.value as CompareMode);
+                setSelectedLine(null);
+              }}
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              {(Object.keys(COMPARE_LABELS) as CompareMode[]).map((mode) => (
+                <option key={mode} value={mode}>
+                  {COMPARE_LABELS[mode]}
+                </option>
+              ))}
+            </select>
+          </div>
+          {/* Period selector */}
+          <div className="flex flex-col items-end gap-1">
+            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+              Period
+            </label>
+            <select
+              value={selectedPeriod}
+              onChange={(e) => {
+                setSelectedPeriod(e.target.value);
+                setSelectedLine(null);
+              }}
+              className="rounded-md border bg-background px-3 py-2 text-sm"
+            >
+              {periods.map((p) => (
+                <option key={p} value={p}>
+                  {new Date(p).toLocaleDateString('en-GB', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Summary cards */}

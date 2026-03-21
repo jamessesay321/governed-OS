@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ChevronRight } from 'lucide-react';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 
 interface PnLTableProps {
@@ -73,13 +74,13 @@ export function PnLTable({ pnl, onSectionClick }: PnLTableProps) {
 
         {/* Summary rows */}
         <TableRow className="border-t-2 font-semibold">
-          <TableCell colSpan={2}>Gross Profit</TableCell>
+          <TableCell colSpan={2}><FinancialTooltip term="Gross Profit">Gross Profit</FinancialTooltip></TableCell>
           <TableCell className="text-right">
             {formatCurrency(pnl.grossProfit)}
           </TableCell>
         </TableRow>
         <TableRow className="font-bold text-lg">
-          <TableCell colSpan={2}>Net Profit</TableCell>
+          <TableCell colSpan={2}><FinancialTooltip term="Net Profit">Net Profit</FinancialTooltip></TableCell>
           <TableCell
             className={`text-right ${pnl.netProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}
           >

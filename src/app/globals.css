@@ -49,37 +49,43 @@
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  /* Warm beige-tinted backgrounds inspired by luxury bridal aesthetic */
+  --background: oklch(0.985 0.004 75);
+  --foreground: oklch(0.16 0.005 60);
+  --card: oklch(0.995 0.002 75);
+  --card-foreground: oklch(0.16 0.005 60);
+  --popover: oklch(0.995 0.002 75);
+  --popover-foreground: oklch(0.16 0.005 60);
+  /* Primary: deep warm charcoal — sophisticated, not cold */
+  --primary: oklch(0.18 0.008 60);
+  --primary-foreground: oklch(0.96 0.006 75);
+  /* Secondary: warm sand */
+  --secondary: oklch(0.955 0.01 75);
+  --secondary-foreground: oklch(0.18 0.008 60);
+  --muted: oklch(0.955 0.008 75);
+  --muted-foreground: oklch(0.50 0.01 60);
+  /* Accent: coral red — bold CTA color */
+  --accent: oklch(0.65 0.22 25);
+  --accent-foreground: oklch(0.995 0 0);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.90 0.01 75);
+  --input: oklch(0.90 0.01 75);
+  --ring: oklch(0.65 0.22 25);
+  /* Charts: warm luxury palette — coral, teal, gold, plum, emerald */
+  --chart-1: oklch(0.65 0.22 25);
+  --chart-2: oklch(0.60 0.12 185);
+  --chart-3: oklch(0.78 0.17 75);
+  --chart-4: oklch(0.55 0.20 310);
+  --chart-5: oklch(0.65 0.18 155);
+  /* Sidebar: warm beige — luxurious feel */
+  --sidebar: oklch(0.95 0.01 70);
+  --sidebar-foreground: oklch(0.16 0.005 60);
+  --sidebar-primary: oklch(0.18 0.008 60);
+  --sidebar-primary-foreground: oklch(0.96 0.006 75);
+  --sidebar-accent: oklch(0.92 0.012 70);
+  --sidebar-accent-foreground: oklch(0.18 0.008 60);
+  --sidebar-border: oklch(0.88 0.015 70);
+  --sidebar-ring: oklch(0.65 0.22 25);
 }
 
 .dark {
