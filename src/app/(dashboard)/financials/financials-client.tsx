@@ -7,6 +7,7 @@ import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { EmptyStateIllustration } from '@/components/ui/illustrations';
+import { NumberLegend } from '@/components/data-primitives';
 
 type PeriodSummary = {
   period: string;
@@ -132,6 +133,8 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
 
   return (
     <div className="space-y-6 max-w-5xl">
+      <NumberLegend />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Financial Data</h2>

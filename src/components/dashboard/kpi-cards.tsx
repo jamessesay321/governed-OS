@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
+import { SourceBadge } from '@/components/data-primitives';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface KPICardData {
@@ -148,10 +149,13 @@ export function KPICards({
               )}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {card.format === 'percentage'
-                  ? formatPercentage(card.value)
-                  : formatCurrency(card.value)}
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-bold" style={{ color: '#1e293b' }}>
+                  {card.format === 'percentage'
+                    ? formatPercentage(card.value)
+                    : formatCurrency(card.value)}
+                </span>
+                <SourceBadge source="actual" size="sm" />
               </div>
               {card.previousValue !== undefined && (
                 <p className="mt-1 text-xs text-muted-foreground">

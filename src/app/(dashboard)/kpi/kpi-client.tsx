@@ -11,6 +11,7 @@ import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import type { KPISnapshot, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
+import { NumberLegend } from '@/components/data-primitives';
 
 interface KPIDashboardClientProps {
   orgId: string;
@@ -104,6 +105,8 @@ export function KPIDashboardClient({
 
   return (
     <div className="space-y-6">
+      <NumberLegend />
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">KPI Dashboard</h2>
