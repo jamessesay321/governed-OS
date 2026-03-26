@@ -79,6 +79,12 @@ const navigation: NavGroup[] = [
       { href: '/kpi/custom', label: 'Custom KPIs' },
     ],
   },
+  {
+    group: 'Assumptions',
+    icon: 'Sliders',
+    href: '/assumptions',
+    children: [],
+  },
   // ── ANALYTICS ──
   {
     group: 'Variance',

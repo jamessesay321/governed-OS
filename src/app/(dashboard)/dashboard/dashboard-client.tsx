@@ -22,6 +22,7 @@ import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { NumberLegend } from '@/components/data-primitives';
+import { ActivityFeed } from '@/components/collaboration';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -239,6 +240,16 @@ export function DashboardClient({
 
       {/* Waterfall Chart:Revenue to Net Profit bridge */}
       <WaterfallChart pnl={pnl} />
+
+      {/* Activity Feed */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ActivityFeed compact />
+        </CardContent>
+      </Card>
 
       {/* Drill-down slide-in panel */}
       {drillSection && (
