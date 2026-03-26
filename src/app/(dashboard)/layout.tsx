@@ -5,6 +5,8 @@ import { Header, MobileQuickActions } from '@/components/layout/header';
 import { DemoBanner } from '@/components/demo/demo-banner';
 import { UserProvider } from '@/components/providers/user-context';
 import { CurrencyProvider } from '@/components/providers/currency-context';
+// CommandPalette available at @/components/command-palette/command-palette
+// Header already has Cmd+K search built in
 
 export default async function DashboardLayout({
   children,

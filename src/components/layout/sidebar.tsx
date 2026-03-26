@@ -188,6 +188,18 @@ const navigation: NavGroup[] = [
       { href: '/ai-solutions/packages', label: 'Packages' },
     ],
   },
+  // ── EXTERNAL SHARING ──
+  {
+    group: 'Investor Portal',
+    icon: 'Globe',
+    href: '/investor-portal',
+    children: [
+      { href: '/investor-portal', label: 'Active Rooms' },
+      { href: '/investor-portal/builder', label: 'Room Builder' },
+      { href: '/investor-portal/analytics', label: 'Engagement Analytics' },
+      { href: '/investor-portal/readiness', label: 'AI Readiness Check' },
+    ],
+  },
   // ── MARKETPLACE ──
   {
     group: 'Modules',
