@@ -131,7 +131,7 @@ export default function RoomBuilderPage() {
                 <Label htmlFor="room-name">Room Name</Label>
                 <Input
                   id="room-name"
-                  placeholder="e.g. Series A — Hoxton Ventures"
+                  placeholder="e.g. Series A: Hoxton Ventures"
                   value={roomName}
                   onChange={(e) => setRoomName(e.target.value)}
                 />

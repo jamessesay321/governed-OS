@@ -11,6 +11,9 @@ import {
   Layers,
   AreaChart,
   Sparkles,
+  Loader2,
+  Download,
+  RefreshCw,
 } from 'lucide-react'
 import {
   BarChart,
@@ -50,20 +53,39 @@ const chartTypes = [
 type ChartType = (typeof chartTypes)[number]['key']
 
 /* ------------------------------------------------------------------ */
+/*  Generated chart config type                                        */
+/* ------------------------------------------------------------------ */
+
+interface DataKey {
+  key: string
+  color: string
+  name: string
+}
+
+interface GeneratedChart {
+  title: string
+  chartType: ChartType
+  data: Record<string, unknown>[]
+  dataKeys: DataKey[]
+  xAxisKey: string
+  summary: string
+}
+
+/* ------------------------------------------------------------------ */
 /*  Example prompts                                                    */
 /* ------------------------------------------------------------------ */
 
 const examplePrompts = [
   'Show revenue vs expenses for the last 12 months',
   'Create a waterfall from revenue to net profit',
-  'Compare top 5 clients by revenue as a pie chart',
+  'Compare top 5 expense categories as a pie chart',
   'Monthly recurring revenue growth over 2 years',
   'Headcount by department as a stacked bar chart',
   'Cash flow trend with operating and investing lines',
 ]
 
 /* ------------------------------------------------------------------ */
-/*  Mock data sets                                                     */
+/*  Fallback mock data (shown before generation)                       */
 /* ------------------------------------------------------------------ */
 
 const monthlyData = [
@@ -89,28 +111,141 @@ const pieData = [
   { name: 'Other', value: 11 },
 ]
 
-const waterfallData = [
-  { name: 'Revenue', value: 120000, fill: 'var(--color-emerald-500, #10b981)' },
-  { name: 'COGS', value: -42000, fill: 'var(--color-rose-400, #fb7185)' },
-  { name: 'Gross Profit', value: 78000, fill: 'var(--color-emerald-400, #34d399)' },
-  { name: 'OpEx', value: -35000, fill: 'var(--color-rose-400, #fb7185)' },
-  { name: 'Tax', value: -9000, fill: 'var(--color-rose-300, #fda4af)' },
-  { name: 'Net Profit', value: 34000, fill: 'var(--color-primary, hsl(var(--primary)))' },
-]
-
-const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#64748b']
+const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#64748b', '#f43f5e', '#06b6d4', '#ec4899']
 
 /* ------------------------------------------------------------------ */
-/*  Chart preview components                                           */
+/*  Dynamic chart renderer                                             */
 /* ------------------------------------------------------------------ */
 
-function BarPreview() {
+function DynamicChart({ chart }: { chart: GeneratedChart }) {
+  const { chartType, data, dataKeys, xAxisKey } = chart
+
+  if (chartType === 'pie') {
+    return (
+      <ResponsiveContainer width="100%" height={320}>
+        <RechartsPieChart>
+          <Pie
+            data={data}
+            cx="50%"
+            cy="50%"
+            innerRadius={60}
+            outerRadius={110}
+            paddingAngle={3}
+            dataKey={dataKeys[0]?.key || 'value'}
+            nameKey={xAxisKey}
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            label={(props: any) => `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`}
+          >
+            {data.map((_, i) => (
+              <Cell key={i} fill={dataKeys[i]?.color || PIE_COLORS[i % PIE_COLORS.length]} />
+            ))}
+          </Pie>
+          <Tooltip />
+        </RechartsPieChart>
+      </ResponsiveContainer>
+    )
+  }
+
+  if (chartType === 'line') {
+    return (
+      <ResponsiveContainer width="100%" height={320}>
+        <RechartsLineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          {dataKeys.map((dk) => (
+            <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} strokeWidth={2} dot={false} />
+          ))}
+        </RechartsLineChart>
+      </ResponsiveContainer>
+    )
+  }
+
+  if (chartType === 'area') {
+    return (
+      <ResponsiveContainer width="100%" height={320}>
+        <RechartsAreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip />
+          <Legend />
+          {dataKeys.map((dk) => (
+            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} fill={dk.color} fillOpacity={0.15} strokeWidth={2} />
+          ))}
+        </RechartsAreaChart>
+      </ResponsiveContainer>
+    )
+  }
+
+  if (chartType === 'waterfall') {
+    // Process waterfall data
+    let cumulative = 0
+    const processed = data.map((item) => {
+      const value = Number(item.value || 0)
+      const name = String(item[xAxisKey] || item.name || '')
+      const isTotal = name.toLowerCase().includes('profit') || name.toLowerCase().includes('total') || name.toLowerCase().includes('net')
+      const base = isTotal ? 0 : (value >= 0 ? cumulative : cumulative + value)
+      const height = Math.abs(value)
+      if (!isTotal) cumulative += value
+      else cumulative = value
+      return { ...item, base, height, isNegative: value < 0, isTotal }
+    })
+
+    return (
+      <ResponsiveContainer width="100%" height={320}>
+        <BarChart data={processed} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey={xAxisKey} tick={{ fontSize: 11 }} />
+          <YAxis tick={{ fontSize: 12 }} />
+          <Tooltip
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            formatter={(value: any) => `£${Math.abs(Number(value ?? 0)).toLocaleString()}`}
+          />
+          <Bar dataKey="base" stackId="stack" fill="transparent" />
+          <Bar dataKey="height" stackId="stack" radius={[3, 3, 0, 0]}>
+            {processed.map((entry, i) => (
+              <Cell
+                key={i}
+                fill={entry.isTotal ? '#3b82f6' : entry.isNegative ? '#fb7185' : '#10b981'}
+              />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    )
+  }
+
+  // Default: bar chart (also handles combo)
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+        <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
+        <Tooltip />
+        <Legend />
+        {dataKeys.map((dk) => (
+          <Bar key={dk.key} dataKey={dk.key} name={dk.name} fill={dk.color} radius={[3, 3, 0, 0]} />
+        ))}
+      </BarChart>
+    </ResponsiveContainer>
+  )
+}
+
+/* ------------------------------------------------------------------ */
+/*  Static fallback previews (shown when no generation yet)            */
+/* ------------------------------------------------------------------ */
+
+function FallbackBarPreview() {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <BarChart data={monthlyData} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis dataKey="month" tick={{ fontSize: 12 }} className="text-muted-foreground" />
-        <YAxis tick={{ fontSize: 12 }} className="text-muted-foreground" />
+        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
         <Tooltip />
         <Legend />
         <Bar dataKey="revenue" name="Revenue" fill="#10b981" radius={[3, 3, 0, 0]} />
@@ -120,7 +255,23 @@ function BarPreview() {
   )
 }
 
-function LinePreview() {
+function FallbackPiePreview() {
+  return (
+    <ResponsiveContainer width="100%" height={320}>
+      <RechartsPieChart>
+        <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={110} paddingAngle={3} dataKey="value"
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          label={(props: any) => `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`}
+        >
+          {pieData.map((_, i) => (<Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />))}
+        </Pie>
+        <Tooltip />
+      </RechartsPieChart>
+    </ResponsiveContainer>
+  )
+}
+
+function FallbackLinePreview() {
   return (
     <ResponsiveContainer width="100%" height={320}>
       <RechartsLineChart data={monthlyData} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
@@ -136,130 +287,13 @@ function LinePreview() {
   )
 }
 
-function PiePreview() {
-  return (
-    <ResponsiveContainer width="100%" height={320}>
-      <RechartsPieChart>
-        <Pie
-          data={pieData}
-          cx="50%"
-          cy="50%"
-          innerRadius={60}
-          outerRadius={110}
-          paddingAngle={3}
-          dataKey="value"
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          label={(props: any) => `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`}
-        >
-          {pieData.map((_, i) => (
-            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-      </RechartsPieChart>
-    </ResponsiveContainer>
-  )
-}
-
-function AreaPreview() {
-  return (
-    <ResponsiveContainer width="100%" height={320}>
-      <RechartsAreaChart data={monthlyData} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} />
-        <Tooltip />
-        <Legend />
-        <Area type="monotone" dataKey="revenue" name="Revenue" stroke="#10b981" fill="#10b981" fillOpacity={0.15} strokeWidth={2} />
-        <Area type="monotone" dataKey="expenses" name="Expenses" stroke="#f43f5e" fill="#f43f5e" fillOpacity={0.1} strokeWidth={2} />
-      </RechartsAreaChart>
-    </ResponsiveContainer>
-  )
-}
-
-function WaterfallPreview() {
-  // Simple waterfall using stacked bar approach with cumulative positioning
-  let cumulative = 0
-  const data = waterfallData.map((item) => {
-    const isTotal = item.name === 'Gross Profit' || item.name === 'Net Profit'
-    const base = isTotal ? 0 : (item.value >= 0 ? cumulative : cumulative + item.value)
-    const height = isTotal ? Math.abs(item.value) : Math.abs(item.value)
-    if (!isTotal) cumulative += item.value
-    else cumulative = item.value
-    return { ...item, base, height, isNegative: item.value < 0 }
-  })
-
-  return (
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 12 }} />
-        <Tooltip
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          formatter={(value: any) =>
-            `$${Math.abs(Number(value ?? 0)).toLocaleString()}`
-          }
-        />
-        <Bar dataKey="base" stackId="stack" fill="transparent" />
-        <Bar dataKey="height" stackId="stack" radius={[3, 3, 0, 0]}>
-          {data.map((entry, i) => (
-            <Cell
-              key={i}
-              fill={
-                entry.name === 'Net Profit'
-                  ? '#3b82f6'
-                  : entry.name === 'Gross Profit'
-                    ? '#34d399'
-                    : entry.isNegative
-                      ? '#fb7185'
-                      : '#10b981'
-              }
-            />
-          ))}
-        </Bar>
-      </BarChart>
-    </ResponsiveContainer>
-  )
-}
-
-function ComboPreview() {
-  const comboData = monthlyData.map((d) => ({
-    ...d,
-    margin: Number((((d.revenue - d.expenses) / d.revenue) * 100).toFixed(1)),
-  }))
-
-  return (
-    <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={comboData} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-        <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} domain={[0, 60]} />
-        <Tooltip />
-        <Legend />
-        <Bar yAxisId="left" dataKey="revenue" name="Revenue" fill="#10b981" radius={[3, 3, 0, 0]} />
-        <Line
-          yAxisId="right"
-          type="monotone"
-          dataKey="margin"
-          name="Margin %"
-          stroke="#f59e0b"
-          strokeWidth={2}
-          dot={false}
-        />
-      </BarChart>
-    </ResponsiveContainer>
-  )
-}
-
-const chartPreviews: Record<ChartType, () => React.ReactNode> = {
-  bar: BarPreview,
-  line: LinePreview,
-  pie: PiePreview,
-  area: AreaPreview,
-  waterfall: WaterfallPreview,
-  combo: ComboPreview,
+const fallbackPreviews: Record<ChartType, () => React.ReactNode> = {
+  bar: FallbackBarPreview,
+  line: FallbackLinePreview,
+  pie: FallbackPiePreview,
+  area: FallbackLinePreview,
+  waterfall: FallbackBarPreview,
+  combo: FallbackBarPreview,
 }
 
 /* ------------------------------------------------------------------ */
@@ -269,8 +303,48 @@ const chartPreviews: Record<ChartType, () => React.ReactNode> = {
 export default function GraphBuilderPage() {
   const [prompt, setPrompt] = useState('')
   const [selectedType, setSelectedType] = useState<ChartType>('bar')
+  const [generating, setGenerating] = useState(false)
+  const [generatedChart, setGeneratedChart] = useState<GeneratedChart | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const ChartPreview = chartPreviews[selectedType]
+  async function handleGenerate() {
+    if (!prompt.trim()) return
+    setGenerating(true)
+    setError(null)
+    setGeneratedChart(null)
+
+    try {
+      const res = await fetch('/api/graphs/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt.trim(), chartType: selectedType }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || 'Failed to generate chart')
+      }
+
+      const data = await res.json()
+      setGeneratedChart(data)
+      // Update selected type to match what was generated
+      if (data.chartType && data.chartType !== selectedType) {
+        setSelectedType(data.chartType)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong. Try again.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  function handleReset() {
+    setGeneratedChart(null)
+    setError(null)
+    setPrompt('')
+  }
+
+  const FallbackPreview = fallbackPreviews[selectedType]
 
   return (
     <div className="space-y-8">
@@ -284,7 +358,7 @@ export default function GraphBuilderPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Graph Builder</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Describe the chart you need and let AI generate it from your data.
+            Describe the chart you need and AI will generate it from your data.
           </p>
         </div>
       </div>
@@ -307,38 +381,65 @@ export default function GraphBuilderPage() {
               <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                placeholder="Describe the graph you want to see..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && prompt.trim() && !generating) {
+                    handleGenerate()
+                  }
+                }}
+                placeholder="e.g. Show revenue vs expenses for the last 12 months..."
                 rows={4}
+                disabled={generating}
                 className={cn(
                   'w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs',
                   'placeholder:text-muted-foreground',
                   'focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]',
                   'resize-none outline-none transition-[color,box-shadow]',
-                  'border-input dark:bg-input/30'
+                  'border-input dark:bg-input/30',
+                  generating && 'opacity-50 cursor-not-allowed'
                 )}
               />
-              <Button className="w-full" disabled={!prompt.trim()}>
-                <Sparkles className="size-4" />
-                Generate Chart
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="flex-1"
+                  disabled={!prompt.trim() || generating}
+                  onClick={handleGenerate}
+                >
+                  {generating ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  {generating ? 'Generating...' : 'Generate Chart'}
+                </Button>
+                {generatedChart && (
+                  <Button variant="outline" size="icon" onClick={handleReset} title="Start over">
+                    <RefreshCw className="size-4" />
+                  </Button>
+                )}
+              </div>
+              <p className="text-[10px] text-muted-foreground text-center">
+                Press Cmd+Enter to generate
+              </p>
             </CardContent>
           </Card>
 
           {/* Example prompts */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Example prompts</CardTitle>
+              <CardTitle className="text-sm">Try these</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap gap-2">
                 {examplePrompts.map((ep) => (
                   <button
                     key={ep}
-                    onClick={() => setPrompt(ep)}
+                    onClick={() => { setPrompt(ep); setGeneratedChart(null); setError(null) }}
+                    disabled={generating}
                     className={cn(
                       'inline-flex items-center rounded-full border px-3 py-1 text-xs',
                       'text-muted-foreground hover:text-foreground hover:bg-accent',
-                      'transition-colors cursor-pointer'
+                      'transition-colors cursor-pointer',
+                      generating && 'opacity-50 cursor-not-allowed'
                     )}
                   >
                     {ep}
@@ -352,6 +453,7 @@ export default function GraphBuilderPage() {
           <Card>
             <CardHeader>
               <CardTitle className="text-sm">Chart type</CardTitle>
+              <CardDescription className="text-xs">AI will suggest one, but you can override it.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-3 gap-2">
@@ -359,11 +461,13 @@ export default function GraphBuilderPage() {
                   <button
                     key={ct.key}
                     onClick={() => setSelectedType(ct.key)}
+                    disabled={generating}
                     className={cn(
                       'flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition-all cursor-pointer',
                       selectedType === ct.key
                         ? 'border-primary bg-primary/5 text-primary shadow-sm'
-                        : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                        : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                      generating && 'opacity-50 cursor-not-allowed'
                     )}
                   >
                     {ct.icon}
@@ -379,17 +483,58 @@ export default function GraphBuilderPage() {
         <Card className="flex flex-col">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-base">Preview</CardTitle>
-              <Badge variant="outline" className="text-xs">
-                Sample data
-              </Badge>
+              <div>
+                <CardTitle className="text-base">
+                  {generatedChart ? generatedChart.title : 'Preview'}
+                </CardTitle>
+                {generatedChart?.summary && (
+                  <p className="text-xs text-muted-foreground mt-1">{generatedChart.summary}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {generatedChart && (
+                  <Button variant="outline" size="sm" className="text-xs">
+                    <Download className="size-3 mr-1" />
+                    Save
+                  </Button>
+                )}
+                <Badge variant={generatedChart ? 'default' : 'outline'} className="text-xs">
+                  {generatedChart ? 'AI Generated' : 'Sample data'}
+                </Badge>
+              </div>
             </div>
-            <CardDescription>
-              Live preview using mock data. Connect your accounts to use real figures.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="flex-1 min-h-[360px]">
-            <ChartPreview />
+          <CardContent className="flex-1 min-h-[360px] flex items-center justify-center">
+            {generating ? (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <div className="relative">
+                  <div className="h-12 w-12 rounded-full border-2 border-primary/20 border-t-primary animate-spin" />
+                  <Sparkles className="size-5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Generating your chart...</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">AI is analyzing your request and creating the visualization</p>
+                </div>
+              </div>
+            ) : error ? (
+              <div className="flex flex-col items-center gap-3 text-center max-w-sm">
+                <div className="h-10 w-10 rounded-full bg-red-50 flex items-center justify-center">
+                  <span className="text-red-500 text-lg">!</span>
+                </div>
+                <p className="text-sm text-red-600">{error}</p>
+                <Button variant="outline" size="sm" onClick={handleGenerate}>
+                  Try again
+                </Button>
+              </div>
+            ) : generatedChart ? (
+              <div className="w-full">
+                <DynamicChart chart={generatedChart} />
+              </div>
+            ) : (
+              <div className="w-full">
+                <FallbackPreview />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

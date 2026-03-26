@@ -255,7 +255,7 @@ export default function AgentTimesheetPage({ params }: { params: Promise<{ slug:
                   {/* Content */}
                   <div className={cn('pb-6 flex-1 min-w-0', isLast && 'pb-0')}>
                     <p className="text-xs text-muted-foreground mb-0.5">
-                      {task.timestamp} — {task.endTime}
+                      {task.timestamp} to {task.endTime}
                     </p>
                     <p className="font-semibold text-sm">{task.title}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">{task.description}</p>
@@ -292,7 +292,7 @@ export default function AgentTimesheetPage({ params }: { params: Promise<{ slug:
       {/* Daily Summary */}
       <Card className={cn('border-t-4', colors.border)}>
         <CardHeader>
-          <CardTitle className="text-base">Daily Summary — AI Generated</CardTitle>
+          <CardTitle className="text-base">Daily Summary (AI Generated)</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm leading-relaxed text-muted-foreground">

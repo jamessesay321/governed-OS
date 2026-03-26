@@ -125,7 +125,7 @@ export function ShareModal({ entityType, entityName, open, onClose, onShare }: S
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="Here's the Q2 scenario — need your input on hiring assumptions"
+            placeholder="Here's the Q2 scenario. Need your input on hiring assumptions"
             className="w-full rounded-md border bg-background px-3 py-2 text-sm resize-none h-20 outline-none focus:ring-1 focus:ring-primary"
           />
         </div>

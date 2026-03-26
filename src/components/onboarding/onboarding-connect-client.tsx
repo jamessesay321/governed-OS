@@ -80,7 +80,7 @@ export function OnboardingConnectClient({ isConnected, tenantName, interviewComp
                   </p>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     Each business connects their own Xero account. Your financial data is
-                    isolated to your organisation — no other users or businesses can access it.
+                    isolated to your organisation. No other users or businesses can access it.
                   </p>
                 </div>
               </div>
@@ -90,7 +90,7 @@ export function OnboardingConnectClient({ isConnected, tenantName, interviewComp
                 <h4 className="text-sm font-medium text-foreground">How it works:</h4>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">1</span>
-                  Click Connect — you&apos;ll be taken to Xero to authorise
+                  Click Connect. You&apos;ll be taken to Xero to authorise
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">2</span>
@@ -98,7 +98,7 @@ export function OnboardingConnectClient({ isConnected, tenantName, interviewComp
                 </div>
                 <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary">3</span>
-                  Your data syncs automatically — no manual uploads needed
+                  Your data syncs automatically. No manual uploads needed
                 </div>
               </div>
 

@@ -25,7 +25,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'custom-agent',
     title: 'Custom AI Agent',
-    description: 'A bespoke AI agent tailored to your specific business processes — from data collection to autonomous decision-making',
+    description: 'A bespoke AI agent tailored to your specific business processes, from data collection to autonomous decision-making',
     category: 'AI Agent',
     startingFrom: 299900,
     timeline: '2-4 weeks',
@@ -50,7 +50,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'automation',
     title: 'Business Automation',
-    description: 'End-to-end workflow automation — from invoice processing to report generation to client communications',
+    description: 'End-to-end workflow automation, from invoice processing to report generation to client communications',
     category: 'Automation',
     startingFrom: 249900,
     timeline: '2-4 weeks',
@@ -66,7 +66,7 @@ const TEMPLATES: ProjectTemplate[] = [
   {
     id: 'ai-model',
     title: 'Custom AI Model',
-    description: 'Train a model on your business data for forecasting, classification, or recommendation — fully governed',
+    description: 'Train a model on your business data for forecasting, classification, or recommendation, fully governed',
     category: 'AI Model',
     startingFrom: 499900,
     timeline: '4-8 weeks',
@@ -94,7 +94,7 @@ export default function CustomBuildsPage() {
   return (
     <IntelligencePageWrapper
       title="Custom AI Builds"
-      subtitle="Tell us what you need and we'll design a solution — fully governed and auditable"
+      subtitle="Tell us what you need and we'll design a solution, fully governed and auditable"
       section="custom-builds"
       showSearch={false}
       showRecommendations={false}

@@ -19,7 +19,7 @@ export default function AIOutputsPage() {
         <h3 className="text-lg font-semibold mb-2">No AI Outputs Yet</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
           When you generate reports, run scenarios, or get AI insights, they&apos;ll be automatically stored here
-          with full provenance tracking — including the AI model used, data version, and prompt.
+          with full provenance tracking, including the AI model used, data version, and prompt.
         </p>
       </div>
     </div>

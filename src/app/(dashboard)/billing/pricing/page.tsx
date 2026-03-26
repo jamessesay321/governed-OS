@@ -94,7 +94,7 @@ export default function PricingPage() {
           Estimate Your Monthly Investment
         </h1>
         <p className="mt-2 text-muted-foreground max-w-2xl">
-          Your platform access is included. Choose the modules and agents that fit your business —
+          Your platform access is included. Choose the modules and agents that fit your business.
           adjust anytime as you grow.
         </p>
       </div>

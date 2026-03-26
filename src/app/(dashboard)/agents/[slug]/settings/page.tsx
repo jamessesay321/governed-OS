@@ -242,21 +242,21 @@ export default function AgentSettingsPage({ params }: { params: Promise<{ slug: 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span className="text-sm">Bank Feed — Barclays</span>
+              <span className="text-sm">Bank Feed (Barclays)</span>
             </div>
             <span className="text-xs text-muted-foreground">Connected</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-gray-300" />
-              <span className="text-sm">Email — Gmail</span>
+              <span className="text-sm">Email (Gmail)</span>
             </div>
             <span className="text-xs text-muted-foreground">Not connected</span>
           </div>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <span className="h-2 w-2 rounded-full bg-gray-300" />
-              <span className="text-sm">Calendar — Google</span>
+              <span className="text-sm">Calendar (Google)</span>
             </div>
             <span className="text-xs text-muted-foreground">Not connected</span>
           </div>

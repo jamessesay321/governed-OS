@@ -164,7 +164,7 @@ export default function AgentBillingPage({ params }: { params: Promise<{ slug: s
                 {billingHistory.map((row) => (
                   <tr key={row.date} className="border-b last:border-b-0">
                     <td className="px-4 py-3 text-sm">{row.date}</td>
-                    <td className="px-4 py-3 text-sm">{agent.name} — {row.description}</td>
+                    <td className="px-4 py-3 text-sm">{agent.name}: {row.description}</td>
                     <td className="px-4 py-3 text-sm text-right">£{row.amount}</td>
                     <td className="px-4 py-3 text-right">
                       {row.status === 'paid' ? (
@@ -191,7 +191,7 @@ export default function AgentBillingPage({ params }: { params: Promise<{ slug: s
           <h3 className="text-base font-semibold">Save with the Agent Bundle</h3>
           <p className="text-sm text-muted-foreground">
             You&apos;re paying £{agent.monthlyPrice}/mo for {agent.name}. Get all 5 agents for
-            £499/mo — save £176.
+            £499/mo. Save £176.
           </p>
           <Button>Get the Bundle</Button>
         </CardContent>

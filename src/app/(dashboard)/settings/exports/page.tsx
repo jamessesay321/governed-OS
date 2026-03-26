@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 const EXPORT_OPTIONS = [
   {
     label: 'Financial Statements',
-    description: 'P&L, Balance Sheet, Cash Flow — last 12 months',
+    description: 'P&L, Balance Sheet, Cash Flow, last 12 months',
     formats: ['PDF', 'XLSX', 'CSV'],
     icon: '📊',
   },

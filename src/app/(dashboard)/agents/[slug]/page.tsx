@@ -116,7 +116,7 @@ const howItWorks = [
   {
     step: 3,
     title: 'Agent runs 24/7',
-    description: 'The agent works around the clock — monitoring, executing, and reporting. Review its activity feed anytime and adjust as needed.',
+    description: 'The agent works around the clock, monitoring, executing, and reporting. Review its activity feed anytime and adjust as needed.',
   },
 ];
 

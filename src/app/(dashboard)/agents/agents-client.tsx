@@ -226,7 +226,7 @@ export function AgentsClient({ orgId }: { orgId: string }) {
         </h1>
         <p className="mt-2 text-sm sm:text-base text-muted-foreground max-w-2xl">
           Autonomous agents that actively manage your business operations. Each agent works around
-          the clock — monitoring, executing, and reporting — so your team can focus on what matters.
+          the clock, monitoring, executing, and reporting, so your team can focus on what matters.
         </p>
       </div>
 
@@ -234,7 +234,7 @@ export function AgentsClient({ orgId }: { orgId: string }) {
       <section className="space-y-4">
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Included with Your Account</h2>
-          <p className="text-sm text-muted-foreground">Free forever — your always-on data guardian</p>
+          <p className="text-sm text-muted-foreground">Free forever. Your always-on data guardian</p>
         </div>
         <div className="grid gap-6 md:grid-cols-2">
           {freeAgents.map((agent) => (
@@ -247,7 +247,7 @@ export function AgentsClient({ orgId }: { orgId: string }) {
       <div className="rounded-xl border p-4 sm:p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-muted/30">
         <div>
           <p className="text-sm font-semibold text-foreground">
-            Bundle &amp; Save — All {paidAgents.length} specialist agents for{' '}
+            Bundle &amp; Save: All {paidAgents.length} specialist agents for{' '}
             <span className="text-lg font-bold">£{BUNDLE_PRICE}/month</span>
           </p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -286,7 +286,7 @@ export function AgentsClient({ orgId }: { orgId: string }) {
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Unlike passive dashboards and reports, agents <em>actively</em> take action on your
                 behalf. They monitor data streams, trigger workflows, send alerts, prepare
-                documents, and execute routine tasks — all without you lifting a finger.
+                documents, and execute routine tasks, without you lifting a finger.
               </p>
             </div>
             <div>
@@ -294,7 +294,7 @@ export function AgentsClient({ orgId }: { orgId: string }) {
                 Passive Tools
               </h3>
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Your existing dashboard, reports, and modules are powerful but reactive — they
+                Your existing dashboard, reports, and modules are powerful but reactive. They
                 show you data when you look. Agents complement these tools by working in the
                 background 24/7, turning insights into action automatically.
               </p>

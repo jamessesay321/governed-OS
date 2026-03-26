@@ -20,7 +20,7 @@ interface InvestorRoom {
 const DEMO_ROOMS: InvestorRoom[] = [
   {
     id: '1',
-    name: 'Series A — Exploration',
+    name: 'Series A: Exploration',
     template: 'detailed',
     status: 'active',
     investorCount: 3,
@@ -30,7 +30,7 @@ const DEMO_ROOMS: InvestorRoom[] = [
   },
   {
     id: '2',
-    name: 'Angel Round — Overview',
+    name: 'Angel Round: Overview',
     template: 'light',
     status: 'active',
     investorCount: 5,

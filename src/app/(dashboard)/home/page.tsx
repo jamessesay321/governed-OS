@@ -71,7 +71,7 @@ export default function HomePage() {
           Welcome to Grove
         </h1>
         <p className="mt-1 text-gray-500">
-          Good to see you — here's your command centre
+          Good to see you. Here's your command centre
         </p>
       </div>
 

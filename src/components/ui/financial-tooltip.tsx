@@ -22,7 +22,7 @@ const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> =
   },
   net_profit: {
     short: 'Revenue minus all costs',
-    detail: 'What\'s left after ALL costs — direct costs, operating expenses, overheads, and tax. This is the true bottom line of your business.',
+    detail: 'What\'s left after ALL costs: direct costs, operating expenses, overheads, and tax. This is the true bottom line of your business.',
   },
   net_margin: {
     short: 'Net profit as a % of revenue',
@@ -46,7 +46,7 @@ const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> =
   },
   ar_days: {
     short: 'Average days to collect payment',
-    detail: 'How long it typically takes customers to pay you after you invoice them. Also called DSO (Days Sales Outstanding). Lower is better — it means you\'re collecting cash faster.',
+    detail: 'How long it typically takes customers to pay you after you invoice them. Also called DSO (Days Sales Outstanding). Lower is better, it means you\'re collecting cash faster.',
   },
   ap_days: {
     short: 'Average days to pay suppliers',
@@ -74,11 +74,11 @@ const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> =
   },
   expenses: {
     short: 'All operating costs',
-    detail: 'The total cost of running your business — salaries, rent, marketing, insurance, software, travel, and all other overhead costs.',
+    detail: 'The total cost of running your business: salaries, rent, marketing, insurance, software, travel, and all other overhead costs.',
   },
   cost_of_sales: {
     short: 'Direct costs of delivering your product/service',
-    detail: 'Costs directly tied to producing what you sell — materials, direct labour, subcontractor costs. Also called COGS (Cost of Goods Sold).',
+    detail: 'Costs directly tied to producing what you sell: materials, direct labour, subcontractor costs. Also called COGS (Cost of Goods Sold).',
   },
   variance: {
     short: 'Difference between actual and expected',
@@ -90,7 +90,7 @@ const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> =
   },
   quick_ratio: {
     short: 'Acid test of liquidity',
-    detail: 'Cash plus receivables divided by current liabilities. More conservative than current ratio — excludes inventory. Above 1.0 is healthy.',
+    detail: 'Cash plus receivables divided by current liabilities. More conservative than current ratio, excludes inventory. Above 1.0 is healthy.',
   },
   debt_to_equity: {
     short: 'How leveraged the business is',
@@ -98,7 +98,7 @@ const FINANCIAL_DEFINITIONS: Record<string, { short: string; detail: string }> =
   },
   cash_conversion_cycle: {
     short: 'Speed of cash cycling through the business',
-    detail: 'AR Days minus AP Days. Lower is better — means you collect from customers faster than you pay suppliers.',
+    detail: 'AR Days minus AP Days. Lower is better, means you collect from customers faster than you pay suppliers.',
   },
 };
 
@@ -143,7 +143,7 @@ export function FinancialTooltip({ term, children, className = '', orgId, curren
         setAiExplanation(data.explanation);
       }
     } catch {
-      // Silently fail — static definition still shows
+      // Silently fail.static definition still shows
     } finally {
       setLoading(false);
     }
