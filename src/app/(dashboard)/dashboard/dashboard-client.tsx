@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { KPICards } from '@/components/dashboard/kpi-cards';
 import { PnLTable } from '@/components/dashboard/pnl-table';
 import { PeriodSelector } from '@/components/dashboard/period-selector';
@@ -15,7 +16,11 @@ import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
 import { ProposalWidget } from '@/components/dashboard/proposal-widget';
 import { Celebration } from '@/components/ui/celebration';
 import { Button } from '@/components/ui/button';
-import { BarChart3, TrendingUp, Target, Sparkles, FileText, PieChart } from 'lucide-react';
+import { VoiceInput } from '@/components/ui/voice-input';
+import {
+  BarChart3, TrendingUp, Target, Sparkles, FileText, PieChart,
+  Settings2, Lightbulb, ShoppingCart, Megaphone, Briefcase, LayoutDashboard,
+} from 'lucide-react';
 import Link from 'next/link';
 import { WelcomeIllustration } from '@/components/ui/illustrations';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
@@ -23,6 +28,8 @@ import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { NumberLegend } from '@/components/data-primitives';
 import { ActivityFeed } from '@/components/collaboration';
+import type { DashboardTemplate } from '@/lib/dashboard/templates';
+import type { DashboardRecommendations } from './page';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -31,16 +38,37 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-const QUICK_ACTIONS = [
-  { label: 'View P&L', href: '/financials', icon: PieChart },
-  { label: 'Check KPIs', href: '/kpi', icon: Target },
-  { label: 'Run Scenario', href: '/scenarios', icon: TrendingUp },
-  { label: 'Generate Report', href: '/reports', icon: FileText },
-  { label: 'Ask AI', href: '/intelligence', icon: Sparkles },
-];
+// Quick actions adapt based on business context
+function getQuickActions(context: BusinessContext) {
+  const base = [
+    { label: 'View P&L', href: '/financials', icon: PieChart },
+    { label: 'Check KPIs', href: '/kpi', icon: Target },
+    { label: 'Run Scenario', href: '/scenarios', icon: TrendingUp },
+    { label: 'Generate Report', href: '/reports', icon: FileText },
+    { label: 'Ask AI', href: '/intelligence', icon: Sparkles },
+  ];
 
-function getContextualInsight(pnl?: PnLSummary, previousPnl?: PnLSummary | null): string | null {
+  // Add context-specific actions
+  if (context.isEcommerce) {
+    base.push({ label: 'Sales Data', href: '/modules', icon: ShoppingCart });
+  }
+  if (context.isSaaS) {
+    base.push({ label: 'MRR Metrics', href: '/kpi', icon: TrendingUp });
+  }
+  if (context.challenges?.length) {
+    base.push({ label: 'View Playbook', href: '/playbook', icon: Lightbulb });
+  }
+
+  return base.slice(0, 7); // Cap at 7 for layout
+}
+
+function getContextualInsight(
+  pnl?: PnLSummary,
+  previousPnl?: PnLSummary | null,
+  context?: BusinessContext
+): string | null {
   if (!pnl || !previousPnl) return null;
+
   if (pnl.revenue > 0 && previousPnl.revenue > 0) {
     const change = ((pnl.revenue - previousPnl.revenue) / previousPnl.revenue) * 100;
     if (change > 0) return `Your revenue is up ${change.toFixed(0)}% this period. Nice work.`;
@@ -58,6 +86,17 @@ function hasMinRole(userRole: Role, minRole: Role): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole];
 }
 
+type BusinessContext = {
+  industry: string;
+  interviewCompleted: boolean;
+  isEcommerce: boolean;
+  isSaaS: boolean;
+  isServices: boolean;
+  companyName: string;
+  challenges: string[];
+  goals: string[];
+};
+
 interface DashboardClientProps {
   orgId: string;
   periods: string[];
@@ -73,6 +112,53 @@ interface DashboardClientProps {
   } | null;
   role: string;
   displayName: string;
+  template: DashboardTemplate;
+  recommendations: DashboardRecommendations;
+  businessContext: BusinessContext;
+}
+
+// Recommended sections based on industry
+function getRecommendedSections(context: BusinessContext) {
+  const sections: Array<{ title: string; desc: string; href: string; icon: React.ElementType; color: string }> = [];
+
+  if (context.isEcommerce) {
+    sections.push({
+      title: 'E-Commerce Analytics',
+      desc: 'Track GMV, AOV, and repeat purchase rates from your sales data.',
+      href: '/modules',
+      icon: ShoppingCart,
+      color: 'bg-orange-50 border-orange-200 text-orange-700',
+    });
+    sections.push({
+      title: 'Marketing Dashboard',
+      desc: 'Connect your social channels to see engagement and ROI in one place.',
+      href: '/marketing',
+      icon: Megaphone,
+      color: 'bg-pink-50 border-pink-200 text-pink-700',
+    });
+  }
+
+  if (context.isSaaS) {
+    sections.push({
+      title: 'SaaS Metrics Suite',
+      desc: 'MRR, ARR, churn, NRR, CAC, and LTV calculated automatically.',
+      href: '/kpi',
+      icon: TrendingUp,
+      color: 'bg-violet-50 border-violet-200 text-violet-700',
+    });
+  }
+
+  if (context.isServices) {
+    sections.push({
+      title: 'Project Billing',
+      desc: 'Track utilisation rates and project margins across your team.',
+      href: '/modules',
+      icon: Briefcase,
+      color: 'bg-blue-50 border-blue-200 text-blue-700',
+    });
+  }
+
+  return sections;
 }
 
 export function DashboardClient({
@@ -84,6 +170,9 @@ export function DashboardClient({
   lastSync,
   role,
   displayName,
+  template,
+  recommendations,
+  businessContext,
 }: DashboardClientProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
   const [drillSection, setDrillSection] = useState<PnLSection | null>(null);
@@ -91,7 +180,7 @@ export function DashboardClient({
   const [showCelebration, setShowCelebration] = useState(false);
   const pnl = pnlByPeriod[selectedPeriod];
 
-  // Celebrate on first visit (once per session)
+  // Celebrate on first visit
   useEffect(() => {
     const key = 'dashboard-celebrated';
     if (!sessionStorage.getItem(key)) {
@@ -100,7 +189,6 @@ export function DashboardClient({
     }
   }, []);
 
-  // Get previous period P&L for trend comparison
   const periodIdx = periods.indexOf(selectedPeriod);
   const previousPeriod = periodIdx < periods.length - 1 ? periods[periodIdx + 1] : null;
   const previousPnl = previousPeriod ? pnlByPeriod[previousPeriod] : null;
@@ -110,12 +198,20 @@ export function DashboardClient({
   const canConnect = hasMinRole(userRole, 'admin');
 
   const firstName = displayName?.split(' ')[0] || 'there';
+  const quickActions = getQuickActions(businessContext);
+  const recommendedSections = getRecommendedSections(businessContext);
+
+  // Voice search handler
+  const handleVoiceSearch = (text: string) => {
+    // Navigate to intelligence with the voice query
+    window.location.href = `/intelligence?q=${encodeURIComponent(text)}`;
+  };
 
   if (!pnl || periods.length === 0) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">{getGreeting()}, {firstName}</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">{getGreeting()}, {firstName}</h2>
           <p className="text-sm text-muted-foreground mt-1">Here&apos;s your financial overview.</p>
         </div>
 
@@ -149,22 +245,33 @@ export function DashboardClient({
     setDrillSection(section);
   }
 
-  const insight = getContextualInsight(pnl, previousPnl);
+  const insight = getContextualInsight(pnl, previousPnl, businessContext);
+
+  // Build the widget order from the template
+  const widgetOrder = template.widgets.map((w) => w.type);
 
   return (
     <div className="space-y-6">
       <Celebration trigger={showCelebration} />
 
-      {/* Greeting + Period */}
+      {/* Greeting + Context Badge + Period */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold">{getGreeting()}, {firstName}</h2>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h2 className="text-xl sm:text-2xl font-bold">{getGreeting()}, {firstName}</h2>
+            {businessContext.industry && (
+              <Badge variant="secondary" className="text-[10px] font-normal">
+                {businessContext.industry}
+              </Badge>
+            )}
+          </div>
           {insight && (
             <p className="text-sm text-muted-foreground mt-0.5">{insight}</p>
           )}
           <DataFreshness lastSyncAt={lastSync?.completedAt ?? null} />
         </div>
         <div className="flex items-center gap-2">
+          <VoiceInput onTranscript={handleVoiceSearch} label="Ask a question" />
           {previousPnl && (
             <Button
               variant="outline"
@@ -172,9 +279,15 @@ export function DashboardClient({
               onClick={() => setShowVariance(true)}
             >
               <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
-              Variance
+              <span className="hidden sm:inline">Variance</span>
             </Button>
           )}
+          <Link href="/dashboard/widgets">
+            <Button variant="outline" size="sm">
+              <Settings2 className="mr-1.5 h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Customise</span>
+            </Button>
+          </Link>
           <PeriodSelector
             periods={periods}
             selected={selectedPeriod}
@@ -183,9 +296,9 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Quick Actions (context-aware) */}
       <div className="flex flex-wrap gap-2">
-        {QUICK_ACTIONS.map(({ label, href, icon: Icon }) => (
+        {quickActions.map(({ label, href, icon: Icon }) => (
           <Link
             key={label}
             href={href}
@@ -197,34 +310,72 @@ export function DashboardClient({
         ))}
       </div>
 
+      {/* Recommended Sections (industry-specific) */}
+      {recommendedSections.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {recommendedSections.map((section) => (
+            <Link key={section.href + section.title} href={section.href}>
+              <Card className={`border ${section.color} hover:shadow-md transition-shadow cursor-pointer`}>
+                <CardContent className="flex items-start gap-3 p-4">
+                  <section.icon className="h-5 w-5 mt-0.5 shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold">{section.title}</p>
+                    <p className="text-xs opacity-80 mt-0.5">{section.desc}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {/* KPI Recommendation Banner (if interview completed and recs exist) */}
+      {recommendations.kpis.length > 0 && recommendations.reasoning && recommendations.reasoning !== 'Default recommendations.' && (
+        <Card className="border-indigo-200 bg-indigo-50/50">
+          <CardContent className="flex items-start gap-3 p-4">
+            <Lightbulb className="h-5 w-5 text-indigo-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-indigo-900">Personalised for your business</p>
+              <p className="text-xs text-indigo-700 mt-0.5">{recommendations.reasoning}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Data type legend */}
       <NumberLegend />
 
-      {/* Narrative Summary:AI-generated insight leads the dashboard */}
-      <NarrativeSummary orgId={orgId} period={selectedPeriod} />
+      {/* Dynamic widget rendering based on template */}
+      {widgetOrder.includes('narrative_summary') && (
+        <NarrativeSummary orgId={orgId} period={selectedPeriod} />
+      )}
 
       {/* KPI Cards with trend comparison */}
-      <KPICards
-        revenue={pnl.revenue}
-        grossProfit={pnl.grossProfit}
-        expenses={pnl.expenses}
-        netProfit={pnl.netProfit}
-        previousRevenue={previousPnl?.revenue}
-        previousGrossProfit={previousPnl?.grossProfit}
-        previousExpenses={previousPnl?.expenses}
-        previousNetProfit={previousPnl?.netProfit}
-      />
+      {widgetOrder.includes('kpi_cards') && (
+        <KPICards
+          revenue={pnl.revenue}
+          grossProfit={pnl.grossProfit}
+          expenses={pnl.expenses}
+          netProfit={pnl.netProfit}
+          previousRevenue={previousPnl?.revenue}
+          previousGrossProfit={previousPnl?.grossProfit}
+          previousExpenses={previousPnl?.expenses}
+          previousNetProfit={previousPnl?.netProfit}
+        />
+      )}
 
+      {/* P&L + Sidebar */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* P&L Table with clickable sections */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Profit & Loss</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <PnLTable pnl={pnl} onSectionClick={handleSectionClick} />
-          </CardContent>
-        </Card>
+        {widgetOrder.includes('pnl_table') && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle>Profit & Loss</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <PnLTable pnl={pnl} onSectionClick={handleSectionClick} />
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-4">
           <SyncStatus
@@ -238,13 +389,18 @@ export function DashboardClient({
         </div>
       </div>
 
-      {/* Waterfall Chart:Revenue to Net Profit bridge */}
-      <WaterfallChart pnl={pnl} />
+      {/* Waterfall Chart */}
+      {widgetOrder.includes('waterfall_chart') && (
+        <WaterfallChart pnl={pnl} />
+      )}
 
       {/* Activity Feed */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Activity</CardTitle>
+          <Link href="/home/activity" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+            View all
+          </Link>
         </CardHeader>
         <CardContent>
           <ActivityFeed compact />

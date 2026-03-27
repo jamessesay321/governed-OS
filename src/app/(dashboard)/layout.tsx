@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { Sidebar } from '@/components/layout/sidebar';
+import { MobileSidebarToggle } from '@/components/layout/mobile-sidebar';
 import { Header, MobileQuickActions } from '@/components/layout/header';
 import { DemoBanner } from '@/components/demo/demo-banner';
 import { UserProvider } from '@/components/providers/user-context';
@@ -33,14 +34,25 @@ export default async function DashboardLayout({
     <UserProvider value={{ userId, orgId, role, displayName, orgName }}>
       <CurrencyProvider>
         <div className="flex h-screen">
-          <Sidebar />
+          {/* Desktop sidebar - hidden on mobile */}
+          <div className="hidden md:block">
+            <Sidebar />
+          </div>
           <div className="flex flex-1 flex-col overflow-hidden">
             {isDemoMode && <DemoBanner />}
-            <Header
-              displayName={displayName}
-              orgName={orgName}
-              role={role}
-            />
+            <div className="flex items-center">
+              {/* Mobile hamburger toggle */}
+              <div className="md:hidden pl-3 shrink-0">
+                <MobileSidebarToggle />
+              </div>
+              <div className="flex-1 min-w-0">
+                <Header
+                  displayName={displayName}
+                  orgName={orgName}
+                  role={role}
+                />
+              </div>
+            </div>
             <main className="flex-1 overflow-y-auto p-6">{children}</main>
           </div>
           <MobileQuickActions />

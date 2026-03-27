@@ -8,7 +8,8 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user) return redirect('/login');
+  // Not logged in — show the landing page
+  if (!user) return redirect('/landing');
 
   // Check if org has completed onboarding
   const { data: profile } = await supabase
@@ -17,7 +18,7 @@ export default async function Home() {
     .eq('id', user.id)
     .single();
 
-  if (!profile) return redirect('/login');
+  if (!profile) return redirect('/landing');
 
   try {
     const service = await createServiceClient();

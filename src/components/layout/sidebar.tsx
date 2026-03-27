@@ -88,6 +88,19 @@ const navigation: NavGroup[] = [
     href: '/assumptions',
     children: [],
   },
+  // ── PROCUREMENT ──
+  {
+    group: 'Procurement',
+    icon: 'ShoppingCart',
+    href: '/procurement',
+    children: [
+      { href: '/procurement/overview', label: 'Overview' },
+      { href: '/procurement/suppliers', label: 'Suppliers' },
+      { href: '/procurement/rfq', label: 'RFQ' },
+      { href: '/procurement/spend', label: 'Spend Analytics' },
+      { href: '/procurement/approvals', label: 'Approvals' },
+    ],
+  },
   // ── ANALYTICS ──
   {
     group: 'Variance',
@@ -110,6 +123,15 @@ const navigation: NavGroup[] = [
     ],
   },
   {
+    group: 'Spreadsheets',
+    icon: 'Sheet',
+    href: '/spreadsheets',
+    children: [
+      { href: '/spreadsheets/workspace', label: 'Workspace' },
+      { href: '/spreadsheets/templates', label: 'Templates' },
+    ],
+  },
+  {
     group: 'Intelligence',
     icon: 'Lightbulb',
     href: '/intelligence',
@@ -117,6 +139,18 @@ const navigation: NavGroup[] = [
       { href: '/intelligence', label: 'AI Insights' },
       { href: '/intelligence/anomalies', label: 'Anomalies' },
       { href: '/intelligence/trends', label: 'Trends' },
+    ],
+  },
+  {
+    group: 'Marketing',
+    icon: 'Megaphone',
+    href: '/marketing',
+    children: [
+      { href: '/marketing/overview', label: 'Overview' },
+      { href: '/marketing/organic', label: 'Organic Social' },
+      { href: '/marketing/paid', label: 'Paid Ads' },
+      { href: '/marketing/seo', label: 'SEO' },
+      { href: '/marketing/content', label: 'Content Calendar' },
     ],
   },
   {
@@ -197,16 +231,26 @@ const navigation: NavGroup[] = [
       { href: '/ai-solutions/packages', label: 'Packages' },
     ],
   },
-  // ── EXTERNAL SHARING ──
+  // ── DATA & INVESTORS ──
   {
-    group: 'Investor Portal',
-    icon: 'Globe',
-    href: '/investor-portal',
+    group: 'Data Commerce',
+    icon: 'Database',
+    href: '/data-commerce',
     children: [
-      { href: '/investor-portal', label: 'Active Rooms' },
-      { href: '/investor-portal/builder', label: 'Room Builder' },
-      { href: '/investor-portal/analytics', label: 'Engagement Analytics' },
-      { href: '/investor-portal/readiness', label: 'AI Readiness Check' },
+      { href: '/data-commerce/overview', label: 'Overview' },
+      { href: '/data-commerce/products', label: 'Data Products' },
+      { href: '/data-commerce/compliance', label: 'GDPR Compliance' },
+      { href: '/data-commerce/pricing', label: 'Pricing & Distribution' },
+    ],
+  },
+  {
+    group: 'Investors',
+    icon: 'Briefcase',
+    href: '/investors',
+    children: [
+      { href: '/investors', label: 'Dashboard' },
+      { href: '/investors/updates', label: 'Updates' },
+      { href: '/investors/documents', label: 'Document Vault' },
     ],
   },
   // ── MARKETPLACE ──
@@ -282,6 +326,17 @@ const navigation: NavGroup[] = [
     href: '/audit',
     children: [],
   },
+  // ── DATA MANAGEMENT ──
+  {
+    group: 'Data Management',
+    icon: 'ShieldCheck',
+    href: '/staging',
+    children: [
+      { href: '/staging', label: 'Staging' },
+      { href: '/staging?tab=account-mapping', label: 'Account Mapping' },
+      { href: '/staging?tab=checkpoints', label: 'Checkpoints' },
+    ],
+  },
   // ── SETUP ──
   {
     group: 'Integrations',
@@ -354,10 +409,22 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
     </svg>
   ),
+  ShieldCheck: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4" />
+    </svg>
+  ),
   FileText: (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 16h6M9 12h6" />
+    </svg>
+  ),
+  Sheet: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <rect x="3" y="3" width="18" height="18" rx="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9h18M3 15h18M9 3v18M15 3v18" />
     </svg>
   ),
   Lightbulb: (
@@ -368,6 +435,12 @@ const icons: Record<string, React.ReactNode> = {
   Activity: (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M22 12h-4l-3 9L9 3l-3 9H2" />
+    </svg>
+  ),
+  Megaphone: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 11l18-5v12L3 13v-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M11.6 16.8a3 3 0 11-5.8-1.6" />
     </svg>
   ),
   GitCompare: (
@@ -467,6 +540,32 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75a4.5 4.5 0 01-4.884 4.484c-1.076-.091-2.264.071-2.95.904l-7.152 8.684a2.548 2.548 0 11-3.586-3.586l8.684-7.152c.833-.686.995-1.874.904-2.95a4.5 4.5 0 016.336-4.486l-3.276 3.276a3.004 3.004 0 002.25 2.25l3.276-3.276c.256.565.398 1.192.398 1.852z" />
     </svg>
   ),
+  ShoppingCart: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <circle cx="9" cy="21" r="1" />
+      <circle cx="20" cy="21" r="1" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M1 1h4l2.68 13.39a2 2 0 002 1.61h9.72a2 2 0 002-1.61L23 6H6" />
+    </svg>
+  ),
+  Database: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <ellipse cx="12" cy="5" rx="9" ry="3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M21 12c0 1.66-4.03 3-9 3s-9-1.34-9-3" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5" />
+    </svg>
+  ),
+  Briefcase: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+    </svg>
+  ),
+  Globe: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <circle cx="12" cy="12" r="10" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+    </svg>
+  ),
   ChevronDown: (
     <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
@@ -481,21 +580,29 @@ const icons: Record<string, React.ReactNode> = {
 const sectionBreaks: Record<number, string> = {
   0: 'GET STARTED',
   2: 'OVERVIEW',
-  5: 'ANALYTICS',
-  9: 'STRATEGY',
-  11: 'OUTPUTS',
-  14: 'GROWTH',
-  16: 'MARKETPLACE',
-  21: 'GOVERNANCE',
-  24: 'SETUP',
-  26: 'ADMIN',
+  6: 'PROCUREMENT',
+  7: 'ANALYTICS',
+  13: 'STRATEGY',
+  15: 'OUTPUTS',
+  18: 'GROWTH',
+  20: 'DATA & INVESTORS',
+  22: 'MARKETPLACE',
+  27: 'GOVERNANCE',
+  30: 'DATA MANAGEMENT',
+  31: 'SETUP',
+  33: 'ADMIN',
 };
 
 /* ------------------------------------------------------------------ */
 /*  Sidebar Component                                                 */
 /* ------------------------------------------------------------------ */
 
-export function Sidebar() {
+interface SidebarProps {
+  className?: string;
+  onClose?: () => void;
+}
+
+export function Sidebar({ className, onClose }: SidebarProps = {}) {
   const pathname = usePathname();
 
   // Track which groups are expanded
@@ -518,7 +625,7 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r bg-muted/30 overflow-y-auto">
+    <aside className={cn("flex h-full w-64 flex-col border-r bg-muted/30 overflow-y-auto", className)}>
       {/* Logo / Brand */}
       <Link href="/home" className="flex h-14 items-center border-b px-6 hover:bg-muted/50 transition-colors">
         <div className="flex items-center gap-2">
