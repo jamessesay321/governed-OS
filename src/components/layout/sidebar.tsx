@@ -25,7 +25,7 @@ interface NavGroup {
 }
 
 const navigation: NavGroup[] = [
-  // ── HOME ──
+  // ── GET STARTED ──
   {
     group: 'Home',
     icon: 'Home',
@@ -47,7 +47,7 @@ const navigation: NavGroup[] = [
     ],
   },
 
-  // ── CORE FINANCE ──
+  // ── OVERVIEW ──
   {
     group: 'Dashboard',
     icon: 'BarChart3',
@@ -82,18 +82,6 @@ const navigation: NavGroup[] = [
       { href: '/kpi/custom', label: 'Custom KPIs' },
     ],
   },
-
-  // ── ANALYSIS ──
-  {
-    group: 'Intelligence',
-    icon: 'Lightbulb',
-    href: '/intelligence',
-    children: [
-      { href: '/intelligence', label: 'AI Insights' },
-      { href: '/intelligence/anomalies', label: 'Anomalies' },
-      { href: '/intelligence/trends', label: 'Trends' },
-    ],
-  },
   {
     group: 'Variance',
     icon: 'GitCompare',
@@ -104,6 +92,8 @@ const navigation: NavGroup[] = [
       { href: '/variance/drill-down', label: 'Drill-Down' },
     ],
   },
+
+  // ── ANALYTICS ──
   {
     group: 'Graph Studio',
     icon: 'TrendingUp',
@@ -123,8 +113,6 @@ const navigation: NavGroup[] = [
       { href: '/spreadsheets/templates', label: 'Templates' },
     ],
   },
-
-  // ── PLANNING ──
   {
     group: 'Forecast',
     icon: 'TrendingUp',
@@ -146,6 +134,18 @@ const navigation: NavGroup[] = [
     icon: 'Sliders',
     href: '/assumptions',
     children: [],
+  },
+
+  // ── STRATEGY ──
+  {
+    group: 'Intelligence',
+    icon: 'Lightbulb',
+    href: '/intelligence',
+    children: [
+      { href: '/intelligence', label: 'AI Insights' },
+      { href: '/intelligence/anomalies', label: 'Anomalies' },
+      { href: '/intelligence/trends', label: 'Trends' },
+    ],
   },
   {
     group: 'Playbook',
@@ -169,18 +169,6 @@ const navigation: NavGroup[] = [
       { href: '/marketing/paid', label: 'Paid Ads' },
       { href: '/marketing/seo', label: 'SEO' },
       { href: '/marketing/content', label: 'Content Calendar' },
-    ],
-  },
-  {
-    group: 'Procurement',
-    icon: 'ShoppingCart',
-    href: '/procurement',
-    children: [
-      { href: '/procurement/overview', label: 'Overview' },
-      { href: '/procurement/suppliers', label: 'Suppliers' },
-      { href: '/procurement/rfq', label: 'RFQ' },
-      { href: '/procurement/spend', label: 'Spend Analytics' },
-      { href: '/procurement/approvals', label: 'Approvals' },
     ],
   },
 
@@ -301,6 +289,20 @@ const navigation: NavGroup[] = [
       { href: '/governance?tab=privacy', label: 'Data & Privacy' },
       { href: '/governance?tab=compliance', label: 'Compliance' },
       { href: '/audit', label: 'Audit Log' },
+    ],
+  },
+
+  // ── PROCUREMENT (lower priority) ──
+  {
+    group: 'Procurement',
+    icon: 'ShoppingCart',
+    href: '/procurement',
+    children: [
+      { href: '/procurement/overview', label: 'Overview' },
+      { href: '/procurement/suppliers', label: 'Suppliers' },
+      { href: '/procurement/rfq', label: 'RFQ' },
+      { href: '/procurement/spend', label: 'Spend Analytics' },
+      { href: '/procurement/approvals', label: 'Approvals' },
     ],
   },
   {
@@ -563,19 +565,18 @@ const icons: Record<string, React.ReactNode> = {
 /* ------------------------------------------------------------------ */
 
 const sectionBreaks: Record<number, string> = {
-  0: 'GET STARTED',
-  2: 'OVERVIEW',
-  6: 'PROCUREMENT',
-  7: 'ANALYTICS',
-  13: 'STRATEGY',
-  15: 'OUTPUTS',
-  18: 'GROWTH',
-  20: 'DATA & INVESTORS',
-  22: 'MARKETPLACE',
-  27: 'GOVERNANCE',
-  30: 'DATA MANAGEMENT',
-  31: 'SETUP',
-  33: 'ADMIN',
+  0: 'GET STARTED',        // Home, Business Profile
+  2: 'OVERVIEW',           // Dashboard, Financials, KPIs, Variance
+  6: 'ANALYTICS',          // Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions
+  11: 'STRATEGY',          // Intelligence, Playbook
+  13: 'OPERATIONS',        // Marketing
+  14: 'REPORTING',         // Reports, Knowledge Vault
+  16: 'INVESTORS',         // Investor Portal
+  17: 'AI & AGENTS',       // AI Agents, AI Strategy
+  19: 'MARKETPLACE',       // Modules, Consultants, Custom AI Builds
+  22: 'DATA & GOVERNANCE', // Data Pipeline, Integrations, Trust Centre
+  25: 'PROCUREMENT',       // Procurement, Data Commerce
+  27: 'ADMIN',             // Billing & Plans, Settings, Roadmap, Help
 };
 
 /* ------------------------------------------------------------------ */

@@ -6,9 +6,7 @@ import { Header, MobileQuickActions } from '@/components/layout/header';
 import { DemoBanner } from '@/components/demo/demo-banner';
 import { UserProvider } from '@/components/providers/user-context';
 import { CurrencyProvider } from '@/components/providers/currency-context';
-import { AskGrove } from '@/components/ui/ask-grove';
-// CommandPalette available at @/components/command-palette/command-palette
-// Header already has Cmd+K search built in
+// Ask Grove functionality is merged into the CMD+K search bar in the Header
 
 export default async function DashboardLayout({
   children,
@@ -57,7 +55,6 @@ export default async function DashboardLayout({
             <main className="flex-1 overflow-y-auto p-6">{children}</main>
           </div>
           <MobileQuickActions />
-          <AskGrove />
         </div>
       </CurrencyProvider>
     </UserProvider>
