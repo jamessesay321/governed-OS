@@ -32,6 +32,9 @@ type Props = {
   xeroConnected: boolean;
   xeroTenantName: string | null;
   xeroConfigured: boolean;
+  qboConnected: boolean;
+  qboCompanyName: string | null;
+  qboConfigured: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -52,7 +55,7 @@ function buildCatalogue(xeroConnected: boolean): Integration[] {
   return [
     // Accounting
     { name: 'Xero', category: 'Accounting', initials: 'Xe', colour: '#13B5EA', description: 'Cloud accounting for small businesses. Popular in UK, AU, NZ.', status: xeroConnected ? 'connected' : 'available', connectHref: '/api/xero/connect' },
-    { name: 'QuickBooks', category: 'Accounting', initials: 'QB', colour: '#2CA01C', description: 'The most widely used accounting software worldwide.', status: 'coming_soon' },
+    { name: 'QuickBooks', category: 'Accounting', initials: 'QB', colour: '#2CA01C', description: 'The most widely used accounting software worldwide.', status: xeroConnected ? 'coming_soon' as const : 'available' as const, connectHref: '/api/quickbooks/connect' },
     { name: 'Sage', category: 'Accounting', initials: 'Sa', colour: '#00D639', description: 'Enterprise accounting and payroll. Strong in UK and Europe.', status: 'coming_soon' },
     { name: 'FreshBooks', category: 'Accounting', initials: 'FB', colour: '#0075DD', description: 'Simple invoicing and accounting for freelancers and small teams.', status: 'coming_soon' },
 
@@ -155,10 +158,16 @@ function AccountingSoftwareSection({
   xeroConnected,
   xeroTenantName,
   xeroConfigured,
+  qboConnected,
+  qboCompanyName,
+  qboConfigured,
 }: {
   xeroConnected: boolean;
   xeroTenantName: string | null;
   xeroConfigured: boolean;
+  qboConnected: boolean;
+  qboCompanyName: string | null;
+  qboConfigured: boolean;
 }) {
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notified, setNotified] = useState<Record<string, boolean>>({});
@@ -179,10 +188,10 @@ function AccountingSoftwareSection({
       initials: 'QB',
       colour: '#2CA01C',
       description: 'The most widely used accounting software worldwide.',
-      status: 'coming_soon' as const,
-      connectHref: null,
-      configured: false,
-      tenantName: null,
+      status: qboConnected ? ('connected' as const) : ('available' as const),
+      connectHref: '/api/quickbooks/connect',
+      configured: qboConfigured,
+      tenantName: qboCompanyName,
     },
     {
       name: 'Sage',
@@ -424,7 +433,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroConfigured }: Props) {
+export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroConfigured, qboConnected, qboCompanyName, qboConfigured }: Props) {
   const searchParams = useSearchParams();
   const errorMessage = searchParams.get('message');
   const [activeFilter, setActiveFilter] = useState<'All' | Category>('All');
@@ -476,6 +485,9 @@ export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroC
         xeroConnected={xeroConnected}
         xeroTenantName={xeroTenantName}
         xeroConfigured={xeroConfigured}
+        qboConnected={qboConnected}
+        qboCompanyName={qboCompanyName}
+        qboConfigured={qboConfigured}
       />
 
       {/* Data Completeness */}
