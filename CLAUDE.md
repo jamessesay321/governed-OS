@@ -53,6 +53,7 @@ Skipping this gate is a framework violation. If you catch yourself coding withou
 Before any task is marked done:
 - [ ] Build passes (`npm run build`)
 - [ ] Every page has a working back button AND a way to reach the home/dashboard page
+- [ ] Never ask the user for information already collected. Always pre-populate forms from existing data (org name, website, interview, scan results)
 - [ ] No `as any` in new/modified code
 - [ ] Zod validation on all API inputs
 - [ ] RLS policies cover any new tables/columns

@@ -1,11 +1,12 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { InterviewPageClient } from './interview-page-client';
 
 export default async function InterviewPage() {
-  const { orgId } = await getUserProfile();
+  const { orgId, orgName } = await getUserProfile();
 
   const service = await createServiceClient();
+  const untyped = await createUntypedServiceClient();
 
   // Check if interview was already completed
   let interviewCompleted = false;
@@ -65,6 +66,54 @@ export default async function InterviewPage() {
       }
     } catch {
       // Table may not exist or no profile
+    }
+  }
+
+  // If no profile yet, pre-populate from org name and any onboarding scan data
+  if (!existingProfile) {
+    // Start with what we already know from signup
+    const fallback: Record<string, unknown> = {
+      company_name: orgName || '',
+    };
+
+    // Check if there was a website scan during onboarding
+    try {
+      const { data: scanData } = await untyped
+        .from('business_context_profiles')
+        .select('raw_interview_data')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const scan = (scanData as any)?.raw_interview_data?.scan;
+      if (scan) {
+        if (scan.industry) fallback.industry = scan.industry;
+        if (scan.website_url) fallback.website = scan.website_url;
+        if (scan.business_type) fallback.description = scan.business_type;
+      }
+    } catch {
+      // No scan data
+    }
+
+    // Check org metadata for website
+    try {
+      const { data: orgData } = await untyped
+        .from('organisations')
+        .select('website, industry')
+        .eq('id', orgId)
+        .maybeSingle();
+
+      if (orgData) {
+        if ((orgData as any).website && !fallback.website) fallback.website = (orgData as any).website;
+        if ((orgData as any).industry && !fallback.industry) fallback.industry = (orgData as any).industry;
+      }
+    } catch {
+      // Column may not exist
+    }
+
+    if (fallback.company_name || fallback.website || fallback.industry) {
+      existingProfile = fallback;
     }
   }
 
