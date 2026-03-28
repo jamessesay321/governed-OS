@@ -41,10 +41,20 @@ export default async function OnboardingLayout({
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Minimal header — logo only */}
+      {/* Header with navigation */}
       <header className="border-b">
-        <div className="mx-auto max-w-4xl px-6 py-4">
-          <h1 className="text-lg font-semibold">Grove</h1>
+        <div className="mx-auto max-w-4xl px-6 py-4 flex items-center justify-between">
+          <a href="/home" className="text-lg font-semibold hover:opacity-80 transition-opacity">
+            Grove
+          </a>
+          <div className="flex items-center gap-4">
+            <a
+              href="/home"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Go to dashboard
+            </a>
+          </div>
         </div>
       </header>
 
