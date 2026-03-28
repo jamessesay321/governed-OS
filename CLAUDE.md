@@ -5,8 +5,14 @@ Before writing any code, read and follow these governing documents:
 - **[docs/MASTER_AGENT_RULES.md](docs/MASTER_AGENT_RULES.md)** — Core mission, non-negotiable principles, AI guardrails, multi-tenancy enforcement, development philosophy, phase gates, and definition of success. This is the source of truth for WHAT we build and WHY.
 - **[docs/WORKFLOW_ORCHESTRATION.md](docs/WORKFLOW_ORCHESTRATION.md)** — Structured engineering protocol for HOW we build. Plan-first workflow, subagent strategy, self-improvement loop, verification checklist, and task management discipline.
 - **[docs/FPA_COMPETITIVE_AUDIT.md](docs/FPA_COMPETITIVE_AUDIT.md)** — Deep feature-by-feature analysis of 10 FP&A competitors (DataRails, Fathom, Syft, Jirav, Runway, Mosaic, Puzzle, Planful, Vena, Cube) plus Kevin Steel's Inflectiv Intelligence. Reference before building any sprint.
+- **[docs/BUILD_VS_BUY_ANALYSIS.md](docs/BUILD_VS_BUY_ANALYSIS.md)** — Build vs buy decisions for 11 platform areas (integrations, PDF, email, payments, search, charts, storage, real-time, jobs, monitoring, AI). Phased recommendations with cost analysis. Check BEFORE adding any new vendor or building infrastructure.
+- **[docs/STRATEGIC_MILESTONES.md](docs/STRATEGIC_MILESTONES.md)** — Phase triggers and milestone conditions. Check at every sprint to see if any trigger has fired. When a trigger fires, read the corresponding BUILD_VS_BUY section and plan the change.
+- **[docs/FPA_INTEGRATION_LANDSCAPE.md](docs/FPA_INTEGRATION_LANDSCAPE.md)** — How all 10 competitors handle integrations, unified API provider comparison, and Grove's integration architecture roadmap.
 
 Every feature, fix, or refactor must satisfy both documents. If in doubt, ask: "Does this increase institutional trust?"
+
+### Build vs Buy Gate (MANDATORY)
+Before building ANY infrastructure feature (email sending, PDF generation, payment processing, search, background jobs, etc.), check `docs/BUILD_VS_BUY_ANALYSIS.md` first. If a third-party service is recommended for the current phase, use it instead of building custom. Do not re-invent what a $15/mo service does better.
 
 ---
 
