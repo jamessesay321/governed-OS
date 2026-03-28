@@ -1,4 +1,4 @@
-import { createClient, createServiceClient } from '@/lib/supabase/server';
+import { createClient, createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
 export default async function Home() {
@@ -20,23 +20,70 @@ export default async function Home() {
 
   if (!profile) return redirect('/landing');
 
+  const orgId = profile.org_id;
+
+  // Strategy: check multiple signals for onboarding completion.
+  // 1. The has_completed_onboarding flag (if the column exists)
+  // 2. Existence of interview data or demo data (fallback)
+  // This prevents returning users from being sent back to /welcome.
+
   try {
     const service = await createServiceClient();
-    const { data: org } = await service
-      .from('organisations')
-      .select('has_completed_onboarding')
-      .eq('id', profile.org_id)
-      .single();
+    const untyped = await createUntypedServiceClient();
 
-    // TODO: Regenerate Supabase types after migration to remove this cast
-    if (org && (org as unknown as Record<string, unknown>).has_completed_onboarding) {
-      return redirect('/home');
+    // Check 1: explicit flag
+    let flagSet = false;
+    try {
+      const { data: org } = await service
+        .from('organisations')
+        .select('has_completed_onboarding')
+        .eq('id', orgId)
+        .single();
+
+      if (org && (org as unknown as Record<string, unknown>).has_completed_onboarding) {
+        flagSet = true;
+      }
+    } catch {
+      // Column may not exist in DB yet
     }
 
-    // New user — send to onboarding
+    if (flagSet) return redirect('/home');
+
+    // Check 2: has interview data (completed the interview flow)
+    const { data: interview } = await untyped
+      .from('business_context_profiles')
+      .select('id')
+      .eq('org_id', orgId)
+      .limit(1)
+      .maybeSingle();
+
+    if (interview) return redirect('/home');
+
+    // Check 3: has financial data (connected Xero and synced)
+    const { data: financials } = await service
+      .from('normalised_financials')
+      .select('id')
+      .eq('org_id', orgId)
+      .limit(1)
+      .maybeSingle();
+
+    if (financials) return redirect('/home');
+
+    // Check 4: has demo data (chose the demo path)
+    const { data: accounts } = await service
+      .from('chart_of_accounts')
+      .select('id')
+      .eq('org_id', orgId)
+      .limit(1)
+      .maybeSingle();
+
+    if (accounts) return redirect('/home');
+
+    // Genuinely new user — send to onboarding
     return redirect('/welcome');
   } catch {
-    // Column may not exist yet — assume onboarding not done
+    // Safety fallback: if everything fails, check for any profile data
+    // rather than trapping users in a welcome loop
     return redirect('/welcome');
   }
 }

@@ -10,6 +10,16 @@ Every feature, fix, or refactor must satisfy both documents. If in doubt, ask: "
 
 ---
 
+## Skills & Lessons Capture (MANDATORY)
+
+After building or modifying any significant feature in Grove, check `~/research-analyst/` for a matching skill folder.
+- If one exists, update `skill.md` or add a `lesson-{client}.md` file
+- If none exists, create a new skill folder
+- Always update `~/research-analyst/index.md` when adding new skills
+- Skill folders live at `~/research-analyst/{skill-name}/` with `skill.md`, `lesson-{client}.md`, and `agent-config.md` inside
+
+---
+
 ## Session Start Checklist
 
 At the start of every session:
