@@ -25,7 +25,7 @@ interface NavGroup {
 }
 
 const navigation: NavGroup[] = [
-  // ── GET STARTED ──
+  // ── HOME ──
   {
     group: 'Home',
     icon: 'Home',
@@ -46,14 +46,14 @@ const navigation: NavGroup[] = [
       { href: '/interview/documents', label: 'Documents' },
     ],
   },
-  // ── OVERVIEW ──
+
+  // ── CORE FINANCE ──
   {
     group: 'Dashboard',
     icon: 'BarChart3',
     href: '/dashboard',
     children: [
       { href: '/dashboard', label: 'CEO Overview' },
-      { href: '/dashboard/financial-health', label: 'Financial Health' },
       { href: '/dashboard/revenue', label: 'Revenue' },
       { href: '/dashboard/profitability', label: 'Profitability' },
       { href: '/dashboard/widgets', label: 'Widgets' },
@@ -82,26 +82,18 @@ const navigation: NavGroup[] = [
       { href: '/kpi/custom', label: 'Custom KPIs' },
     ],
   },
+
+  // ── ANALYSIS ──
   {
-    group: 'Assumptions',
-    icon: 'Sliders',
-    href: '/assumptions',
-    children: [],
-  },
-  // ── PROCUREMENT ──
-  {
-    group: 'Procurement',
-    icon: 'ShoppingCart',
-    href: '/procurement',
+    group: 'Intelligence',
+    icon: 'Lightbulb',
+    href: '/intelligence',
     children: [
-      { href: '/procurement/overview', label: 'Overview' },
-      { href: '/procurement/suppliers', label: 'Suppliers' },
-      { href: '/procurement/rfq', label: 'RFQ' },
-      { href: '/procurement/spend', label: 'Spend Analytics' },
-      { href: '/procurement/approvals', label: 'Approvals' },
+      { href: '/intelligence', label: 'AI Insights' },
+      { href: '/intelligence/anomalies', label: 'Anomalies' },
+      { href: '/intelligence/trends', label: 'Trends' },
     ],
   },
-  // ── ANALYTICS ──
   {
     group: 'Variance',
     icon: 'GitCompare',
@@ -131,39 +123,8 @@ const navigation: NavGroup[] = [
       { href: '/spreadsheets/templates', label: 'Templates' },
     ],
   },
-  {
-    group: 'Intelligence',
-    icon: 'Lightbulb',
-    href: '/intelligence',
-    children: [
-      { href: '/intelligence', label: 'AI Insights' },
-      { href: '/intelligence/anomalies', label: 'Anomalies' },
-      { href: '/intelligence/trends', label: 'Trends' },
-    ],
-  },
-  {
-    group: 'Marketing',
-    icon: 'Megaphone',
-    href: '/marketing',
-    children: [
-      { href: '/marketing/overview', label: 'Overview' },
-      { href: '/marketing/organic', label: 'Organic Social' },
-      { href: '/marketing/paid', label: 'Paid Ads' },
-      { href: '/marketing/seo', label: 'SEO' },
-      { href: '/marketing/content', label: 'Content Calendar' },
-    ],
-  },
-  {
-    group: 'Financial Health',
-    icon: 'HeartPulse',
-    href: '/health',
-    children: [
-      { href: '/health', label: 'Health Score' },
-      { href: '/health/benchmarks', label: 'Benchmarks' },
-      { href: '/health/recommendations', label: 'Recommendations' },
-    ],
-  },
-  // ── STRATEGY ──
+
+  // ── PLANNING ──
   {
     group: 'Forecast',
     icon: 'TrendingUp',
@@ -181,6 +142,12 @@ const navigation: NavGroup[] = [
     ],
   },
   {
+    group: 'Assumptions',
+    icon: 'Sliders',
+    href: '/assumptions',
+    children: [],
+  },
+  {
     group: 'Playbook',
     icon: 'Compass',
     href: '/playbook',
@@ -190,7 +157,34 @@ const navigation: NavGroup[] = [
       { href: '/playbook/history', label: 'History' },
     ],
   },
-  // ── OUTPUTS ──
+
+  // ── OPERATIONS ──
+  {
+    group: 'Marketing',
+    icon: 'Megaphone',
+    href: '/marketing',
+    children: [
+      { href: '/marketing/overview', label: 'Overview' },
+      { href: '/marketing/organic', label: 'Organic Social' },
+      { href: '/marketing/paid', label: 'Paid Ads' },
+      { href: '/marketing/seo', label: 'SEO' },
+      { href: '/marketing/content', label: 'Content Calendar' },
+    ],
+  },
+  {
+    group: 'Procurement',
+    icon: 'ShoppingCart',
+    href: '/procurement',
+    children: [
+      { href: '/procurement/overview', label: 'Overview' },
+      { href: '/procurement/suppliers', label: 'Suppliers' },
+      { href: '/procurement/rfq', label: 'RFQ' },
+      { href: '/procurement/spend', label: 'Spend Analytics' },
+      { href: '/procurement/approvals', label: 'Approvals' },
+    ],
+  },
+
+  // ── REPORTING ──
   {
     group: 'Reports',
     icon: 'FileText',
@@ -212,46 +206,10 @@ const navigation: NavGroup[] = [
       { href: '/vault/ai-outputs', label: 'AI Outputs' },
     ],
   },
+
+  // ── INVESTOR PORTAL ──
   {
-    group: 'AI Stack Audit',
-    icon: 'Search',
-    href: '/ai-solutions/audit',
-    free: true,
-    children: [],
-  },
-  // ── GROWTH ──
-  {
-    group: 'Roadmap',
-    icon: 'Rocket',
-    href: '/roadmap',
-    free: true,
-    children: [],
-  },
-  {
-    group: 'AI Strategy',
-    icon: 'Sparkles',
-    href: '/ai-solutions',
-    children: [
-      { href: '/ai-solutions', label: 'Overview' },
-      { href: '/proposal', label: 'Your Proposal' },
-      { href: '/ai-solutions/integration', label: 'Integration' },
-      { href: '/ai-solutions/packages', label: 'Packages' },
-    ],
-  },
-  // ── DATA & INVESTORS ──
-  {
-    group: 'Data Commerce',
-    icon: 'Database',
-    href: '/data-commerce',
-    children: [
-      { href: '/data-commerce/overview', label: 'Overview' },
-      { href: '/data-commerce/products', label: 'Data Products' },
-      { href: '/data-commerce/compliance', label: 'GDPR Compliance' },
-      { href: '/data-commerce/pricing', label: 'Pricing & Distribution' },
-    ],
-  },
-  {
-    group: 'Investors',
+    group: 'Investor Portal',
     icon: 'Briefcase',
     href: '/investors',
     children: [
@@ -260,6 +218,30 @@ const navigation: NavGroup[] = [
       { href: '/investors/documents', label: 'Document Vault' },
     ],
   },
+
+  // ── AI & AGENTS ──
+  {
+    group: 'AI Agents',
+    icon: 'Bot',
+    href: '/agents',
+    children: [
+      { href: '/agents', label: 'Overview' },
+      { href: '/agents/hub', label: 'Agent Hub' },
+      { href: '/agents/activity', label: 'Agent Activity' },
+    ],
+  },
+  {
+    group: 'AI Strategy',
+    icon: 'Sparkles',
+    href: '/ai-solutions',
+    children: [
+      { href: '/ai-solutions', label: 'Overview' },
+      { href: '/ai-solutions/audit', label: 'AI Stack Audit', free: true },
+      { href: '/proposal', label: 'Your Proposal' },
+      { href: '/ai-solutions/packages', label: 'Packages' },
+    ],
+  },
+
   // ── MARKETPLACE ──
   {
     group: 'Modules',
@@ -269,17 +251,6 @@ const navigation: NavGroup[] = [
       { href: '/modules', label: 'Marketplace' },
       { href: '/modules/active', label: 'Active Modules' },
       { href: '/modules/credits', label: 'Credits' },
-      { href: '/modules/browse', label: 'Browse by Category' },
-    ],
-  },
-  {
-    group: 'AI Agents',
-    icon: 'Bot',
-    href: '/agents',
-    children: [
-      { href: '/agents', label: 'Overview' },
-      { href: '/agents/hub', label: 'Agent Hub' },
-      { href: '/agents/activity', label: 'Agent Activity' },
     ],
   },
   {
@@ -300,6 +271,51 @@ const navigation: NavGroup[] = [
       { href: '/custom-builds/projects', label: 'My Projects' },
     ],
   },
+
+  // ── DATA & GOVERNANCE ──
+  {
+    group: 'Data Pipeline',
+    icon: 'ShieldCheck',
+    href: '/staging',
+    children: [
+      { href: '/staging', label: 'Staging & Waiting Room' },
+      { href: '/staging?tab=account-mapping', label: 'Account Mapping' },
+      { href: '/staging?tab=checkpoints', label: 'Checkpoints' },
+      { href: '/integrations/health', label: 'Data Health' },
+    ],
+  },
+  {
+    group: 'Integrations',
+    icon: 'Plug',
+    href: '/integrations',
+    children: [
+      { href: '/integrations', label: 'Connected' },
+      { href: '/integrations/catalogue', label: 'Catalogue' },
+    ],
+  },
+  {
+    group: 'Trust Centre',
+    icon: 'Lock',
+    href: '/governance',
+    children: [
+      { href: '/governance?tab=privacy', label: 'Data & Privacy' },
+      { href: '/governance?tab=compliance', label: 'Compliance' },
+      { href: '/audit', label: 'Audit Log' },
+    ],
+  },
+  {
+    group: 'Data Commerce',
+    icon: 'Database',
+    href: '/data-commerce',
+    children: [
+      { href: '/data-commerce/overview', label: 'Overview' },
+      { href: '/data-commerce/products', label: 'Data Products' },
+      { href: '/data-commerce/compliance', label: 'GDPR Compliance' },
+      { href: '/data-commerce/pricing', label: 'Pricing' },
+    ],
+  },
+
+  // ── SETTINGS ──
   {
     group: 'Billing & Plans',
     icon: 'CreditCard',
@@ -310,52 +326,6 @@ const navigation: NavGroup[] = [
       { href: '/billing/referrals', label: 'Referrals' },
     ],
   },
-  // ── GOVERNANCE ──
-  {
-    group: 'Trust Centre',
-    icon: 'Lock',
-    href: '/governance',
-    children: [
-      { href: '/governance?tab=privacy', label: 'Data & Privacy' },
-      { href: '/governance?tab=activity', label: 'Agent Activity' },
-      { href: '/governance?tab=compliance', label: 'Compliance' },
-      { href: '/governance?tab=preferences', label: 'Preferences' },
-    ],
-  },
-  {
-    group: 'AI Stack Review',
-    icon: 'Brain',
-    href: '/governance/ai-review',
-    children: [],
-  },
-  {
-    group: 'Audit Log',
-    icon: 'Shield',
-    href: '/audit',
-    children: [],
-  },
-  // ── DATA MANAGEMENT ──
-  {
-    group: 'Data Management',
-    icon: 'ShieldCheck',
-    href: '/staging',
-    children: [
-      { href: '/staging', label: 'Staging' },
-      { href: '/staging?tab=account-mapping', label: 'Account Mapping' },
-      { href: '/staging?tab=checkpoints', label: 'Checkpoints' },
-    ],
-  },
-  // ── SETUP ──
-  {
-    group: 'Integrations',
-    icon: 'Plug',
-    href: '/integrations',
-    children: [
-      { href: '/integrations', label: 'Connected' },
-      { href: '/integrations/catalogue', label: 'Catalogue' },
-      { href: '/integrations/health', label: 'Data Health' },
-    ],
-  },
   {
     group: 'Settings',
     icon: 'Settings',
@@ -364,10 +334,17 @@ const navigation: NavGroup[] = [
       { href: '/settings', label: 'Account' },
       { href: '/settings/team', label: 'Team & Roles' },
       { href: '/settings/preferences', label: 'Preferences' },
+      { href: '/settings/blueprints', label: 'Industry Blueprints' },
       { href: '/settings/exports', label: 'Data Exports' },
     ],
   },
-  // ── ADMIN ──
+  {
+    group: 'Roadmap',
+    icon: 'Rocket',
+    href: '/roadmap',
+    free: true,
+    children: [],
+  },
   {
     group: 'Help & Support',
     icon: 'Help',
