@@ -37,7 +37,7 @@ export function OnboardingConnectClient({ isConnected, tenantName, interviewComp
           </div>
           {!connected && (
             <button
-              onClick={() => router.push('/welcome/complete')}
+              onClick={() => router.push('/welcome/interview')}
               className="text-sm text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline flex-shrink-0"
             >
               Skip for now
@@ -121,14 +121,14 @@ export function OnboardingConnectClient({ isConnected, tenantName, interviewComp
           </Card>
         )}
 
-        {/* Next button */}
+        {/* Next button — go to interview now that we have data */}
         <div className="flex justify-end">
           <Button
             size="lg"
-            onClick={() => router.push('/welcome/complete')}
+            onClick={() => router.push('/welcome/interview')}
             className="px-8"
           >
-            {connected ? 'Next' : 'Continue without Xero'}
+            {connected ? 'Continue to interview' : 'Continue without Xero'}
           </Button>
         </div>
       </div>

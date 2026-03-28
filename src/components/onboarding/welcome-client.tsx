@@ -50,7 +50,7 @@ export function WelcomeClient({ displayName, orgName }: Props) {
 
   async function handleScanAndContinue() {
     if (!websiteUrl.trim() && !businessDescription.trim()) {
-      router.push('/welcome/interview');
+      router.push('/welcome/connect');
       return;
     }
 
@@ -72,16 +72,16 @@ export function WelcomeClient({ displayName, orgName }: Props) {
       if (res.ok && data.scan) {
         setScanResult(data.scan);
         setTimeout(() => {
-          router.push('/welcome/interview');
+          router.push('/welcome/connect');
         }, 2500);
       } else {
         setScanError(data.error || 'Scan failed. Continuing to interview');
         setTimeout(() => {
-          router.push('/welcome/interview');
+          router.push('/welcome/connect');
         }, 2000);
       }
     } catch {
-      router.push('/welcome/interview');
+      router.push('/welcome/connect');
     }
   }
 
@@ -253,11 +253,11 @@ export function WelcomeClient({ displayName, orgName }: Props) {
             <div className="space-y-2.5">
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">1</span>
-                <span><span className="font-medium text-foreground">Connect Xero</span> (~2 min). We pull your data securely</span>
+                <span><span className="font-medium text-foreground">Connect your data</span> (~2 min). Link Xero, Shopify, or upload files</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">2</span>
-                <span><span className="font-medium text-foreground">AI interview</span> (~10 min). We learn about your business goals</span>
+                <span><span className="font-medium text-foreground">AI interview</span> (~10 min). Now we have your numbers, we can ask the right questions</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-medium text-primary flex-shrink-0">3</span>

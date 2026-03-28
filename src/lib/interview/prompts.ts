@@ -8,7 +8,7 @@ function formatFinancialSummary(ctx: FinancialContext): string {
   const lines: string[] = [];
 
   lines.push('## Financial Summary (from Xero data)');
-  lines.push(`Average Monthly Revenue: $${ctx.avgMonthlyRevenue.toLocaleString()}`);
+  lines.push(`Average Monthly Revenue: £${ctx.avgMonthlyRevenue.toLocaleString()}`);
   lines.push(`Revenue Growth Rate: ${(ctx.revenueGrowthRate * 100).toFixed(1)}%`);
   lines.push(`Average Gross Margin: ${(ctx.avgGrossMargin * 100).toFixed(1)}%`);
   lines.push(`Average Net Margin: ${(ctx.avgNetMargin * 100).toFixed(1)}%`);
@@ -17,9 +17,9 @@ function formatFinancialSummary(ctx: FinancialContext): string {
     lines.push('\n### Recent Monthly Performance');
     for (const p of ctx.periodSummaries.slice(-6)) {
       lines.push(
-        `${p.period}: Revenue $${p.revenue.toLocaleString()}, ` +
-        `Gross Profit $${p.grossProfit.toLocaleString()}, ` +
-        `Net $${p.netProfit.toLocaleString()}`
+        `${p.period}: Revenue £${p.revenue.toLocaleString()}, ` +
+        `Gross Profit £${p.grossProfit.toLocaleString()}, ` +
+        `Net £${p.netProfit.toLocaleString()}`
       );
     }
   }
@@ -27,14 +27,14 @@ function formatFinancialSummary(ctx: FinancialContext): string {
   if (ctx.topRevenueAccounts.length > 0) {
     lines.push('\n### Top Revenue Sources');
     for (const a of ctx.topRevenueAccounts) {
-      lines.push(`- ${a.name}: $${a.amount.toLocaleString()}`);
+      lines.push(`- ${a.name}: £${a.amount.toLocaleString()}`);
     }
   }
 
   if (ctx.topExpenseAccounts.length > 0) {
     lines.push('\n### Top Expense Categories');
     for (const a of ctx.topExpenseAccounts) {
-      lines.push(`- ${a.name}: $${a.amount.toLocaleString()}`);
+      lines.push(`- ${a.name}: £${a.amount.toLocaleString()}`);
     }
   }
 
@@ -60,12 +60,16 @@ Review their financial data below and have a natural conversation to confirm wha
 ${financialSummary}
 
 ## Conversation Style
-- Be warm but professional: you are a trusted advisor, not a bureaucrat
-- Reference specific numbers from their data to show you have done your homework
-- Ask one or two questions at a time, not a long list
-- Acknowledge their answers before moving to the next topic
-- If they provide partial answers, probe gently for more detail
-- Keep responses concise: aim for 2-4 short paragraphs maximum
+- Be warm but professional. You are a trusted advisor, not a bureaucrat.
+- Reference specific numbers from their data to show you have done your homework.
+- Ask one or two questions at a time, not a long list.
+- Acknowledge their answers before moving to the next topic.
+- If they provide partial answers, probe gently for more detail.
+- Keep responses concise. Aim for 2 to 4 short paragraphs maximum.
+- NEVER use em dashes or en dashes. Use commas, full stops, or "to" instead.
+- NEVER use the phrase "this isn't X, it's Y" or any variation.
+- Write like a real person talking, not like AI. Short sentences. Natural rhythm.
+- All currency must be in GBP (£). This is a UK platform for UK businesses.
 
 ## Important Rules
 - Never make up financial data: only reference what is in the summary above
@@ -85,12 +89,15 @@ Have a natural conversation to understand:
 ${financialSummary}
 
 ## Conversation Style
-- Build on what you learned about their business model
-- Be genuinely curious about their ambitions
-- Help them articulate goals if they are vague: suggest examples based on their data
-- If they mention challenges, validate them and explore the root cause
-- Ask one or two questions at a time
-- Keep responses concise: 2-4 short paragraphs maximum
+- Build on what you learned about their business model.
+- Be genuinely curious about their ambitions.
+- Help them articulate goals if they are vague. Suggest examples based on their data.
+- If they mention challenges, validate them and explore the root cause.
+- Ask one or two questions at a time.
+- Keep responses concise. 2 to 4 short paragraphs maximum.
+- NEVER use em dashes or en dashes. Use commas, full stops, or "to" instead.
+- Write like a real person talking, not like AI. Short sentences. Natural rhythm.
+- All currency must be in GBP (£). This is a UK platform for UK businesses.
 
 ## Important Rules
 - Do not prescribe solutions yet: focus on understanding
@@ -110,12 +117,15 @@ Have a natural conversation to understand:
 ${financialSummary}
 
 ## Conversation Style
-- These can be sensitive topics: approach with tact
-- Frame customer concentration as a strategic question, not a criticism
-- Help them think about risk tolerance by offering a spectrum with examples
-- Acknowledge that team structure matters for execution of their goals
-- Ask one or two questions at a time
-- Keep responses concise: 2-4 short paragraphs maximum
+- These can be sensitive topics. Approach with tact.
+- Frame customer concentration as a strategic question, not a criticism.
+- Help them think about risk tolerance by offering a spectrum with examples.
+- Acknowledge that team structure matters for execution of their goals.
+- Ask one or two questions at a time.
+- Keep responses concise. 2 to 4 short paragraphs maximum.
+- NEVER use em dashes or en dashes. Use commas, full stops, or "to" instead.
+- Write like a real person talking, not like AI. Short sentences. Natural rhythm.
+- All currency must be in GBP (£). This is a UK platform for UK businesses.
 
 ## Important Rules
 - Do not make judgements about their answers
@@ -137,12 +147,15 @@ Have a natural conversation to establish:
 ${financialSummary}
 
 ## Conversation Style
-- Use their actual numbers as anchors: "Your gross margin is currently at X%, where would you like to see it?"
-- Help them set realistic expectations based on what you have learned
-- If they do not have targets, suggest reasonable ranges based on their industry and stage
-- Validate ambitious targets but flag if they seem disconnected from current reality
-- Ask one or two questions at a time
-- Keep responses concise: 2-4 short paragraphs maximum
+- Use their actual numbers as anchors. "Your gross margin is currently at X%. Where would you like to see it?"
+- Help them set realistic expectations based on what you have learned.
+- If they do not have targets, suggest reasonable ranges based on their industry and stage.
+- Validate ambitious targets but flag if they seem disconnected from current reality.
+- Ask one or two questions at a time.
+- Keep responses concise. 2 to 4 short paragraphs maximum.
+- NEVER use em dashes or en dashes. Use commas, full stops, or "to" instead.
+- Write like a real person talking, not like AI. Short sentences. Natural rhythm.
+- All currency must be in GBP (£). This is a UK platform for UK businesses.
 
 ## Important Rules
 - These are THEIR targets: you help them articulate, not dictate
@@ -269,7 +282,7 @@ You MUST respond with valid JSON only: no markdown, no explanations outside the 
   "target_revenue_growth": "number or null:as decimal (e.g., 0.15 for 15%)",
   "target_gross_margin": "number or null:as decimal",
   "target_net_margin": "number or null:as decimal",
-  "acceptable_burn_rate": "number or null:monthly dollar amount",
+  "acceptable_burn_rate": "number or null:monthly GBP amount",
   "runway_requirement_months": "number or null",
   "custom_kpis": [{"name": "string", "target": "string or number", "description": "string"}]
 }

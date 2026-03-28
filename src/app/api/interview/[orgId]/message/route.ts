@@ -19,11 +19,9 @@ type Params = { params: Promise<{ orgId: string }> };
 
 const VALID_STAGES = [
   'business_model_confirmation',
-  'revenue_deep_dive',
-  'cost_structure',
-  'growth_goals',
-  'risk_and_challenges',
-  'team_and_operations',
+  'goals_and_priorities',
+  'contextual_enrichment',
+  'benchmarking_baseline',
 ] as const;
 
 const interviewMessageSchema = z.object({
