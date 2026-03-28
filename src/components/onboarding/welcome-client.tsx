@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,15 @@ type ScanResult = {
 export function WelcomeClient({ displayName, orgName }: Props) {
   const router = useRouter();
   const [path, setPath] = useState<'choice' | 'full-setup'>('choice');
+
+  async function handleSignOut() {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    );
+    await supabase.auth.signOut();
+    router.push('/login');
+  }
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [businessDescription, setBusinessDescription] = useState('');
   const [scanning, setScanning] = useState(false);
@@ -277,6 +287,25 @@ export function WelcomeClient({ displayName, orgName }: Props) {
   // Default: Two-path choice screen
   return (
     <div className="max-w-3xl mx-auto">
+      {/* Top nav with sign out and skip */}
+      <div className="flex items-center justify-between mb-8 -mt-4">
+        <button
+          onClick={() => router.push('/home')}
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Skip to dashboard
+        </button>
+        <div className="flex items-center gap-4">
+          <span className="text-sm text-muted-foreground">{displayName}</span>
+          <button
+            onClick={handleSignOut}
+            className="text-sm text-muted-foreground hover:text-red-600 transition-colors"
+          >
+            Sign out
+          </button>
+        </div>
+      </div>
+
       {/* Hero greeting */}
       <div className="text-center mb-10">
         <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary/10 mb-4">
