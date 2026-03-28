@@ -348,6 +348,38 @@ export async function runFullSync(
       metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, totalSynced },
     });
 
+    // Auto-map accounts after sync
+    try {
+      const { autoMapAccounts } = await import('@/lib/staging/account-mapper');
+      // Fetch synced accounts for mapping
+      const { data: syncedAccounts } = await supabase
+        .from('chart_of_accounts')
+        .select('code, name')
+        .eq('org_id', orgId);
+      const accountInputs = (syncedAccounts ?? []).map((a) => ({
+        code: a.code as string,
+        name: a.name as string,
+      }));
+      if (accountInputs.length > 0) {
+        await autoMapAccounts(orgId, accountInputs);
+      }
+    } catch (mapError) {
+      console.error('[xero/sync] Account mapping failed (non-blocking):', mapError);
+    }
+
+    // Create post-sync checkpoint
+    try {
+      const { createCheckpoint } = await import('@/lib/staging/checkpoints');
+      await createCheckpoint(orgId, 'post_sync', {
+        syncedAt: new Date().toISOString(),
+        accountsCount: accountsSynced,
+        transactionsCount: invoicesSynced + bankTxSynced,
+        normalisedCount: normalised,
+      });
+    } catch (cpError) {
+      console.error('[xero/sync] Checkpoint creation failed (non-blocking):', cpError);
+    }
+
     console.log(`[XERO SYNC] === Complete: ${totalSynced} total records, ${normalised} normalised ===`);
     return { success: true, recordsSynced: totalSynced };
   } catch (err) {

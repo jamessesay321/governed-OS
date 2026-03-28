@@ -6,6 +6,7 @@ import {
   storeBusinessProfile,
 } from '@/lib/interview/engine';
 import { generateRecommendations } from '@/lib/interview/recommendations';
+import { matchBlueprint } from '@/lib/interview/blueprint-matcher';
 import { logAudit } from '@/lib/audit/log';
 import { autoStoreToVault } from '@/lib/vault/auto-store';
 
@@ -55,6 +56,25 @@ export async function POST(request: Request, { params }: Params) {
     // Generate auto-suggested KPIs, dashboard layout, and playbook modules
     const recommendations = await generateRecommendations(extractedProfile);
 
+    // Match industry blueprint (best-effort, non-blocking)
+    let blueprintSuggestion: { slug: string; name: string; industry: string; matchScore: number; matchReason: string } | null = null;
+    try {
+      if (extractedProfile.industry) {
+        const match = await matchBlueprint(extractedProfile.industry);
+        if (match) {
+          blueprintSuggestion = {
+            slug: match.blueprint.slug,
+            name: match.blueprint.name,
+            industry: match.blueprint.industry,
+            matchScore: match.matchScore,
+            matchReason: match.matchReason,
+          };
+        }
+      }
+    } catch (bpError) {
+      console.error('[interview/complete] Blueprint matching failed (non-blocking):', bpError);
+    }
+
     await logAudit({
       orgId,
       userId: user.id,
@@ -67,6 +87,7 @@ export async function POST(request: Request, { params }: Params) {
         recommendedKPIs: recommendations.kpis.length,
         recommendedTemplate: recommendations.dashboard.template_id,
         recommendedModules: recommendations.playbook_modules.map((m) => m.module_slug),
+        suggestedBlueprint: blueprintSuggestion?.slug ?? null,
       },
     });
 
@@ -95,6 +116,7 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({
       profile: storedProfile,
       recommendations,
+      blueprintSuggestion,
     });
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {

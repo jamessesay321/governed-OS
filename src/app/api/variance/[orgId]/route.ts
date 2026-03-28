@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { calculateVariances } from '@/lib/variance/engine';
 import { z } from 'zod';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 
 // GET /api/variance/[orgId]?period=YYYY-MM-01: Get variance analysis (viewer+)
 export async function GET(
@@ -75,15 +78,34 @@ export async function POST(
       return `- ${v.name}: £${(v.current / 100).toFixed(2)} vs £${(v.previous / 100).toFixed(2)} (${direction}, ${pct}%)`;
     }).join('\n');
 
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'variance');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
     // Use the LLM to generate an explanation
     let explanation: string;
     try {
-      const { callLLM } = await import('@/lib/ai/llm');
-      const result = await callLLM({
+      const result = await callLLMCached({
         systemPrompt: 'You are a financial analyst. Given the top budget variances, provide a concise 2-3 sentence executive summary explaining the overall financial picture. Use plain English suitable for a business owner. Reference specific line items and amounts in pounds.',
         userMessage: `Top variances for this period:\n${lines}\n\nProvide an executive summary.`,
+        orgId,
       });
-      explanation = result;
+      explanation = result.response;
+      await trackTokenUsage(orgId, result.tokensUsed, 'variance');
     } catch {
       // Fallback if LLM call fails
       const topItem = variances[0];

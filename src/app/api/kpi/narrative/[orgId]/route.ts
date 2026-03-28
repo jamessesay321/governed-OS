@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { createServiceClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { z } from 'zod';
 
 const querySchema = z.object({
@@ -124,11 +126,32 @@ ${JSON.stringify(formatKPIs(currentKPIs), null, 2)}
 
 ${previousKPIs.length > 0 ? `Previous period (${previousPeriod}) KPIs:\n${JSON.stringify(formatKPIs(previousKPIs), null, 2)}` : 'No previous period data.'}`;
 
-    const responseText = await callLLM({
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'kpi-narrative');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
+    const llmResult = await callLLMCached({
       systemPrompt,
       userMessage,
+      orgId,
       temperature: 0.3,
     });
+    const responseText = llmResult.response;
+    await trackTokenUsage(orgId, llmResult.tokensUsed, 'kpi-narrative');
 
     let result: { narrative: string; reasoning: string; confidence: string };
     try {

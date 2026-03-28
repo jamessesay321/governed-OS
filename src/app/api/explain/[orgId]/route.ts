@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireRole } from '@/lib/supabase/roles';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { buildFinancialContext } from '@/lib/ai/financial-context';
 import { llmLimiter } from '@/lib/rate-limit';
 
@@ -78,11 +80,32 @@ ${input.context ? `Additional context: ${input.context}` : ''}
 Business financials:
 ${financialSummary}`;
 
-    const rawResponse = await callLLM({
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'explain');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
+    const llmResult = await callLLMCached({
       systemPrompt: EXPLAINER_PROMPT,
       userMessage,
+      orgId,
       temperature: 0.2,
     });
+    const rawResponse = llmResult.response;
+    await trackTokenUsage(orgId, llmResult.tokensUsed, 'explain');
 
     // Parse JSON response
     const fenceMatch = rawResponse.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);

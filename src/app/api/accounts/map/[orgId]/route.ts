@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { logAudit } from '@/lib/audit/log';
 import type { ChartOfAccount } from '@/types';
 import { z } from 'zod';
@@ -94,8 +96,26 @@ export async function GET(
       });
     }
 
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'accounts-map');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
     // Generate AI suggestions for unmapped accounts
-    const suggestions = await generateMappingSuggestions(unmappedAccounts);
+    const suggestions = await generateMappingSuggestions(unmappedAccounts, orgId);
 
     return NextResponse.json({
       mappings: existingMappings,
@@ -233,8 +253,26 @@ export async function PUT(
       return NextResponse.json({ message: 'All accounts already mapped', mapped: 0 });
     }
 
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'accounts-map');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
     // Generate AI suggestions
-    const suggestions = await generateMappingSuggestions(unmapped);
+    const suggestions = await generateMappingSuggestions(unmapped, orgId);
 
     // Save suggestions to DB (unconfirmed)
     let savedCount = 0;
@@ -291,7 +329,8 @@ export async function PUT(
  * Returns suggestions with confidence scores.
  */
 async function generateMappingSuggestions(
-  accounts: ChartOfAccount[]
+  accounts: ChartOfAccount[],
+  orgId: string
 ): Promise<
   Array<{
     code: string;
@@ -334,11 +373,14 @@ ${accountList}
 Output JSON schema:
 [{ "code": "string", "name": "string", "category": "string", "confidence": number, "reasoning": "string" }]`;
 
-  const responseText = await callLLM({
+  const llmResult = await callLLMCached({
     systemPrompt,
     userMessage,
+    orgId,
     temperature: 0.1,
   });
+  const responseText = llmResult.response;
+  await trackTokenUsage(orgId, llmResult.tokensUsed, 'accounts-map');
 
   try {
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);

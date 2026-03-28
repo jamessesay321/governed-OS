@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/supabase/roles';
 import { createClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { roundCurrency } from '@/lib/financial/normalise';
 import type { HealthCheckResult, HealthCheckCategory, TrafficLightStatus } from '@/types/playbook';
 
@@ -118,10 +120,28 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const categories = [profitability, liquidity, efficiency, growth];
     const overallStatus = categoryStatus(categories);
 
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'health-check');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const budgetOk = await hasBudgetRemaining(orgId);
+    if (!budgetOk) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
     // Generate AI narrative
     let aiNarrative = '';
     try {
-      aiNarrative = await callLLM({
+      const llmResult = await callLLMCached({
         systemPrompt: 'You are a concise financial analyst. Summarise the health check results in 2-3 sentences. Be professional and actionable.',
         userMessage: `Health Check Results:
 Profitability: ${profitability.status} (Gross Margin: ${grossMarginPct}%, Net Margin: ${netMarginPct}%)
@@ -129,7 +149,10 @@ Liquidity: ${liquidity.status} (Runway: ${runway} months, Burn Rate: ${burnRate}
 Efficiency: ${efficiency.status} (OpEx Ratio: ${opexRatio}%)
 Growth: ${growth.status} (Revenue Growth: ${revenueGrowth}%)
 Overall: ${overallStatus}`,
+        orgId,
       });
+      aiNarrative = llmResult.response;
+      await trackTokenUsage(orgId, llmResult.tokensUsed, 'health-check');
     } catch {
       aiNarrative = `Your financial health is ${overallStatus}. Gross margin is ${grossMarginPct}% and net margin is ${netMarginPct}%. Focus on improving the areas flagged amber or red.`;
     }

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 
 export async function POST(req: Request) {
   try {
@@ -10,11 +12,39 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get orgId from user profile
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('org_id')
+      .eq('id', user.id)
+      .single();
+    const orgId = userProfile?.org_id as string;
+
     const body = await req.json();
     const { prompt, chartType } = body as { prompt?: string; chartType?: string };
 
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+    }
+
+    // Rate limit + budget checks
+    if (orgId) {
+      const rateCheck = checkRateLimit(orgId, 'graphs-generate');
+      if (!rateCheck.allowed) {
+        const headers = getRateLimitHeaders(rateCheck);
+        return NextResponse.json(
+          { error: 'Rate limit exceeded. Please try again later.' },
+          { status: 429, headers }
+        );
+      }
+
+      const hasBudget = await hasBudgetRemaining(orgId);
+      if (!hasBudget) {
+        return NextResponse.json(
+          { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+          { status: 402 }
+        );
+      }
     }
 
     const systemPrompt = `You are a financial data visualization assistant for a business intelligence platform called Grove.
@@ -45,11 +75,14 @@ Rules:
       ? `Create a ${chartType} chart for: ${prompt.trim()}`
       : prompt.trim();
 
-    const rawResponse = await callLLM({
-      systemPrompt,
-      userMessage,
-      temperature: 0.3,
-    });
+    const llmResult = orgId
+      ? await callLLMCached({ systemPrompt, userMessage, orgId, temperature: 0.3 })
+      : { response: await (await import('@/lib/ai/llm')).callLLM({ systemPrompt, userMessage, temperature: 0.3 }), cached: false, tokensUsed: 0 };
+    const rawResponse = llmResult.response;
+
+    if (orgId) {
+      await trackTokenUsage(orgId, llmResult.tokensUsed, 'graphs-generate');
+    }
 
     // Strip markdown fences if the LLM wrapped the response
     let jsonStr = rawResponse.trim();

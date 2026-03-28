@@ -74,23 +74,20 @@ export async function POST(
       );
     }
 
-    const report = await generateReport(orgId, user.id, options);
+    const report = await generateReport(orgId, options.reportType, options.periodStart);
 
-    // Persist the report
+    // Persist the report to the legacy reports table
     const supabase = await createServiceClient();
     const { error: insertError } = await supabase.from('reports' as any).insert({
       id: report.id,
-      org_id: report.org_id,
-      report_type: report.report_type,
+      org_id: report.orgId,
+      report_type: report.templateId,
       title: report.title,
       status: report.status,
-      period_start: report.period_start,
-      period_end: report.period_end,
+      period_start: report.period,
+      period_end: report.period,
       sections: report.sections as unknown as Record<string, unknown>,
-      ai_commentary: report.ai_commentary,
-      generated_by: report.generated_by,
-      approved_by: report.approved_by,
-      pdf_url: report.pdf_url,
+      generated_by: report.generatedBy,
     });
 
     if (insertError) {
@@ -116,7 +113,7 @@ export async function POST(
       title: report.title,
       description: `${options.reportType} report for ${options.periodStart} to ${options.periodEnd}`,
       tags: [options.reportType, 'report', 'auto-generated'],
-      content: { sections: report.sections, ai_commentary: report.ai_commentary },
+      content: { sections: report.sections },
       provenance: { source_entity_type: 'report', source_entity_id: report.id },
       sourceEntityType: 'report',
       sourceEntityId: report.id,

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { createServiceClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { llmLimiter } from '@/lib/rate-limit';
 import { z } from 'zod';
@@ -160,11 +162,32 @@ ${currentPnL.sections
   .map(r => `- ${r.name} (${r.section}): £${Math.abs(r.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`)
   .join('\n')}`;
 
-    const responseText = await callLLM({
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'narrative');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
+    const llmResult = await callLLMCached({
       systemPrompt,
       userMessage,
+      orgId,
       temperature: 0.3,
     });
+    const responseText = llmResult.response;
+    await trackTokenUsage(orgId, llmResult.tokensUsed, 'narrative');
 
     // Parse JSON response
     let result: { narrative: string; reasoning: string; confidence: string };
