@@ -14,11 +14,15 @@ export default async function IntegrationsPage() {
     .eq('status', 'active')
     .single();
 
+  // Check if Xero credentials are configured server-side
+  const xeroConfigured = !!(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
+
   return (
     <IntegrationsClient
       orgId={orgId}
       xeroConnected={!!xeroConnection}
       xeroTenantName={(xeroConnection as Record<string, unknown>)?.tenant_name as string ?? null}
+      xeroConfigured={xeroConfigured}
     />
   );
 }

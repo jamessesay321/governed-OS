@@ -14,9 +14,14 @@ export async function GET(request: NextRequest) {
 
     // Validate Xero credentials are configured
     if (!process.env.XERO_CLIENT_ID || !process.env.XERO_CLIENT_SECRET) {
-      return NextResponse.redirect(
-        new URL('/xero?error=not_configured', request.url)
+      // Redirect to integrations page with clear error
+      const url = new URL('/integrations', request.url);
+      url.searchParams.set('error', 'xero_not_configured');
+      url.searchParams.set(
+        'message',
+        'Xero API credentials are not set up yet. Add XERO_CLIENT_ID and XERO_CLIENT_SECRET to your environment variables.'
       );
+      return NextResponse.redirect(url);
     }
 
     // Generate state parameter to prevent CSRF
@@ -32,13 +37,18 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(consentUrl);
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthorizationError') {
-      return NextResponse.redirect(
-        new URL('/xero?error=insufficient_role', request.url)
+      const url = new URL('/integrations', request.url);
+      url.searchParams.set('error', 'insufficient_role');
+      url.searchParams.set(
+        'message',
+        'You need admin permissions to connect Xero. Ask an admin to set up the connection.'
       );
+      return NextResponse.redirect(url);
     }
     console.error('[XERO CONNECT] Error:', err);
-    return NextResponse.redirect(
-      new URL('/xero?error=unexpected', request.url)
-    );
+    const url = new URL('/integrations', request.url);
+    url.searchParams.set('error', 'unexpected');
+    url.searchParams.set('message', 'Something went wrong. Please try again.');
+    return NextResponse.redirect(url);
   }
 }

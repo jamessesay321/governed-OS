@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -20,6 +22,7 @@ type Integration = {
   category: Category;
   initials: string;
   colour: string;
+  description: string;
   status: 'connected' | 'available' | 'coming_soon';
   connectHref?: string;
 };
@@ -28,6 +31,7 @@ type Props = {
   orgId: string;
   xeroConnected: boolean;
   xeroTenantName: string | null;
+  xeroConfigured: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -47,45 +51,45 @@ const CATEGORIES: Category[] = [
 function buildCatalogue(xeroConnected: boolean): Integration[] {
   return [
     // Accounting
-    { name: 'Xero', category: 'Accounting', initials: 'Xe', colour: '#13B5EA', status: xeroConnected ? 'connected' : 'available', connectHref: '/api/xero/connect' },
-    { name: 'QuickBooks', category: 'Accounting', initials: 'QB', colour: '#2CA01C', status: 'coming_soon' },
-    { name: 'Sage', category: 'Accounting', initials: 'Sa', colour: '#00D639', status: 'coming_soon' },
-    { name: 'FreshBooks', category: 'Accounting', initials: 'FB', colour: '#0075DD', status: 'coming_soon' },
+    { name: 'Xero', category: 'Accounting', initials: 'Xe', colour: '#13B5EA', description: 'Cloud accounting for small businesses. Popular in UK, AU, NZ.', status: xeroConnected ? 'connected' : 'available', connectHref: '/api/xero/connect' },
+    { name: 'QuickBooks', category: 'Accounting', initials: 'QB', colour: '#2CA01C', description: 'The most widely used accounting software worldwide.', status: 'coming_soon' },
+    { name: 'Sage', category: 'Accounting', initials: 'Sa', colour: '#00D639', description: 'Enterprise accounting and payroll. Strong in UK and Europe.', status: 'coming_soon' },
+    { name: 'FreshBooks', category: 'Accounting', initials: 'FB', colour: '#0075DD', description: 'Simple invoicing and accounting for freelancers and small teams.', status: 'coming_soon' },
 
     // Sales & CRM
-    { name: 'Salesforce', category: 'Sales & CRM', initials: 'SF', colour: '#00A1E0', status: 'coming_soon' },
-    { name: 'HubSpot', category: 'Sales & CRM', initials: 'HS', colour: '#FF7A59', status: 'coming_soon' },
-    { name: 'Pipedrive', category: 'Sales & CRM', initials: 'PD', colour: '#017737', status: 'coming_soon' },
-    { name: 'Zoho CRM', category: 'Sales & CRM', initials: 'ZC', colour: '#E42527', status: 'coming_soon' },
+    { name: 'Salesforce', category: 'Sales & CRM', initials: 'SF', colour: '#00A1E0', description: 'Enterprise CRM platform.', status: 'coming_soon' },
+    { name: 'HubSpot', category: 'Sales & CRM', initials: 'HS', colour: '#FF7A59', description: 'Inbound marketing, sales, and CRM.', status: 'coming_soon' },
+    { name: 'Pipedrive', category: 'Sales & CRM', initials: 'PD', colour: '#017737', description: 'Sales pipeline management.', status: 'coming_soon' },
+    { name: 'Zoho CRM', category: 'Sales & CRM', initials: 'ZC', colour: '#E42527', description: 'CRM for growing businesses.', status: 'coming_soon' },
 
     // Marketing
-    { name: 'Google Analytics', category: 'Marketing', initials: 'GA', colour: '#E37400', status: 'coming_soon' },
-    { name: 'HootSuite', category: 'Marketing', initials: 'HT', colour: '#143059', status: 'coming_soon' },
-    { name: 'Buffer', category: 'Marketing', initials: 'Bu', colour: '#168EEA', status: 'coming_soon' },
-    { name: 'Meta Ads', category: 'Marketing', initials: 'MA', colour: '#0081FB', status: 'coming_soon' },
+    { name: 'Google Analytics', category: 'Marketing', initials: 'GA', colour: '#E37400', description: 'Web analytics and reporting.', status: 'coming_soon' },
+    { name: 'HootSuite', category: 'Marketing', initials: 'HT', colour: '#143059', description: 'Social media management.', status: 'coming_soon' },
+    { name: 'Buffer', category: 'Marketing', initials: 'Bu', colour: '#168EEA', description: 'Social media scheduling.', status: 'coming_soon' },
+    { name: 'Meta Ads', category: 'Marketing', initials: 'MA', colour: '#0081FB', description: 'Facebook and Instagram advertising.', status: 'coming_soon' },
 
     // Social Media
-    { name: 'LinkedIn', category: 'Social Media', initials: 'Li', colour: '#0A66C2', status: 'coming_soon' },
-    { name: 'Facebook', category: 'Social Media', initials: 'Fb', colour: '#1877F2', status: 'coming_soon' },
-    { name: 'Instagram', category: 'Social Media', initials: 'Ig', colour: '#E4405F', status: 'coming_soon' },
-    { name: 'TikTok', category: 'Social Media', initials: 'TT', colour: '#000000', status: 'coming_soon' },
-    { name: 'YouTube', category: 'Social Media', initials: 'YT', colour: '#FF0000', status: 'coming_soon' },
-    { name: 'Pinterest', category: 'Social Media', initials: 'Pi', colour: '#E60023', status: 'coming_soon' },
+    { name: 'LinkedIn', category: 'Social Media', initials: 'Li', colour: '#0A66C2', description: 'Professional networking data.', status: 'coming_soon' },
+    { name: 'Facebook', category: 'Social Media', initials: 'Fb', colour: '#1877F2', description: 'Page insights and engagement.', status: 'coming_soon' },
+    { name: 'Instagram', category: 'Social Media', initials: 'Ig', colour: '#E4405F', description: 'Visual content analytics.', status: 'coming_soon' },
+    { name: 'TikTok', category: 'Social Media', initials: 'TT', colour: '#000000', description: 'Short-form video analytics.', status: 'coming_soon' },
+    { name: 'YouTube', category: 'Social Media', initials: 'YT', colour: '#FF0000', description: 'Video content analytics.', status: 'coming_soon' },
+    { name: 'Pinterest', category: 'Social Media', initials: 'Pi', colour: '#E60023', description: 'Visual discovery analytics.', status: 'coming_soon' },
 
     // ERP
-    { name: 'NetSuite', category: 'ERP', initials: 'NS', colour: '#1B3A55', status: 'coming_soon' },
-    { name: 'SAP Business One', category: 'ERP', initials: 'SP', colour: '#0FAAFF', status: 'coming_soon' },
-    { name: 'Microsoft Dynamics', category: 'ERP', initials: 'MD', colour: '#002050', status: 'coming_soon' },
+    { name: 'NetSuite', category: 'ERP', initials: 'NS', colour: '#1B3A55', description: 'Enterprise resource planning.', status: 'coming_soon' },
+    { name: 'SAP Business One', category: 'ERP', initials: 'SP', colour: '#0FAAFF', description: 'Small business ERP.', status: 'coming_soon' },
+    { name: 'Microsoft Dynamics', category: 'ERP', initials: 'MD', colour: '#002050', description: 'Business applications suite.', status: 'coming_soon' },
 
     // Payments
-    { name: 'Stripe', category: 'Payments', initials: 'St', colour: '#635BFF', status: 'coming_soon' },
-    { name: 'GoCardless', category: 'Payments', initials: 'GC', colour: '#1C1C1C', status: 'coming_soon' },
-    { name: 'Square', category: 'Payments', initials: 'Sq', colour: '#006AFF', status: 'coming_soon' },
+    { name: 'Stripe', category: 'Payments', initials: 'St', colour: '#635BFF', description: 'Online payment processing.', status: 'coming_soon' },
+    { name: 'GoCardless', category: 'Payments', initials: 'GC', colour: '#1C1C1C', description: 'Direct debit payments.', status: 'coming_soon' },
+    { name: 'Square', category: 'Payments', initials: 'Sq', colour: '#006AFF', description: 'Point of sale and payments.', status: 'coming_soon' },
 
     // HR & Payroll
-    { name: 'BreatheHR', category: 'HR & Payroll', initials: 'BH', colour: '#00B2A9', status: 'coming_soon' },
-    { name: 'Gusto', category: 'HR & Payroll', initials: 'Gu', colour: '#F45D48', status: 'coming_soon' },
-    { name: 'Rippling', category: 'HR & Payroll', initials: 'Ri', colour: '#FEC800', status: 'coming_soon' },
+    { name: 'BreatheHR', category: 'HR & Payroll', initials: 'BH', colour: '#00B2A9', description: 'UK HR management.', status: 'coming_soon' },
+    { name: 'Gusto', category: 'HR & Payroll', initials: 'Gu', colour: '#F45D48', description: 'Payroll and benefits.', status: 'coming_soon' },
+    { name: 'Rippling', category: 'HR & Payroll', initials: 'Ri', colour: '#FEC800', description: 'HR, IT, and finance platform.', status: 'coming_soon' },
   ];
 }
 
@@ -143,7 +147,213 @@ function CategoryBadge({ category }: { category: Category }) {
   );
 }
 
-function IntegrationCard({ integration, xeroTenantName }: { integration: Integration; xeroTenantName: string | null }) {
+// ---------------------------------------------------------------------------
+// Accounting Software Hero Section
+// ---------------------------------------------------------------------------
+
+function AccountingSoftwareSection({
+  xeroConnected,
+  xeroTenantName,
+  xeroConfigured,
+}: {
+  xeroConnected: boolean;
+  xeroTenantName: string | null;
+  xeroConfigured: boolean;
+}) {
+  const [notifyEmail, setNotifyEmail] = useState('');
+  const [notified, setNotified] = useState<Record<string, boolean>>({});
+
+  const accountingOptions = [
+    {
+      name: 'Xero',
+      initials: 'Xe',
+      colour: '#13B5EA',
+      description: 'Cloud accounting for small businesses. Popular in UK, AU, NZ.',
+      status: xeroConnected ? ('connected' as const) : ('available' as const),
+      connectHref: '/api/xero/connect',
+      configured: xeroConfigured,
+      tenantName: xeroTenantName,
+    },
+    {
+      name: 'QuickBooks',
+      initials: 'QB',
+      colour: '#2CA01C',
+      description: 'The most widely used accounting software worldwide.',
+      status: 'coming_soon' as const,
+      connectHref: null,
+      configured: false,
+      tenantName: null,
+    },
+    {
+      name: 'Sage',
+      initials: 'Sa',
+      colour: '#00D639',
+      description: 'Enterprise accounting and payroll. Strong in UK and Europe.',
+      status: 'coming_soon' as const,
+      connectHref: null,
+      configured: false,
+      tenantName: null,
+    },
+    {
+      name: 'FreshBooks',
+      initials: 'FB',
+      colour: '#0075DD',
+      description: 'Invoicing and accounting for freelancers and small teams.',
+      status: 'coming_soon' as const,
+      connectHref: null,
+      configured: false,
+      tenantName: null,
+    },
+  ];
+
+  const handleNotify = (name: string) => {
+    setNotified((prev) => ({ ...prev, [name]: true }));
+    // In future: POST to /api/integrations/notify with email + integration name
+  };
+
+  return (
+    <div className="rounded-xl border-2 border-primary/20 bg-primary/5 p-6">
+      <div className="flex items-center gap-3 mb-2">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+          <svg className="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M3 6h18M3 18h18M8 6v12M16 6v12" />
+          </svg>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold">Connect your accounting software</h3>
+          <p className="text-sm text-muted-foreground">
+            This is the most important connection. It powers your dashboard, KPIs, forecasts, and reports.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
+        {accountingOptions.map((opt) => (
+          <div
+            key={opt.name}
+            className={`relative rounded-lg border bg-background p-5 transition-shadow hover:shadow-sm ${
+              opt.status === 'connected'
+                ? 'border-green-300 ring-1 ring-green-200'
+                : ''
+            }`}
+          >
+            {/* Connected indicator */}
+            {opt.status === 'connected' && (
+              <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-green-500">
+                <svg className="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
+
+            <div className="flex items-start gap-4">
+              <div
+                className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
+                style={{ backgroundColor: opt.colour }}
+              >
+                {opt.initials}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-semibold">{opt.name}</h4>
+                <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                  {opt.description}
+                </p>
+
+                {opt.status === 'connected' && opt.tenantName && (
+                  <p className="text-xs text-green-700 font-medium mt-1.5">
+                    Connected to {opt.tenantName}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-4">
+              {opt.status === 'connected' && (
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-800">
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    Connected
+                  </span>
+                  <Link
+                    href="/xero"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+                  >
+                    Manage
+                  </Link>
+                </div>
+              )}
+
+              {opt.status === 'available' && opt.connectHref && (
+                <div>
+                  {opt.configured ? (
+                    <a
+                      href={opt.connectHref}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                      </svg>
+                      Connect {opt.name}
+                    </a>
+                  ) : (
+                    <div className="space-y-2">
+                      <a
+                        href={opt.connectHref}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        Connect {opt.name}
+                      </a>
+                      <p className="text-[10px] text-amber-600 text-center">
+                        Requires API credentials. Check Settings if this fails.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {opt.status === 'coming_soon' && (
+                <div>
+                  {notified[opt.name] ? (
+                    <span className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-green-50 px-4 py-2.5 text-sm font-medium text-green-700">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                      We will notify you when ready
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => handleNotify(opt.name)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      Notify me when {opt.name} is ready
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <p className="text-xs text-muted-foreground mt-4 text-center">
+        All connections use read-only access. We never modify your accounting data.
+        Your data is isolated to your organisation and encrypted at rest.
+      </p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Integration Card (for non-accounting integrations)
+// ---------------------------------------------------------------------------
+
+function IntegrationCard({ integration }: { integration: Integration }) {
   const isActive = integration.status === 'connected';
   const isAvailable = integration.status === 'available';
 
@@ -155,7 +365,6 @@ function IntegrationCard({ integration, xeroTenantName }: { integration: Integra
           : 'hover:shadow-sm'
       }`}
     >
-      {/* Active indicator */}
       {isActive && (
         <div className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-green-500">
           <svg className="h-3 w-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
@@ -165,7 +374,6 @@ function IntegrationCard({ integration, xeroTenantName }: { integration: Integra
       )}
 
       <div className="flex items-start gap-4">
-        {/* Logo placeholder */}
         <div
           className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-lg text-sm font-bold text-white"
           style={{ backgroundColor: integration.colour }}
@@ -178,24 +386,10 @@ function IntegrationCard({ integration, xeroTenantName }: { integration: Integra
             <h3 className="text-sm font-semibold truncate">{integration.name}</h3>
             <CategoryBadge category={integration.category} />
           </div>
-
-          {isActive && xeroTenantName && (
-            <p className="text-xs text-green-700 mt-0.5">
-              Connected to {xeroTenantName}
-            </p>
-          )}
-
-          {isActive && !xeroTenantName && (
-            <p className="text-xs text-green-700 mt-0.5">Connected</p>
-          )}
-
-          {integration.status === 'coming_soon' && (
-            <p className="text-xs text-muted-foreground mt-0.5">Coming soon</p>
-          )}
+          <p className="text-xs text-muted-foreground mt-0.5">{integration.description}</p>
         </div>
       </div>
 
-      {/* Action area */}
       <div className="mt-4">
         {isActive && (
           <span className="inline-flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-800">
@@ -230,27 +424,59 @@ function IntegrationCard({ integration, xeroTenantName }: { integration: Integra
 // Main component
 // ---------------------------------------------------------------------------
 
-export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName }: Props) {
+export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroConfigured }: Props) {
+  const searchParams = useSearchParams();
+  const errorMessage = searchParams.get('message');
   const [activeFilter, setActiveFilter] = useState<'All' | Category>('All');
 
   const catalogue = useMemo(() => buildCatalogue(xeroConnected), [xeroConnected]);
 
-  const filteredIntegrations = useMemo(() => {
-    if (activeFilter === 'All') return catalogue;
-    return catalogue.filter((i) => i.category === activeFilter);
+  // Non-accounting integrations for the grid below
+  const nonAccountingIntegrations = useMemo(() => {
+    const items = catalogue.filter((i) => i.category !== 'Accounting');
+    if (activeFilter === 'All' || activeFilter === 'Accounting') return items;
+    return items.filter((i) => i.category === activeFilter);
   }, [catalogue, activeFilter]);
 
-  const filters: ('All' | Category)[] = ['All', ...CATEGORIES];
+  const nonAccountingCategories = CATEGORIES.filter((c) => c !== 'Accounting');
+  const filters: ('All' | Category)[] = ['All', ...nonAccountingCategories];
 
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h2 className="text-2xl font-bold">Integrations</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connect your tools to power Grove
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Integrations</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect your tools to power Grove with real data.
+          </p>
+        </div>
+        <Link
+          href="/home"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          Back to dashboard
+        </Link>
       </div>
+
+      {/* Error banner from redirect */}
+      {errorMessage && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4">
+          <div className="flex items-center gap-2">
+            <svg className="h-5 w-5 text-red-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="text-sm font-medium text-red-800">{errorMessage}</p>
+          </div>
+        </div>
+      )}
+
+      {/* HERO: Accounting Software Section */}
+      <AccountingSoftwareSection
+        xeroConnected={xeroConnected}
+        xeroTenantName={xeroTenantName}
+        xeroConfigured={xeroConfigured}
+      />
 
       {/* Data Completeness */}
       <div className="rounded-lg border p-6">
@@ -266,39 +492,46 @@ export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName }: Pro
         </div>
       </div>
 
-      {/* Category filter */}
-      <div className="flex flex-wrap gap-2">
-        {filters.map((filter) => (
-          <button
-            key={filter}
-            onClick={() => setActiveFilter(filter)}
-            className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeFilter === filter
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
+      {/* Other Integrations */}
+      <div>
+        <h3 className="text-lg font-semibold mb-1">Other integrations</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Connect your CRM, marketing, payments, and HR tools for a complete picture.
+        </p>
 
-      {/* Integration cards grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {filteredIntegrations.map((integration) => (
-          <IntegrationCard
-            key={integration.name}
-            integration={integration}
-            xeroTenantName={xeroTenantName}
-          />
-        ))}
-      </div>
-
-      {filteredIntegrations.length === 0 && (
-        <div className="text-center py-12 text-sm text-muted-foreground">
-          No integrations found for this category.
+        {/* Category filter */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {filters.map((filter) => (
+            <button
+              key={filter}
+              onClick={() => setActiveFilter(filter)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                activeFilter === filter
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              {filter}
+            </button>
+          ))}
         </div>
-      )}
+
+        {/* Integration cards grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {nonAccountingIntegrations.map((integration) => (
+            <IntegrationCard
+              key={integration.name}
+              integration={integration}
+            />
+          ))}
+        </div>
+
+        {nonAccountingIntegrations.length === 0 && (
+          <div className="text-center py-12 text-sm text-muted-foreground">
+            No integrations found for this category.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
