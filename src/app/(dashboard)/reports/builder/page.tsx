@@ -63,6 +63,7 @@ export default function ReportBuilderPage() {
   const [generating, setGenerating] = useState(false);
   const [generatedReport, setGeneratedReport] = useState<GeneratedReport | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Template selection
   const handleTemplateSelect = useCallback(
@@ -199,6 +200,13 @@ export default function ReportBuilderPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button
+            variant="outline"
+            className="lg:hidden"
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+          >
+            Settings
+          </Button>
+          <Button
             onClick={handleGenerate}
             disabled={generating || sections.length === 0}
           >
@@ -235,8 +243,8 @@ export default function ReportBuilderPage() {
 
       {/* Main layout: sidebar + preview */}
       <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
-        {/* Left sidebar */}
-        <div className="space-y-4">
+        {/* Left sidebar - hidden on mobile, shown on lg+ or when toggled */}
+        <div className={`space-y-4 ${sidebarOpen ? 'block' : 'hidden'} lg:block`}>
           {/* Template selector */}
           <Card>
             <CardHeader className="pb-3">

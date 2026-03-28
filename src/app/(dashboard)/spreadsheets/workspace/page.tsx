@@ -461,7 +461,7 @@ export default function SpreadsheetWorkspacePage() {
   return (
     <div className="flex h-[calc(100vh-3.5rem)] flex-col overflow-hidden">
       {/* ---- Toolbar ---- */}
-      <div className="flex flex-wrap items-center gap-1 border-b bg-white px-3 py-1.5">
+      <div className="flex items-center gap-1 border-b bg-white px-2 sm:px-3 py-1.5 overflow-x-auto">
         {/* Format buttons */}
         <div className="flex items-center gap-0.5 border-r pr-2 mr-1">
           <Button
@@ -591,11 +591,11 @@ export default function SpreadsheetWorkspacePage() {
       </div>
 
       {/* ---- Formula Bar ---- */}
-      <div className="flex items-center border-b bg-gray-50 px-3 py-1">
-        <div className="flex h-6 w-14 items-center justify-center rounded border bg-white text-xs font-medium text-gray-700">
+      <div className="flex items-center border-b bg-gray-50 px-2 sm:px-3 py-1 w-full">
+        <div className="flex h-6 w-12 sm:w-14 items-center justify-center rounded border bg-white text-[10px] sm:text-xs font-medium text-gray-700 shrink-0">
           {selectedCellRef || 'A1'}
         </div>
-        <div className="mx-2 text-gray-300">|</div>
+        <div className="mx-1 sm:mx-2 text-gray-300">|</div>
         <input
           type="text"
           value={formulaBarValue}
@@ -606,7 +606,7 @@ export default function SpreadsheetWorkspacePage() {
             }
           }}
           placeholder="Enter value or formula (e.g. =SUM(A1:A10))"
-          className="flex-1 bg-transparent text-sm outline-none placeholder:text-gray-400"
+          className="flex-1 min-w-0 bg-transparent text-sm outline-none placeholder:text-gray-400"
         />
       </div>
 

@@ -149,3 +149,26 @@
 .animate-celebration-particle {
   animation: celebration-particle 2s ease-out forwards;
 }
+
+/* Mobile touch target improvements */
+@media (max-width: 768px) {
+  button,
+  a,
+  [role="button"],
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Exceptions for compact UI elements that need smaller sizes */
+  .compact-touch button,
+  .compact-touch a,
+  table button,
+  table a,
+  [data-compact] button,
+  [data-compact] a {
+    min-height: 36px;
+    min-width: 36px;
+  }
+}

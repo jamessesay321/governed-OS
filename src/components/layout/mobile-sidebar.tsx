@@ -30,7 +30,7 @@ export function MobileSidebarToggle() {
       {/* Hamburger button - visible only on mobile */}
       <button
         onClick={() => setOpen(true)}
-        className="md:hidden inline-flex items-center justify-center rounded-md p-2 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+        className="md:hidden inline-flex items-center justify-center rounded-md h-11 w-11 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors active:scale-95"
         aria-label="Open sidebar"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
@@ -41,24 +41,25 @@ export function MobileSidebarToggle() {
       {/* Overlay + Sidebar */}
       {open && (
         <div className="fixed inset-0 z-50 md:hidden">
-          {/* Backdrop */}
+          {/* Backdrop with fade-in */}
           <div
-            className="absolute inset-0 bg-black/50"
+            className="absolute inset-0 bg-black/50 animate-in fade-in duration-200"
             onClick={() => setOpen(false)}
+            aria-label="Close sidebar"
           />
-          {/* Sidebar panel */}
-          <div className="relative h-full w-64 max-w-[80vw] animate-in slide-in-from-left duration-200">
+          {/* Sidebar panel with smooth slide-in */}
+          <div className="relative h-full w-72 max-w-[85vw] animate-in slide-in-from-left duration-300 ease-out shadow-2xl">
             <Sidebar
               className="h-full"
               onClose={() => setOpen(false)}
             />
-            {/* Close button */}
+            {/* Close button with proper touch target */}
             <button
               onClick={() => setOpen(false)}
-              className="absolute top-3 right-2 rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="absolute top-3 right-2 flex items-center justify-center h-10 w-10 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               aria-label="Close sidebar"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>

@@ -66,7 +66,7 @@ const statusColours: Record<string, string> = {
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColours[status] ?? 'bg-gray-100 text-gray-800'}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] sm:text-xs sm:px-2.5 font-medium whitespace-nowrap ${statusColours[status] ?? 'bg-gray-100 text-gray-800'}`}
     >
       {status.replace('_', ' ')}
     </span>
@@ -289,7 +289,7 @@ export default function StagingPage() {
     statusFilter === 'all' ? transactions : transactions.filter((t) => t.status === statusFilter);
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6 p-4 sm:p-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Data Staging</h1>
@@ -299,12 +299,12 @@ export default function StagingPage() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1">
+      <div className="flex gap-1 rounded-lg bg-muted p-1 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            className={`flex-1 rounded-md px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
               activeTab === tab.key
                 ? 'bg-background text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'

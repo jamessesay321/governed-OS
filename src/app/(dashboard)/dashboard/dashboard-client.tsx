@@ -297,12 +297,12 @@ export function DashboardClient({
       </div>
 
       {/* Quick Actions (context-aware) */}
-      <div className="flex flex-wrap gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {quickActions.map(({ label, href, icon: Icon }) => (
           <Link
             key={label}
             href={href}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
+            className="inline-flex items-center justify-center gap-1.5 rounded-full border border-border bg-background px-3 py-2 sm:py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:border-primary/30 hover:bg-primary/5 transition-all"
           >
             <Icon className="h-3.5 w-3.5" />
             {label}
@@ -395,9 +395,9 @@ export function DashboardClient({
       )}
 
       {/* Activity Feed */}
-      <Card>
+      <Card className="w-full">
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Recent Activity</CardTitle>
           <Link href="/home/activity" className="text-xs text-muted-foreground hover:text-foreground transition-colors">
             View all
           </Link>

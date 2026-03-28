@@ -165,6 +165,12 @@ const navigation: NavGroup[] = [
   },
   // ── STRATEGY ──
   {
+    group: 'Forecast',
+    icon: 'TrendingUp',
+    href: '/forecast',
+    children: [],
+  },
+  {
     group: 'Scenarios',
     icon: 'Layers',
     href: '/scenarios',
@@ -191,6 +197,7 @@ const navigation: NavGroup[] = [
     href: '/reports',
     children: [
       { href: '/reports', label: 'Board Packs' },
+      { href: '/reports/builder', label: 'Report Builder' },
       { href: '/reports/new', label: 'Custom Reports' },
       { href: '/reports/templates', label: 'Templates' },
     ],
@@ -271,6 +278,7 @@ const navigation: NavGroup[] = [
     href: '/agents',
     children: [
       { href: '/agents', label: 'Overview' },
+      { href: '/agents/hub', label: 'Agent Hub' },
       { href: '/agents/activity', label: 'Agent Activity' },
     ],
   },

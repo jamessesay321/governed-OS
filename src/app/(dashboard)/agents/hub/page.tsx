@@ -59,20 +59,20 @@ interface AuditEntry {
 function TrustBadge({ level }: { level: string }) {
   if (level === 'autonomous') {
     return (
-      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[10px]">
+      <Badge variant="outline" className="border-emerald-300 bg-emerald-50 text-emerald-700 text-[8px] sm:text-[10px] px-1.5 py-0 sm:px-2 sm:py-0.5">
         Autonomous
       </Badge>
     );
   }
   if (level === 'confident') {
     return (
-      <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700 text-[10px]">
+      <Badge variant="outline" className="border-blue-300 bg-blue-50 text-blue-700 text-[8px] sm:text-[10px] px-1.5 py-0 sm:px-2 sm:py-0.5">
         Confident
       </Badge>
     );
   }
   return (
-    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[10px]">
+    <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-700 text-[8px] sm:text-[10px] px-1.5 py-0 sm:px-2 sm:py-0.5">
       Guided
     </Badge>
   );
@@ -382,11 +382,11 @@ export default function AgentHubPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="flex flex-col gap-6 lg:flex-row">
         {/* Agent cards */}
-        <div className="lg:col-span-2">
+        <div className="flex-1 min-w-0">
           {loading ? (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               {[1, 2, 3, 4].map((i) => (
                 <Card key={i} className="h-52 animate-pulse bg-muted/30" />
               ))}
@@ -396,7 +396,7 @@ export default function AgentHubPage() {
               <p className="text-sm text-muted-foreground">No agents match this filter.</p>
             </Card>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
               {filteredAgents.map((agent) => (
                 <HubAgentCard
                   key={agent.id}
@@ -411,7 +411,7 @@ export default function AgentHubPage() {
         </div>
 
         {/* Recent Activity sidebar */}
-        <div className="lg:col-span-1">
+        <div className="w-full lg:w-80 lg:shrink-0">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
