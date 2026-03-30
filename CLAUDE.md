@@ -54,6 +54,27 @@ Skipping this gate is a framework violation. If you catch yourself coding withou
 
 ---
 
+## Dependency Verification Gate (MANDATORY)
+
+After ANY change that touches data sources, formatting, shared libraries, or API routes:
+
+1. **Run `/verify`** (dependency-verifier skill) to cross-check all downstream pages
+2. Identify every page that depends on the changed data/component
+3. Verify each page shows correct data (not mock/stale), correct currency, correct status
+4. Fix all FAIL items before committing
+5. Log WARN items and fix in same session if possible
+
+**Trigger conditions:**
+- Xero/QBO connection or sync changes
+- Currency or locale changes
+- Schema migrations
+- Changes to `/lib/financial/`, `/lib/kpi/`, or shared formatting
+- Changes to any server component that passes props to client components
+
+Never assume a downstream page "just works" — verify it. The cost of checking is minutes; the cost of shipping broken pages is user trust.
+
+---
+
 ## Verification Gate (Before Marking Any Task Complete)
 
 Before any task is marked done:

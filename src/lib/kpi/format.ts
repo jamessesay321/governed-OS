@@ -20,14 +20,19 @@ export type CalculatedKPI = {
   higher_is_better: boolean;
 };
 
-export function formatKPIValue(value: number | null, format: KPIFormat): string {
+export function formatKPIValue(
+  value: number | null,
+  format: KPIFormat,
+  currencyCode: string = 'GBP',
+  locale: string = 'en-GB',
+): string {
   if (value === null) return 'N/A';
 
   switch (format) {
     case 'currency':
-      return new Intl.NumberFormat('en-GB', {
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
-        currency: 'GBP',
+        currency: currencyCode,
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
       }).format(value / 100);

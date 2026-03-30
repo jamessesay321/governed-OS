@@ -8,6 +8,7 @@ import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { EmptyStateIllustration } from '@/components/ui/illustrations';
 import { NumberLegend } from '@/components/data-primitives';
+import { useCurrency } from '@/components/providers/currency-context';
 
 type PeriodSummary = {
   period: string;
@@ -63,13 +64,9 @@ function hasMinRole(userRole: Role, minRole: Role): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole];
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
-}
-
 function formatPeriod(period: string): string {
   const d = new Date(period);
-  return d.toLocaleDateString('en-AU', { year: 'numeric', month: 'long' });
+  return d.toLocaleDateString('en-GB', { year: 'numeric', month: 'long' });
 }
 
 const CLASS_LABELS: Record<string, string> = {
@@ -84,6 +81,7 @@ const CLASS_LABELS: Record<string, string> = {
 
 export function FinancialsClient({ periods, accounts, financials, rawTransactionCount, connected, role, lastSync }: Props) {
   const router = useRouter();
+  const { format: formatCurrency } = useCurrency();
   const [tab, setTab] = useState<Tab>('overview');
   const [selectedPeriod, setSelectedPeriod] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
