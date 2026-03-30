@@ -13,8 +13,16 @@ export async function GET(request: NextRequest) {
     const { profile } = await requireRole('admin');
 
     // Validate Xero credentials are configured
-    if (!process.env.XERO_CLIENT_ID || !process.env.XERO_CLIENT_SECRET) {
-      // Redirect to integrations page with clear error
+    const clientId = process.env.XERO_CLIENT_ID;
+    const clientSecret = process.env.XERO_CLIENT_SECRET;
+    console.log('[XERO CONNECT] Credentials check:', {
+      hasClientId: !!clientId,
+      clientIdLength: clientId?.length ?? 0,
+      hasClientSecret: !!clientSecret,
+      clientSecretLength: clientSecret?.length ?? 0,
+    });
+
+    if (!clientId || !clientSecret) {
       const url = new URL('/integrations', request.url);
       url.searchParams.set('error', 'xero_not_configured');
       url.searchParams.set(
