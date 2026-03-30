@@ -58,6 +58,7 @@ export default async function BudgetPage() {
         hasBudget={false}
         periodLabel=""
         rows={[]}
+        availablePeriods={[]}
       />
     );
   }
@@ -160,6 +161,7 @@ export default async function BudgetPage() {
       hasBudget={hasBudget}
       periodLabel={periodLabel}
       rows={rows}
+      availablePeriods={periods}
     />
   );
 }

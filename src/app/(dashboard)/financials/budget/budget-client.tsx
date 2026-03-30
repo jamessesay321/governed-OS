@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
+import { ReportControls, getDefaultReportState } from '@/components/financial/report-controls';
+import type { ReportControlsState } from '@/components/financial/report-controls';
 
 type BudgetRow = {
   category: string;
@@ -19,10 +22,12 @@ type Props = {
   hasBudget: boolean;
   periodLabel: string;
   rows: BudgetRow[];
+  availablePeriods: string[];
 };
 
-export function BudgetClient({ connected, hasBudget, periodLabel, rows }: Props) {
+export function BudgetClient({ connected, hasBudget, periodLabel, rows, availablePeriods }: Props) {
   const { format: formatCurrency } = useCurrency();
+  const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods));
 
   if (!connected || rows.length === 0) {
     return (
@@ -45,6 +50,27 @@ export function BudgetClient({ connected, hasBudget, periodLabel, rows }: Props)
       </div>
     );
   }
+
+  // Filter rows by search query
+  const filteredRows = useMemo(() => {
+    if (!controls.searchQuery) return rows;
+    const query = controls.searchQuery.toLowerCase();
+    return rows.filter(
+      (r) => r.header || r.bold || r.category.toLowerCase().includes(query)
+    );
+  }, [rows, controls.searchQuery]);
+
+  // Build CSV export data from non-header rows
+  const csvData = useMemo(() => {
+    return rows
+      .filter((r) => !r.header)
+      .map((r) => ({
+        Category: r.category,
+        Budget: r.budget,
+        Actual: r.actual,
+        Variance: r.actual - r.budget,
+      }));
+  }, [rows]);
 
   // Calculate summary values from the structured rows
   const revenueRow = rows.find((r) => r.category === 'Total Revenue' && r.bold);
@@ -71,6 +97,18 @@ export function BudgetClient({ connected, hasBudget, periodLabel, rows }: Props)
         <p className="text-sm text-muted-foreground mt-1">{periodLabel}</p>
       </div>
 
+      <ReportControls
+        availablePeriods={availablePeriods}
+        showComparison={false}
+        showViewMode={true}
+        showSearch={true}
+        onChange={setControls}
+        state={controls}
+        exportTitle="budget-vs-actual"
+        exportData={csvData}
+        hasBudget={hasBudget}
+      />
+
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -84,7 +122,7 @@ export function BudgetClient({ connected, hasBudget, periodLabel, rows }: Props)
             </tr>
           </thead>
           <tbody>
-            {rows.map((line, idx) => {
+            {filteredRows.map((line, idx) => {
               if (line.header) {
                 return (
                   <tr key={idx} className="border-b bg-muted/30">

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   LineChart,
@@ -15,6 +16,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/components/providers/currency-context';
+import { ReportControls, getDefaultReportState, type ReportControlsState } from '@/components/financial/report-controls';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -77,21 +79,53 @@ export default function FinancialHealthClient({
 }: FinancialHealthProps) {
   const { format } = useCurrency();
 
-  const latestBurn = burnRates.length > 0 ? burnRates[burnRates.length - 1].burn : 0;
+  const availablePeriods = useMemo(
+    () => burnRates.map((b) => b.period).sort(),
+    [burnRates]
+  );
+
+  const [controls, setControls] = useState<ReportControlsState>(() =>
+    getDefaultReportState(availablePeriods)
+  );
+
+  const filteredBurnRates = useMemo(
+    () => burnRates.filter((b) => controls.selectedPeriods.includes(b.period)),
+    [burnRates, controls.selectedPeriods]
+  );
+
+  const filteredCashByPeriod = useMemo(
+    () => cashByPeriod.filter((c) => controls.selectedPeriods.includes(c.period)),
+    [cashByPeriod, controls.selectedPeriods]
+  );
+
+  const latestBurn = filteredBurnRates.length > 0 ? filteredBurnRates[filteredBurnRates.length - 1].burn : 0;
   const avgBurn =
-    burnRates.length > 0
-      ? burnRates.reduce((sum, b) => sum + b.burn, 0) / burnRates.length
+    filteredBurnRates.length > 0
+      ? filteredBurnRates.reduce((sum, b) => sum + b.burn, 0) / filteredBurnRates.length
       : 0;
 
-  const chartBurnRates = burnRates.map((b) => ({
+  const chartBurnRates = filteredBurnRates.map((b) => ({
     label: formatPeriodLabel(b.period),
     burn: b.burn,
   }));
 
-  const chartCashByPeriod = cashByPeriod.map((c) => ({
+  const chartCashByPeriod = filteredCashByPeriod.map((c) => ({
     label: formatPeriodLabel(c.period),
     cash: c.cash,
   }));
+
+  const csvData = useMemo(
+    () =>
+      filteredBurnRates.map((b) => {
+        const cashEntry = filteredCashByPeriod.find((c) => c.period === b.period);
+        return {
+          Period: formatPeriodLabel(b.period),
+          'Burn Rate': b.burn,
+          'Cash Position': cashEntry?.cash ?? 0,
+        };
+      }),
+    [filteredBurnRates, filteredCashByPeriod]
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -139,6 +173,17 @@ export default function FinancialHealthClient({
 
       {hasData && (
         <>
+          <ReportControls
+            availablePeriods={availablePeriods}
+            showComparison={false}
+            showViewMode={false}
+            showSearch={false}
+            onChange={setControls}
+            state={controls}
+            exportTitle="financial-health"
+            exportData={csvData}
+          />
+
           {/* Stat cards row */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>

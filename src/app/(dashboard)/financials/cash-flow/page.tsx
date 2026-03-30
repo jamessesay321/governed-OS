@@ -1,6 +1,6 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
-import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { buildPnL } from '@/lib/financial/aggregate';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { CashFlowClient } from './cash-flow-client';
 
@@ -34,19 +34,20 @@ export default async function CashFlowPage() {
   })[];
   const accData = (accounts ?? []) as ChartOfAccount[];
 
-  // Get periods
-  const rawPeriods = [...new Set(finData.map((f) => f.period))].sort().reverse();
-  const latestPeriod = rawPeriods[0] ?? null;
-  const priorPeriod = rawPeriods[1] ?? null;
+  // Get all unique periods sorted
+  const availablePeriods = [...new Set(finData.map((f) => f.period))].sort();
 
-  // Build P&L for net profit figures
-  const periods = getAvailablePeriods(finData as NormalisedFinancial[]);
-  const currentPnL = latestPeriod ? buildPnL(finData as NormalisedFinancial[], accData, latestPeriod) : null;
-  const priorPnL = priorPeriod ? buildPnL(finData as NormalisedFinancial[], accData, priorPeriod) : null;
+  // Build P&L for net profit figures — for ALL periods
+  type BSSection = { class: string; accounts: { name: string; amount: number }[]; total: number };
 
-  // Build balance sheet data (same logic as balance-sheet page)
-  function buildBS(data: typeof finData, period: string | null) {
-    if (!data || !period) return [];
+  const allPnL: Record<string, { netProfit: number }> = {};
+  for (const period of availablePeriods) {
+    const pnl = buildPnL(finData as NormalisedFinancial[], accData, period);
+    allPnL[period] = { netProfit: pnl?.netProfit ?? 0 };
+  }
+
+  // Build balance sheet data for ALL periods
+  function buildBS(data: typeof finData, period: string): BSSection[] {
     const periodData = data.filter((f) => f.period === period);
     const groups = new Map<string, Map<string, number>>();
 
@@ -61,7 +62,7 @@ export default async function CashFlowPage() {
       accMap.set(account.name, existing + Number(fin.amount));
     }
 
-    const result: { class: string; accounts: { name: string; amount: number }[]; total: number }[] = [];
+    const result: BSSection[] = [];
     for (const cls of ['ASSET', 'LIABILITY', 'EQUITY']) {
       const accMap = groups.get(cls);
       if (!accMap) {
@@ -77,18 +78,17 @@ export default async function CashFlowPage() {
     return result;
   }
 
-  const currentBS = buildBS(finData, latestPeriod);
-  const priorBS = buildBS(finData, priorPeriod);
+  const allBS: Record<string, BSSection[]> = {};
+  for (const period of availablePeriods) {
+    allBS[period] = buildBS(finData, period);
+  }
 
   return (
     <CashFlowClient
       connected={connected}
-      currentPeriod={latestPeriod}
-      priorPeriod={priorPeriod}
-      netProfit={currentPnL?.netProfit ?? 0}
-      priorNetProfit={priorPnL?.netProfit ?? 0}
-      currentBS={currentBS}
-      priorBS={priorBS}
+      availablePeriods={availablePeriods}
+      allPnL={allPnL}
+      allBS={allBS}
     />
   );
 }

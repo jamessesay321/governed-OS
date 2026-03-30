@@ -1,7 +1,13 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
+import {
+  ReportControls,
+  getDefaultReportState,
+  ReportControlsState,
+} from '@/components/financial/report-controls';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -36,6 +42,20 @@ function formatPeriodRange(periods: string[]): string {
 export function IncomeStatementClient({ connected, periods }: Props) {
   const { format: formatCurrency } = useCurrency();
   const hasData = periods.length > 0;
+
+  const availablePeriods = useMemo(
+    () => periods.map((p) => p.period).sort(),
+    [periods]
+  );
+
+  const [controls, setControls] = useState<ReportControlsState>(() =>
+    getDefaultReportState(availablePeriods)
+  );
+
+  const filteredPeriods = useMemo(
+    () => periods.filter((p) => controls.selectedPeriods.includes(p.period)),
+    [periods, controls.selectedPeriods]
+  );
 
   if (!connected || !hasData) {
     return (
@@ -77,7 +97,7 @@ export function IncomeStatementClient({ connected, periods }: Props) {
   const sectionAccounts = new Map<string, string[]>();
   for (const cls of sectionOrder) {
     const names = new Set<string>();
-    for (const p of periods) {
+    for (const p of filteredPeriods) {
       const section = p.sections.find((s) => s.class === cls);
       if (section) {
         for (const r of section.rows) names.add(r.name);
@@ -88,7 +108,7 @@ export function IncomeStatementClient({ connected, periods }: Props) {
 
   // Build lookup: period -> section class -> account name -> amount
   const lookup = new Map<string, Map<string, Map<string, number>>>();
-  for (const p of periods) {
+  for (const p of filteredPeriods) {
     const sectionMap = new Map<string, Map<string, number>>();
     for (const section of p.sections) {
       const accMap = new Map<string, number>();
@@ -100,7 +120,7 @@ export function IncomeStatementClient({ connected, periods }: Props) {
     lookup.set(p.period, sectionMap);
   }
 
-  const sortedPeriods = [...periods].sort((a, b) => a.period.localeCompare(b.period));
+  const sortedPeriods = [...filteredPeriods].sort((a, b) => a.period.localeCompare(b.period));
 
   type RowDef = {
     label: string;
@@ -143,10 +163,30 @@ export function IncomeStatementClient({ connected, periods }: Props) {
   const netProfitValues = sortedPeriods.map((p) => p.netProfit);
   rows.push({ label: 'Net Profit', values: netProfitValues, bold: true, separator: true, profitRow: true });
 
+  // Apply search filter to rows
+  const displayRows = controls.searchQuery
+    ? rows.filter((row) => {
+        if (row.bold || row.separator || row.profitRow) return true; // Always show totals/summaries
+        return row.label.toLowerCase().includes(controls.searchQuery.toLowerCase());
+      })
+    : rows;
+
+  // Build CSV export data
+  const csvData: Record<string, unknown>[] = rows
+    .filter((row) => !controls.searchQuery || row.label.toLowerCase().includes(controls.searchQuery.toLowerCase()) || row.bold)
+    .map((row) => {
+      const obj: Record<string, unknown> = { Account: row.label };
+      sortedPeriods.forEach((p, i) => {
+        obj[p.period] = row.values[i];
+      });
+      obj['Total'] = row.values.reduce((a, b) => a + b, 0);
+      return obj;
+    });
+
   // Summary totals
-  const totalRevenue = periods.reduce((s, p) => s + p.revenue, 0);
-  const totalGrossProfit = periods.reduce((s, p) => s + p.grossProfit, 0);
-  const totalNetProfit = periods.reduce((s, p) => s + p.netProfit, 0);
+  const totalRevenue = filteredPeriods.reduce((s, p) => s + p.revenue, 0);
+  const totalGrossProfit = filteredPeriods.reduce((s, p) => s + p.grossProfit, 0);
+  const totalNetProfit = filteredPeriods.reduce((s, p) => s + p.netProfit, 0);
   const grossMargin = totalRevenue > 0 ? ((totalGrossProfit / totalRevenue) * 100).toFixed(1) : '0.0';
   const netMargin = totalRevenue > 0 ? ((totalNetProfit / totalRevenue) * 100).toFixed(1) : '0.0';
 
@@ -160,10 +200,22 @@ export function IncomeStatementClient({ connected, periods }: Props) {
           </Link>
           <h2 className="text-2xl font-bold mt-1">Income Statement (P&amp;L)</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {formatPeriodRange(periods.map((p) => p.period))}
+            {formatPeriodRange(filteredPeriods.map((p) => p.period))}
           </p>
         </div>
       </div>
+
+      {/* Report Controls */}
+      <ReportControls
+        availablePeriods={availablePeriods}
+        showComparison={false}
+        showViewMode={true}
+        showSearch={true}
+        onChange={setControls}
+        state={controls}
+        exportTitle="income-statement"
+        exportData={csvData}
+      />
 
       {/* Table */}
       <div className="rounded-lg border bg-card overflow-x-auto">
@@ -184,7 +236,7 @@ export function IncomeStatementClient({ connected, periods }: Props) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row, idx) => {
+            {displayRows.map((row, idx) => {
               const total = row.values.reduce((a, b) => a + b, 0);
               return (
                 <tr

@@ -1,19 +1,22 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
+import {
+  ReportControls,
+  getDefaultReportState,
+  ReportControlsState,
+} from '@/components/financial/report-controls';
 
 type AccountEntry = { name: string; amount: number };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
 
 type Props = {
   connected: boolean;
-  currentPeriod: string | null;
-  priorPeriod: string | null;
-  netProfit: number;
-  priorNetProfit: number;
-  currentBS: BSSection[];
-  priorBS: BSSection[];
+  availablePeriods: string[];
+  allPnL: Record<string, { netProfit: number }>;
+  allBS: Record<string, BSSection[]>;
 };
 
 function formatPeriodLabel(period: string | null): string {
@@ -37,29 +40,13 @@ function buildCashFlowRows(
   priorNetProfit: number,
   currentBS: BSSection[],
   priorBS: BSSection[],
-  priorPriorBS: BSSection[] // empty if no prior-prior period
 ): RowDef[] {
-  // Helper: get total for a class from BS sections
-  const getTotal = (sections: BSSection[], cls: string) =>
-    sections.find((s) => s.class === cls)?.total ?? 0;
-
   // Helper: get account amount from BS
   const getAccount = (sections: BSSection[], cls: string, name: string) => {
     const section = sections.find((s) => s.class === cls);
     return section?.accounts.find((a) => a.name === name)?.amount ?? 0;
   };
 
-  // Current period balance sheet totals
-  const curAssets = getTotal(currentBS, 'ASSET');
-  const curLiabilities = getTotal(currentBS, 'LIABILITY');
-
-  // Prior period balance sheet totals
-  const priorAssets = getTotal(priorBS, 'ASSET');
-  const priorLiabilities = getTotal(priorBS, 'LIABILITY');
-
-  // Changes in working capital (current period vs prior)
-  // Increase in assets = cash outflow (negative)
-  // Increase in liabilities = cash inflow (positive)
   const rows: RowDef[] = [];
 
   // Operating Activities
@@ -78,7 +65,6 @@ function buildCashFlowRows(
   priorAssetSection?.accounts.forEach((a) => assetAccounts.add(a.name));
 
   let totalWCAssetChange = 0;
-  let totalWCAssetChangePrior = 0;
 
   for (const name of Array.from(assetAccounts).sort()) {
     const lower = name.toLowerCase();
@@ -91,11 +77,10 @@ function buildCashFlowRows(
     const change = -(curAmt - priorAmt);
     totalWCAssetChange += change;
 
-    // For prior period change, we'd need prior-prior BS which we may not have
     rows.push({
       label: `Change in ${name}`,
       current: change,
-      prior: 0, // Would need 3 periods to calculate
+      prior: 0,
       indent: true,
     });
   }
@@ -176,14 +161,31 @@ function buildCashFlowRows(
 
 export function CashFlowClient({
   connected,
-  currentPeriod,
-  priorPeriod,
-  netProfit,
-  priorNetProfit,
-  currentBS,
-  priorBS,
+  availablePeriods,
+  allPnL,
+  allBS,
 }: Props) {
   const { format: formatCurrency } = useCurrency();
+
+  const [controls, setControls] = useState<ReportControlsState>(() =>
+    getDefaultReportState(availablePeriods)
+  );
+
+  // Derive current and prior periods from controls.selectedPeriods
+  const { currentPeriod, priorPeriod, netProfit, priorNetProfit, currentBS, priorBS } = useMemo(() => {
+    const selected = [...controls.selectedPeriods].sort();
+    const current = selected.length > 0 ? selected[selected.length - 1] : null;
+    const prior = selected.length > 1 ? selected[selected.length - 2] : null;
+    return {
+      currentPeriod: current,
+      priorPeriod: prior,
+      netProfit: current ? (allPnL[current]?.netProfit ?? 0) : 0,
+      priorNetProfit: prior ? (allPnL[prior]?.netProfit ?? 0) : 0,
+      currentBS: current ? (allBS[current] ?? []) : [],
+      priorBS: prior ? (allBS[prior] ?? []) : [],
+    };
+  }, [controls.selectedPeriods, allPnL, allBS]);
+
   const hasData = currentBS.some((s) => s.accounts.length > 0);
 
   if (!connected || !hasData) {
@@ -204,7 +206,22 @@ export function CashFlowClient({
     );
   }
 
-  const rows = buildCashFlowRows(netProfit, priorNetProfit, currentBS, priorBS, []);
+  const rows = buildCashFlowRows(netProfit, priorNetProfit, currentBS, priorBS);
+
+  // Build CSV export data
+  const csvData: Record<string, unknown>[] = rows
+    .filter((row) => !row.header)
+    .map((row) => {
+      const obj: Record<string, unknown> = {
+        Description: row.label,
+        [formatPeriodLabel(currentPeriod)]: row.current,
+      };
+      if (priorPeriod) {
+        obj[formatPeriodLabel(priorPeriod)] = row.prior;
+        obj['Change'] = row.current - row.prior;
+      }
+      return obj;
+    });
 
   // Summary card values
   const operatingRow = rows.find((r) => r.label === 'Net Cash from Operating Activities');
@@ -222,6 +239,19 @@ export function CashFlowClient({
           Indirect method, as at {formatPeriodLabel(currentPeriod)}
         </p>
       </div>
+
+      {/* Report Controls */}
+      <ReportControls
+        availablePeriods={availablePeriods}
+        showComparison={true}
+        showAccountFilter={false}
+        showViewMode={true}
+        showSearch={false}
+        onChange={setControls}
+        state={controls}
+        exportTitle="cash-flow"
+        exportData={csvData}
+      />
 
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">

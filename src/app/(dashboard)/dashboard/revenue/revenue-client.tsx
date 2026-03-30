@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   LineChart, Line, PieChart, Pie, Cell,
@@ -7,6 +8,8 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCurrency } from '@/components/providers/currency-context';
+import { ReportControls, getDefaultReportState } from '@/components/financial/report-controls';
+import type { ReportControlsState } from '@/components/financial/report-controls';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -44,28 +47,47 @@ export default function RevenueClient({
 }: RevenueProps) {
   const { format } = useCurrency();
 
+  const availablePeriods = useMemo(() => periods.map((p) => p.period), [periods]);
+  const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods));
+
+  const filteredPeriods = useMemo(
+    () => periods.filter((p) => controls.selectedPeriods.includes(p.period)),
+    [periods, controls.selectedPeriods],
+  );
+
   const hasData = connected && periods.length > 0;
 
-  /* ─── computed summaries ─── */
-  const totalRevenue = periods.reduce((s, p) => s + p.revenue, 0);
-  const latestRevenue = periods.length > 0 ? periods[periods.length - 1].revenue : 0;
-  const avgMonthlyRevenue = periods.length > 0
-    ? Math.round(totalRevenue / periods.length)
+  /* ─── computed summaries (from filtered periods) ─── */
+  const totalRevenue = filteredPeriods.reduce((s, p) => s + p.revenue, 0);
+  const latestRevenue = filteredPeriods.length > 0 ? filteredPeriods[filteredPeriods.length - 1].revenue : 0;
+  const avgMonthlyRevenue = filteredPeriods.length > 0
+    ? Math.round(totalRevenue / filteredPeriods.length)
     : 0;
 
   // Revenue growth: latest period vs first period
-  const firstRevenue = periods.length > 0 ? periods[0].revenue : 0;
+  const firstRevenue = filteredPeriods.length > 0 ? filteredPeriods[0].revenue : 0;
   const revenueGrowthPct = firstRevenue > 0
     ? Math.round(((latestRevenue - firstRevenue) / firstRevenue) * 1000) / 10
     : 0;
 
-  /* ─── chart data ─── */
-  const revenueTrendData = periods.map((p) => ({
+  /* ─── CSV export data ─── */
+  const csvData = useMemo(
+    () =>
+      filteredPeriods.map((p) => ({
+        Period: fmtPeriod(p.period),
+        Revenue: p.revenue,
+        'Growth %': p.growthPct,
+      })),
+    [filteredPeriods],
+  );
+
+  /* ─── chart data (from filtered periods) ─── */
+  const revenueTrendData = filteredPeriods.map((p) => ({
     period: fmtPeriod(p.period),
     revenue: p.revenue,
   }));
 
-  const growthRateData = periods.slice(1).map((p) => ({
+  const growthRateData = filteredPeriods.slice(1).map((p) => ({
     period: fmtPeriod(p.period),
     rate: p.growthPct,
   }));
@@ -87,6 +109,18 @@ export default function RevenueClient({
           &larr; Back to Dashboard
         </Link>
       </div>
+
+      {hasData && (
+        <ReportControls
+          availablePeriods={availablePeriods}
+          showComparison={false}
+          showViewMode={false}
+          onChange={setControls}
+          state={controls}
+          exportTitle="revenue"
+          exportData={csvData}
+        />
+      )}
 
       {/* No data banner */}
       {!hasData && (
@@ -119,7 +153,7 @@ export default function RevenueClient({
               <CardContent>
                 <p className="text-3xl font-bold">{format(totalRevenue)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Across {periods.length} period{periods.length !== 1 ? 's' : ''}
+                  Across {filteredPeriods.length} period{filteredPeriods.length !== 1 ? 's' : ''}
                 </p>
               </CardContent>
             </Card>
@@ -133,7 +167,7 @@ export default function RevenueClient({
               <CardContent>
                 <p className="text-3xl font-bold">{format(latestRevenue)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {periods.length > 0 ? fmtPeriod(periods[periods.length - 1].period) : '-'}
+                  {filteredPeriods.length > 0 ? fmtPeriod(filteredPeriods[filteredPeriods.length - 1].period) : '-'}
                 </p>
               </CardContent>
             </Card>

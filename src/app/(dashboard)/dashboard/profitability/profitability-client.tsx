@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area,
@@ -7,6 +8,8 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCurrency } from '@/components/providers/currency-context';
+import { ReportControls, getDefaultReportState } from '@/components/financial/report-controls';
+import type { ReportControlsState } from '@/components/financial/report-controls';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -47,31 +50,52 @@ export default function ProfitabilityClient({
 }: ProfitabilityProps) {
   const { format } = useCurrency();
 
+  const availablePeriods = useMemo(() => periods.map((p) => p.period), [periods]);
+  const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods));
+
+  const filteredPeriods = useMemo(
+    () => periods.filter((p) => controls.selectedPeriods.includes(p.period)),
+    [periods, controls.selectedPeriods],
+  );
+
   const hasData = connected && periods.length > 0;
 
-  /* ─── computed summaries ─── */
-  const totalRevenue = periods.reduce((s, p) => s + p.revenue, 0);
-  const avgGrossMargin = periods.length > 0
-    ? Math.round((periods.reduce((s, p) => s + p.grossMargin, 0) / periods.length) * 10) / 10
+  /* ─── computed summaries (from filtered periods) ─── */
+  const totalRevenue = filteredPeriods.reduce((s, p) => s + p.revenue, 0);
+  const avgGrossMargin = filteredPeriods.length > 0
+    ? Math.round((filteredPeriods.reduce((s, p) => s + p.grossMargin, 0) / filteredPeriods.length) * 10) / 10
     : 0;
-  const avgOperatingMargin = periods.length > 0
-    ? Math.round((periods.reduce((s, p) => s + p.operatingMargin, 0) / periods.length) * 10) / 10
+  const avgOperatingMargin = filteredPeriods.length > 0
+    ? Math.round((filteredPeriods.reduce((s, p) => s + p.operatingMargin, 0) / filteredPeriods.length) * 10) / 10
     : 0;
-  const totalNetProfit = periods.reduce((s, p) => s + p.netProfit, 0);
+  const totalNetProfit = filteredPeriods.reduce((s, p) => s + p.netProfit, 0);
   const totalExpenses = expenseBreakdown.reduce((s, e) => s + e.value, 0);
 
-  /* ─── chart data ─── */
-  const grossMarginData = periods.map((p) => ({
+  /* ─── CSV export data ─── */
+  const csvData = useMemo(
+    () =>
+      filteredPeriods.map((p) => ({
+        Period: fmtPeriod(p.period),
+        Revenue: p.revenue,
+        'Gross Margin %': p.grossMargin,
+        'Operating Margin %': p.operatingMargin,
+        'Net Profit': p.netProfit,
+      })),
+    [filteredPeriods],
+  );
+
+  /* ─── chart data (from filtered periods) ─── */
+  const grossMarginData = filteredPeriods.map((p) => ({
     period: fmtPeriod(p.period),
     margin: p.grossMargin,
   }));
 
-  const operatingMarginData = periods.map((p) => ({
+  const operatingMarginData = filteredPeriods.map((p) => ({
     period: fmtPeriod(p.period),
     margin: p.operatingMargin,
   }));
 
-  const netProfitData = periods.map((p) => ({
+  const netProfitData = filteredPeriods.map((p) => ({
     period: fmtPeriod(p.period),
     profit: p.netProfit,
   }));
@@ -93,6 +117,18 @@ export default function ProfitabilityClient({
           &larr; Back to Dashboard
         </Link>
       </div>
+
+      {hasData && (
+        <ReportControls
+          availablePeriods={availablePeriods}
+          showComparison={false}
+          showViewMode={false}
+          onChange={setControls}
+          state={controls}
+          exportTitle="profitability"
+          exportData={csvData}
+        />
+      )}
 
       {/* No data banner */}
       {!hasData && (
@@ -125,7 +161,7 @@ export default function ProfitabilityClient({
               <CardContent>
                 <p className="text-3xl font-bold">{format(totalRevenue)}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Across {periods.length} period{periods.length !== 1 ? 's' : ''}
+                  Across {filteredPeriods.length} period{filteredPeriods.length !== 1 ? 's' : ''}
                 </p>
               </CardContent>
             </Card>

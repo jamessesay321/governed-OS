@@ -1,17 +1,21 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
+import {
+  ReportControls,
+  getDefaultReportState,
+  ReportControlsState,
+} from '@/components/financial/report-controls';
 
 type AccountEntry = { name: string; amount: number };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
 
 type Props = {
   connected: boolean;
-  currentPeriod: string | null;
-  priorPeriod: string | null;
-  currentData: BSSection[];
-  priorData: BSSection[];
+  availablePeriods: string[];
+  allPeriodsData: Record<string, BSSection[]>;
 };
 
 const CLASS_LABELS: Record<string, string> = {
@@ -26,8 +30,26 @@ function formatPeriodLabel(period: string | null): string {
   return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 }
 
-export function BalanceSheetClient({ connected, currentPeriod, priorPeriod, currentData, priorData }: Props) {
+export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData }: Props) {
   const { format: formatCurrency } = useCurrency();
+
+  const [controls, setControls] = useState<ReportControlsState>(() =>
+    getDefaultReportState(availablePeriods)
+  );
+
+  // Derive current and prior periods from controls.selectedPeriods
+  const { currentPeriod, priorPeriod, currentData, priorData } = useMemo(() => {
+    const selected = [...controls.selectedPeriods].sort();
+    const current = selected.length > 0 ? selected[selected.length - 1] : null;
+    const prior = selected.length > 1 ? selected[selected.length - 2] : null;
+    return {
+      currentPeriod: current,
+      priorPeriod: prior,
+      currentData: current ? (allPeriodsData[current] ?? []) : [],
+      priorData: prior ? (allPeriodsData[prior] ?? []) : [],
+    };
+  }, [controls.selectedPeriods, allPeriodsData]);
+
   const hasData = currentData.some((s) => s.accounts.length > 0);
 
   if (!connected || !hasData) {
@@ -56,12 +78,29 @@ export function BalanceSheetClient({ connected, currentPeriod, priorPeriod, curr
     priorLookup.set(section.class, accMap);
   }
 
+  // Build CSV export data
+  const csvData: Record<string, unknown>[] = currentData.flatMap((section) => {
+    const rows: Record<string, unknown>[] = [];
+    for (const acc of section.accounts) {
+      const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
+      const row: Record<string, unknown> = {
+        Class: CLASS_LABELS[section.class] ?? section.class,
+        Account: acc.name,
+        [formatPeriodLabel(currentPeriod)]: acc.amount,
+      };
+      if (priorPeriod) {
+        row[formatPeriodLabel(priorPeriod)] = priorAmount;
+        row['Change'] = acc.amount - priorAmount;
+      }
+      rows.push(row);
+    }
+    return rows;
+  });
+
   // Totals
   const totalAssets = currentData.find((s) => s.class === 'ASSET')?.total ?? 0;
   const totalLiabilities = currentData.find((s) => s.class === 'LIABILITY')?.total ?? 0;
   const totalEquity = currentData.find((s) => s.class === 'EQUITY')?.total ?? 0;
-  const priorTotalAssets = priorData.find((s) => s.class === 'ASSET')?.total ?? 0;
-  const priorTotalLiabilities = priorData.find((s) => s.class === 'LIABILITY')?.total ?? 0;
   const netAssets = totalAssets - totalLiabilities;
 
   return (
@@ -75,6 +114,19 @@ export function BalanceSheetClient({ connected, currentPeriod, priorPeriod, curr
           As at {formatPeriodLabel(currentPeriod)}
         </p>
       </div>
+
+      {/* Report Controls */}
+      <ReportControls
+        availablePeriods={availablePeriods}
+        showComparison={true}
+        showAccountFilter={false}
+        showViewMode={true}
+        showSearch={false}
+        onChange={setControls}
+        state={controls}
+        exportTitle="balance-sheet"
+        exportData={csvData}
+      />
 
       <div className="rounded-lg border bg-card overflow-x-auto">
         <table className="w-full text-sm">

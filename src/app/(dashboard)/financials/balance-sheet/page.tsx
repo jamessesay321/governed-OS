@@ -22,14 +22,14 @@ export default async function BalanceSheetPage() {
 
   const connected = !!xeroConn;
 
-  // Get the latest period
-  const periods = [...new Set((financials ?? []).map((f) => f.period))].sort().reverse();
-  const latestPeriod = periods[0] ?? null;
-  const priorPeriod = periods[1] ?? null;
+  // Get all unique periods sorted
+  const availablePeriods = [...new Set((financials ?? []).map((f) => f.period))].sort();
 
-  // Group by ASSET, LIABILITY, EQUITY for each period
-  function buildBalanceSheet(data: typeof financials, period: string | null) {
-    if (!data || !period) return [];
+  // Group by ASSET, LIABILITY, EQUITY for a given period
+  type BSSection = { class: string; accounts: { name: string; amount: number }[]; total: number };
+
+  function buildBalanceSheet(data: typeof financials, period: string): BSSection[] {
+    if (!data) return [];
     const periodData = data.filter((f) => f.period === period);
     const groups = new Map<string, Map<string, number>>();
 
@@ -44,7 +44,7 @@ export default async function BalanceSheetPage() {
       accMap.set(account.name, existing + Number(fin.amount));
     }
 
-    const result: { class: string; accounts: { name: string; amount: number }[]; total: number }[] = [];
+    const result: BSSection[] = [];
     for (const cls of ['ASSET', 'LIABILITY', 'EQUITY']) {
       const accMap = groups.get(cls);
       if (!accMap) {
@@ -60,16 +60,17 @@ export default async function BalanceSheetPage() {
     return result;
   }
 
-  const currentBS = buildBalanceSheet(financials, latestPeriod);
-  const priorBS = buildBalanceSheet(financials, priorPeriod);
+  // Build balance sheet data for every period
+  const allPeriodsData: Record<string, BSSection[]> = {};
+  for (const period of availablePeriods) {
+    allPeriodsData[period] = buildBalanceSheet(financials, period);
+  }
 
   return (
     <BalanceSheetClient
       connected={connected}
-      currentPeriod={latestPeriod}
-      priorPeriod={priorPeriod}
-      currentData={currentBS}
-      priorData={priorBS}
+      availablePeriods={availablePeriods}
+      allPeriodsData={allPeriodsData}
     />
   );
 }
