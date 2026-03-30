@@ -124,11 +124,28 @@ Respond ONLY with valid JSON. No markdown, no explanation. Return an array of ob
     accountByCode.set(a.code, a.name);
   }
 
-  // Upsert the mappings
+  // Look up account IDs from chart_of_accounts by code
+  const { data: chartAccounts } = await supabase
+    .from('chart_of_accounts')
+    .select('id, code')
+    .eq('org_id', orgId);
+
+  const accountIdByCode = new Map<string, string>();
+  for (const acc of chartAccounts ?? []) {
+    accountIdByCode.set(acc.code, acc.id);
+  }
+
+  // Upsert the mappings using account_id (matching DB schema)
   let mapped = 0;
   for (const suggestion of suggestions) {
     const accountName = accountByCode.get(suggestion.code);
     if (!accountName) continue;
+
+    const accountId = accountIdByCode.get(suggestion.code);
+    if (!accountId) {
+      console.warn(`[ACCOUNT-MAPPER] No chart_of_accounts entry for code ${suggestion.code}`);
+      continue;
+    }
 
     // Validate category
     if (!(suggestion.category in CATEGORIES)) {
@@ -139,15 +156,14 @@ Respond ONLY with valid JSON. No markdown, no explanation. Return an array of ob
     const { error } = await supabase.from('account_mappings').upsert(
       {
         org_id: orgId,
-        source_account_code: suggestion.code,
-        source_account_name: accountName,
-        target_category: suggestion.category,
-        target_subcategory: suggestion.subcategory,
-        mapping_source: 'auto',
-        confidence: suggestion.confidence,
-        verified: false,
+        account_id: accountId,
+        standard_category: suggestion.category,
+        ai_confidence: suggestion.confidence,
+        ai_suggested: true,
+        user_confirmed: false,
+        user_overridden: false,
       },
-      { onConflict: 'org_id,source_account_code' }
+      { onConflict: 'org_id,account_id' }
     );
 
     if (error) {
@@ -250,33 +266,33 @@ export async function applyBlueprintMappings(
     throw new Error(`Unknown blueprint: ${blueprintId}`);
   }
 
-  // Fetch existing accounts to get names
+  // Fetch existing accounts to get IDs and names
   const { data: existingAccounts } = await supabase
     .from('chart_of_accounts')
-    .select('code, name')
+    .select('id, code, name')
     .eq('org_id', orgId);
 
-  const nameByCode = new Map<string, string>();
+  const accountByCode = new Map<string, { id: string; name: string }>();
   for (const acc of existingAccounts ?? []) {
-    nameByCode.set(acc.code, acc.name);
+    accountByCode.set(acc.code, { id: acc.id, name: acc.name });
   }
 
   let applied = 0;
   for (const [code, mapping] of Object.entries(blueprint)) {
-    const accountName = nameByCode.get(code) ?? code;
+    const account = accountByCode.get(code);
+    if (!account) continue;
 
     const { error } = await supabase.from('account_mappings').upsert(
       {
         org_id: orgId,
-        source_account_code: code,
-        source_account_name: accountName,
-        target_category: mapping.category,
-        target_subcategory: mapping.subcategory,
-        mapping_source: 'blueprint',
-        confidence: 0.85,
-        verified: false,
+        account_id: account.id,
+        standard_category: mapping.category,
+        ai_confidence: 0.85,
+        ai_suggested: false,
+        user_confirmed: false,
+        user_overridden: false,
       },
-      { onConflict: 'org_id,source_account_code' }
+      { onConflict: 'org_id,account_id' }
     );
 
     if (error) {

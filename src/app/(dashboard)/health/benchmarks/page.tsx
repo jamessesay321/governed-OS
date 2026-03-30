@@ -1,142 +1,144 @@
-'use client'
+import { getUserProfile } from '@/lib/auth/get-user-profile';
+import { createClient } from '@/lib/supabase/server';
+import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { BenchmarksClient } from './benchmarks-client';
 
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
-import { ArrowLeft, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
-
-interface Benchmark {
-  metric: string
-  yours: number
-  industry: number
-  unit: string
-  trend: 'up' | 'down' | 'flat'
+export interface BenchmarkRow {
+  metric: string;
+  yours: number;
+  industry: number;
+  unit: string;
+  trend: 'up' | 'down' | 'flat';
 }
 
-const benchmarks: Benchmark[] = [
-  { metric: 'Current Ratio', yours: 1.8, industry: 1.5, unit: 'x', trend: 'up' },
-  { metric: 'Gross Margin', yours: 42, industry: 48, unit: '%', trend: 'down' },
-  { metric: 'Net Profit Margin', yours: 11, industry: 14, unit: '%', trend: 'flat' },
-  { metric: 'Debt-to-Equity', yours: 1.6, industry: 0.9, unit: 'x', trend: 'down' },
-  { metric: 'Revenue Growth (YoY)', yours: 12, industry: 15, unit: '%', trend: 'up' },
-  { metric: 'Operating Expense Ratio', yours: 31, industry: 34, unit: '%', trend: 'up' },
-  { metric: 'Return on Assets', yours: 8, industry: 10, unit: '%', trend: 'flat' },
-  { metric: 'Days Sales Outstanding', yours: 38, industry: 32, unit: 'days', trend: 'down' },
-]
+export default async function BenchmarksPage() {
+  const { orgId } = await getUserProfile();
+  const supabase = await createClient();
 
-function TrendIcon({ trend }: { trend: Benchmark['trend'] }) {
-  if (trend === 'up') return <ArrowUpRight className="h-4 w-4 text-emerald-500" />
-  if (trend === 'down') return <ArrowDownRight className="h-4 w-4 text-red-500" />
-  return <Minus className="h-4 w-4 text-gray-400" />
-}
+  const { data: financials } = await supabase
+    .from('normalised_financials')
+    .select('*')
+    .eq('org_id', orgId);
 
-function comparisonBadge(yours: number, industry: number, metric: string) {
-  // For metrics where lower is better
-  const lowerIsBetter = ['Debt-to-Equity', 'Operating Expense Ratio', 'Days Sales Outstanding']
-  const isBetter = lowerIsBetter.includes(metric)
-    ? yours <= industry
-    : yours >= industry
+  const { data: accounts } = await supabase
+    .from('chart_of_accounts')
+    .select('*')
+    .eq('org_id', orgId);
 
-  return (
-    <span
-      className={cn(
-        'inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium',
-        isBetter
-          ? 'bg-emerald-50 text-emerald-700'
-          : 'bg-red-50 text-red-700'
-      )}
-    >
-      {isBetter ? 'Above' : 'Below'}
-    </span>
-  )
-}
+  const fin = (financials ?? []) as NormalisedFinancial[];
+  const accts = (accounts ?? []) as ChartOfAccount[];
 
-export default function BenchmarksPage() {
-  return (
-    <div className="mx-auto max-w-4xl space-y-8 p-6 lg:p-8">
-      {/* Sample Data Banner */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <strong>SAMPLE DATA</strong> &mdash; Connect your accounting software to see
-        real comparisons.
-      </div>
+  if (fin.length === 0 || accts.length === 0) {
+    return <BenchmarksClient benchmarks={[]} hasData={false} />;
+  }
 
-      {/* Back Link */}
-      <Link
-        href="/health"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Health Score
-      </Link>
+  const periods = getAvailablePeriods(fin);
+  const pnls = periods.map((p) => buildPnL(fin, accts, p));
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Industry Benchmarks
-        </h1>
-        <p className="mt-1 text-gray-500">
-          See how your business compares against industry medians.
-        </p>
-      </div>
+  const latestPnl = pnls[0];
+  const latestPeriod = periods[0];
 
-      {/* Table */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-5 py-3 font-semibold text-gray-700">Metric</th>
-              <th className="px-5 py-3 text-right font-semibold text-gray-700">
-                Yours
-              </th>
-              <th className="px-5 py-3 text-right font-semibold text-gray-700">
-                Industry
-              </th>
-              <th className="px-5 py-3 text-center font-semibold text-gray-700">
-                Trend
-              </th>
-              <th className="px-5 py-3 text-center font-semibold text-gray-700">
-                Status
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {benchmarks.map((b) => (
-              <tr key={b.metric} className="hover:bg-gray-50">
-                <td className="px-5 py-4 font-medium text-gray-900">
-                  {b.metric}
-                </td>
-                <td className="px-5 py-4 text-right font-semibold text-gray-900">
-                  {b.yours}
-                  {b.unit}
-                </td>
-                <td className="px-5 py-4 text-right text-gray-500">
-                  {b.industry}
-                  {b.unit}
-                </td>
-                <td className="px-5 py-4 text-center">
-                  <span className="inline-flex justify-center">
-                    <TrendIcon trend={b.trend} />
-                  </span>
-                </td>
-                <td className="px-5 py-4 text-center">
-                  {comparisonBadge(b.yours, b.industry, b.metric)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+  // Build balance sheet totals
+  const accountMap = new Map(accts.map((a) => [a.id, a]));
+  const latestFin = fin.filter((f) => f.period === latestPeriod);
 
-      {/* Legend */}
-      <div className="flex items-center gap-6 text-xs text-gray-500">
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          Above benchmark
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" />
-          Below benchmark
-        </div>
-      </div>
-    </div>
-  )
+  let totalAssets = 0;
+  let totalLiabilities = 0;
+  for (const f of latestFin) {
+    const acc = accountMap.get(f.account_id);
+    if (!acc) continue;
+    const cls = acc.class.toUpperCase();
+    if (cls === 'ASSET') totalAssets += Number(f.amount);
+    if (cls === 'LIABILITY') totalLiabilities += Number(f.amount);
+  }
+
+  // Current Ratio
+  const currentRatio = totalLiabilities > 0
+    ? Math.round((totalAssets / totalLiabilities) * 10) / 10
+    : 0;
+
+  // Gross Margin %
+  const grossMargin = latestPnl.revenue > 0
+    ? Math.round((latestPnl.grossProfit / latestPnl.revenue) * 1000) / 10
+    : 0;
+
+  // Net Profit Margin %
+  const netMargin = latestPnl.revenue > 0
+    ? Math.round((latestPnl.netProfit / latestPnl.revenue) * 1000) / 10
+    : 0;
+
+  // Expense Ratio %
+  const expenseRatio = latestPnl.revenue > 0
+    ? Math.round((latestPnl.expenses / latestPnl.revenue) * 1000) / 10
+    : 0;
+
+  // Revenue Growth % (latest vs ~6 months ago)
+  const sixMonthsAgoIdx = Math.min(5, pnls.length - 1);
+  const sixMonthAgoPnl = pnls[sixMonthsAgoIdx];
+  const revenueGrowth = sixMonthAgoPnl.revenue > 0
+    ? Math.round(((latestPnl.revenue - sixMonthAgoPnl.revenue) / sixMonthAgoPnl.revenue) * 1000) / 10
+    : 0;
+
+  // Compute trends by comparing latest to one period prior
+  function trendFromTwo(latest: number, prior: number): 'up' | 'down' | 'flat' {
+    if (latest > prior * 1.02) return 'up';
+    if (latest < prior * 0.98) return 'down';
+    return 'flat';
+  }
+
+  const priorPnl = pnls.length > 1 ? pnls[1] : latestPnl;
+  const priorFin = fin.filter((f) => f.period === (periods[1] ?? latestPeriod));
+  let priorAssets = 0, priorLiabilities = 0;
+  for (const f of priorFin) {
+    const acc = accountMap.get(f.account_id);
+    if (!acc) continue;
+    if (acc.class.toUpperCase() === 'ASSET') priorAssets += Number(f.amount);
+    if (acc.class.toUpperCase() === 'LIABILITY') priorLiabilities += Number(f.amount);
+  }
+  const priorCurrentRatio = priorLiabilities > 0 ? priorAssets / priorLiabilities : 0;
+  const priorGrossMargin = priorPnl.revenue > 0 ? (priorPnl.grossProfit / priorPnl.revenue) * 100 : 0;
+  const priorNetMargin = priorPnl.revenue > 0 ? (priorPnl.netProfit / priorPnl.revenue) * 100 : 0;
+  const priorExpenseRatio = priorPnl.revenue > 0 ? (priorPnl.expenses / priorPnl.revenue) * 100 : 0;
+
+  // Industry benchmarks (reference constants - external data)
+  const benchmarks: BenchmarkRow[] = [
+    {
+      metric: 'Current Ratio',
+      yours: currentRatio,
+      industry: 1.5,
+      unit: 'x',
+      trend: trendFromTwo(currentRatio, priorCurrentRatio),
+    },
+    {
+      metric: 'Gross Margin',
+      yours: grossMargin,
+      industry: 48,
+      unit: '%',
+      trend: trendFromTwo(grossMargin, priorGrossMargin),
+    },
+    {
+      metric: 'Net Profit Margin',
+      yours: netMargin,
+      industry: 14,
+      unit: '%',
+      trend: trendFromTwo(netMargin, priorNetMargin),
+    },
+    {
+      metric: 'Expense Ratio',
+      yours: expenseRatio,
+      industry: 34,
+      unit: '%',
+      trend: trendFromTwo(expenseRatio, priorExpenseRatio),
+    },
+    {
+      metric: 'Revenue Growth',
+      yours: revenueGrowth,
+      industry: 15,
+      unit: '%',
+      trend: revenueGrowth > 0 ? 'up' : revenueGrowth < 0 ? 'down' : 'flat',
+    },
+  ];
+
+  return <BenchmarksClient benchmarks={benchmarks} hasData={true} />;
 }

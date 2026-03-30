@@ -1,173 +1,161 @@
-'use client'
+import { getUserProfile } from '@/lib/auth/get-user-profile';
+import { createClient } from '@/lib/supabase/server';
+import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { RecommendationsClient } from './recommendations-client';
 
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
-import {
-  ArrowLeft,
-  Lightbulb,
-  TrendingDown,
-  DollarSign,
-  BarChart3,
-  Shield,
-  ArrowRight,
-} from 'lucide-react'
-
-interface Recommendation {
-  id: string
-  title: string
-  description: string
-  impact: 'high' | 'medium' | 'low'
-  category: string
-  icon: React.ElementType
-  action: string
-  actionHref: string
+export interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  impact: 'high' | 'medium' | 'low';
+  category: string;
+  iconName: 'shield' | 'trending-down' | 'dollar-sign' | 'bar-chart' | 'lightbulb';
+  action: string;
+  actionHref: string;
 }
 
-const recommendations: Recommendation[] = [
-  {
-    id: 'reduce-debt',
-    title: 'Reduce Debt-to-Equity Ratio',
-    description:
-      'Your leverage ratio of 1.6x is significantly above the industry median of 0.9x. Consider accelerating debt repayments or restructuring existing facilities to bring this closer to target.',
-    impact: 'high',
-    category: 'Leverage',
-    icon: Shield,
-    action: 'View Debt Schedule',
-    actionHref: '/financials',
-  },
-  {
-    id: 'improve-margins',
-    title: 'Investigate Margin Compression',
-    description:
-      'Gross margin has slipped to 42% versus an industry benchmark of 48%. Review supplier contracts, pricing strategy, and cost of goods to identify quick wins.',
-    impact: 'high',
-    category: 'Profitability',
-    icon: TrendingDown,
-    action: 'Analyse Margins',
-    actionHref: '/financials',
-  },
-  {
-    id: 'collections',
-    title: 'Tighten Accounts Receivable',
-    description:
-      'Days Sales Outstanding is 38 days compared to the industry benchmark of 32. Implement stricter payment terms or automated follow-ups to improve cash conversion.',
-    impact: 'medium',
-    category: 'Efficiency',
-    icon: DollarSign,
-    action: 'Review AR Ageing',
-    actionHref: '/financials',
-  },
-  {
-    id: 'growth-strategy',
-    title: 'Accelerate Revenue Growth',
-    description:
-      'Year-on-year revenue growth of 12% trails the industry median of 15%. Explore new customer acquisition channels, upselling opportunities, or product expansion.',
-    impact: 'medium',
-    category: 'Growth',
-    icon: BarChart3,
-    action: 'View Growth KPIs',
-    actionHref: '/kpis',
-  },
-  {
-    id: 'roa',
-    title: 'Improve Return on Assets',
-    description:
-      'ROA of 8% is slightly below the 10% benchmark. Review underperforming assets and consider whether capital is deployed efficiently across the business.',
-    impact: 'low',
-    category: 'Profitability',
-    icon: Lightbulb,
-    action: 'Explore Scenarios',
-    actionHref: '/scenarios',
-  },
-]
+export default async function RecommendationsPage() {
+  const { orgId } = await getUserProfile();
+  const supabase = await createClient();
 
-const impactStyles: Record<Recommendation['impact'], string> = {
-  high: 'bg-red-50 text-red-700 border-red-200',
-  medium: 'bg-amber-50 text-amber-700 border-amber-200',
-  low: 'bg-blue-50 text-blue-700 border-blue-200',
-}
+  const { data: financials } = await supabase
+    .from('normalised_financials')
+    .select('*')
+    .eq('org_id', orgId);
 
-const impactLabels: Record<Recommendation['impact'], string> = {
-  high: 'High Impact',
-  medium: 'Medium Impact',
-  low: 'Low Impact',
-}
+  const { data: accounts } = await supabase
+    .from('chart_of_accounts')
+    .select('*')
+    .eq('org_id', orgId);
 
-export default function RecommendationsPage() {
-  return (
-    <div className="mx-auto max-w-4xl space-y-8 p-6 lg:p-8">
-      {/* Sample Data Banner */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-        <strong>SAMPLE DATA</strong> &mdash; These recommendations are based on
-        sample data. Connect your accounts for personalised advice.
-      </div>
+  const fin = (financials ?? []) as NormalisedFinancial[];
+  const accts = (accounts ?? []) as ChartOfAccount[];
 
-      {/* Back Link */}
-      <Link
-        href="/health"
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to Health Score
-      </Link>
+  if (fin.length === 0 || accts.length === 0) {
+    return <RecommendationsClient recommendations={[]} hasData={false} />;
+  }
 
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          AI Recommendations
-        </h1>
-        <p className="mt-1 text-gray-500">
-          Prioritised actions to improve your financial health score.
-        </p>
-      </div>
+  const periods = getAvailablePeriods(fin);
+  const pnls = periods.map((p) => buildPnL(fin, accts, p));
+  const latestPnl = pnls[0];
+  const latestPeriod = periods[0];
 
-      {/* Recommendation Cards */}
-      <div className="space-y-4">
-        {recommendations.map((rec, idx) => (
-          <div
-            key={rec.id}
-            className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm"
-          >
-            <div className="flex items-start gap-4">
-              {/* Icon */}
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-600">
-                <rec.icon className="h-5 w-5" />
-              </div>
+  // Balance sheet totals
+  const accountMap = new Map(accts.map((a) => [a.id, a]));
+  const latestFin = fin.filter((f) => f.period === latestPeriod);
+  let totalAssets = 0;
+  let totalLiabilities = 0;
+  for (const f of latestFin) {
+    const acc = accountMap.get(f.account_id);
+    if (!acc) continue;
+    const cls = acc.class.toUpperCase();
+    if (cls === 'ASSET') totalAssets += Number(f.amount);
+    if (cls === 'LIABILITY') totalLiabilities += Number(f.amount);
+  }
 
-              {/* Content */}
-              <div className="flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium text-gray-400">
-                    #{idx + 1}
-                  </span>
-                  <h3 className="font-semibold text-gray-900">{rec.title}</h3>
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                      impactStyles[rec.impact]
-                    )}
-                  >
-                    {impactLabels[rec.impact]}
-                  </span>
-                  <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
-                    {rec.category}
-                  </span>
-                </div>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">
-                  {rec.description}
-                </p>
-                <Link
-                  href={rec.actionHref}
-                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700"
-                >
-                  {rec.action}
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
+  // Compute metrics
+  const grossMarginPct = latestPnl.revenue > 0
+    ? (latestPnl.grossProfit / latestPnl.revenue) * 100
+    : 0;
+  const currentRatio = totalLiabilities > 0
+    ? totalAssets / totalLiabilities
+    : 999;
+  const expenseToRevenue = latestPnl.revenue > 0
+    ? latestPnl.expenses / latestPnl.revenue
+    : 0;
+  const netMarginPct = latestPnl.revenue > 0
+    ? (latestPnl.netProfit / latestPnl.revenue) * 100
+    : 0;
+
+  // Revenue trend
+  const firstPnl = pnls[pnls.length - 1];
+  const revenueDecline = pnls.length > 1 && latestPnl.revenue < firstPnl.revenue;
+
+  // Generate recommendations based on actual data
+  const recommendations: Recommendation[] = [];
+
+  if (grossMarginPct < 50) {
+    recommendations.push({
+      id: 'improve-margins',
+      title: 'Investigate Margin Compression',
+      description: `Your gross margin is ${grossMarginPct.toFixed(1)}%, which is below 50%. Review supplier contracts, pricing strategy, and cost of goods to identify opportunities for improvement.`,
+      impact: grossMarginPct < 30 ? 'high' : 'medium',
+      category: 'Profitability',
+      iconName: 'trending-down',
+      action: 'Analyse Margins',
+      actionHref: '/financials',
+    });
+  }
+
+  if (currentRatio < 1.5) {
+    recommendations.push({
+      id: 'improve-liquidity',
+      title: 'Strengthen Liquidity Position',
+      description: `Your current ratio is ${currentRatio.toFixed(1)}x, below the recommended 1.5x threshold. Consider improving cash collection, reducing short-term liabilities, or building cash reserves.`,
+      impact: currentRatio < 1.0 ? 'high' : 'medium',
+      category: 'Liquidity',
+      iconName: 'shield',
+      action: 'Review Cash Position',
+      actionHref: '/financials',
+    });
+  }
+
+  if (expenseToRevenue > 0.85) {
+    recommendations.push({
+      id: 'reduce-costs',
+      title: 'Reduce Operating Costs',
+      description: `Operating expenses represent ${(expenseToRevenue * 100).toFixed(1)}% of revenue, above the 85% threshold. Audit discretionary spending and identify areas for cost optimisation.`,
+      impact: expenseToRevenue > 0.95 ? 'high' : 'medium',
+      category: 'Efficiency',
+      iconName: 'dollar-sign',
+      action: 'View Expense Breakdown',
+      actionHref: '/financials',
+    });
+  }
+
+  if (revenueDecline) {
+    const declinePct = firstPnl.revenue > 0
+      ? (((firstPnl.revenue - latestPnl.revenue) / firstPnl.revenue) * 100).toFixed(1)
+      : '0';
+    recommendations.push({
+      id: 'growth-strategy',
+      title: 'Reverse Revenue Decline',
+      description: `Revenue has declined ${declinePct}% from ${firstPnl.period} to ${latestPnl.period}. Explore new customer acquisition channels, upselling opportunities, or product expansion to restore growth.`,
+      impact: 'high',
+      category: 'Growth',
+      iconName: 'bar-chart',
+      action: 'View Growth KPIs',
+      actionHref: '/kpis',
+    });
+  }
+
+  if (netMarginPct < 10) {
+    recommendations.push({
+      id: 'profitability-focus',
+      title: 'Improve Net Profitability',
+      description: `Net profit margin is ${netMarginPct.toFixed(1)}%, below the 10% target. Focus on a combination of revenue growth and cost management to improve bottom-line performance.`,
+      impact: netMarginPct < 0 ? 'high' : 'medium',
+      category: 'Profitability',
+      iconName: 'lightbulb',
+      action: 'Explore Scenarios',
+      actionHref: '/scenarios',
+    });
+  }
+
+  // If no issues detected, add a positive recommendation
+  if (recommendations.length === 0) {
+    recommendations.push({
+      id: 'maintain-performance',
+      title: 'Maintain Strong Performance',
+      description: 'Your financial metrics are within healthy ranges. Continue monitoring key ratios and maintain current cost discipline.',
+      impact: 'low',
+      category: 'General',
+      iconName: 'lightbulb',
+      action: 'View Dashboard',
+      actionHref: '/dashboard',
+    });
+  }
+
+  return <RecommendationsClient recommendations={recommendations} hasData={true} />;
 }
