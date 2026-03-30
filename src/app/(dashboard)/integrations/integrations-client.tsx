@@ -35,6 +35,9 @@ type Props = {
   qboConnected: boolean;
   qboCompanyName: string | null;
   qboConfigured: boolean;
+  lastSyncAt: string | null;
+  lastSyncRecords: number | null;
+  lastSyncStatus: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -161,6 +164,9 @@ function AccountingSoftwareSection({
   qboConnected,
   qboCompanyName,
   qboConfigured,
+  lastSyncAt,
+  lastSyncRecords,
+  lastSyncStatus,
 }: {
   xeroConnected: boolean;
   xeroTenantName: string | null;
@@ -168,6 +174,9 @@ function AccountingSoftwareSection({
   qboConnected: boolean;
   qboCompanyName: string | null;
   qboConfigured: boolean;
+  lastSyncAt: string | null;
+  lastSyncRecords: number | null;
+  lastSyncStatus: string | null;
 }) {
   const [notifyEmail, setNotifyEmail] = useState('');
   const [notified, setNotified] = useState<Record<string, boolean>>({});
@@ -271,6 +280,18 @@ function AccountingSoftwareSection({
                 {opt.status === 'connected' && opt.tenantName && (
                   <p className="text-xs text-green-700 font-medium mt-1.5">
                     Connected to {opt.tenantName}
+                  </p>
+                )}
+                {opt.status === 'connected' && lastSyncAt && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Last synced: {new Date(lastSyncAt).toLocaleString('en-GB', {
+                      day: '2-digit', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
+                    {lastSyncRecords != null && ` \u00b7 ${lastSyncRecords} records`}
+                    {lastSyncStatus === 'completed' && (
+                      <span className="text-green-600 ml-1">\u2713</span>
+                    )}
                   </p>
                 )}
               </div>
@@ -433,7 +454,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroConfigured, qboConnected, qboCompanyName, qboConfigured }: Props) {
+export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroConfigured, qboConnected, qboCompanyName, qboConfigured, lastSyncAt, lastSyncRecords, lastSyncStatus }: Props) {
   const searchParams = useSearchParams();
   const errorMessage = searchParams.get('message');
   const [activeFilter, setActiveFilter] = useState<'All' | Category>('All');
@@ -488,6 +509,9 @@ export function IntegrationsClient({ orgId, xeroConnected, xeroTenantName, xeroC
         qboConnected={qboConnected}
         qboCompanyName={qboCompanyName}
         qboConfigured={qboConfigured}
+        lastSyncAt={lastSyncAt}
+        lastSyncRecords={lastSyncRecords}
+        lastSyncStatus={lastSyncStatus}
       />
 
       {/* Data Completeness */}

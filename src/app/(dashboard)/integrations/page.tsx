@@ -33,6 +33,15 @@ export default async function IntegrationsPage() {
   const xeroConfigured = !!(process.env.XERO_CLIENT_ID && process.env.XERO_CLIENT_SECRET);
   const qboConfigured = !!(process.env.QBO_CLIENT_ID && process.env.QBO_CLIENT_SECRET);
 
+  // Get last sync info
+  const { data: lastSync } = await supabase
+    .from('sync_log')
+    .select('completed_at, records_synced, status, sync_type')
+    .eq('org_id', orgId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   return (
     <IntegrationsClient
       orgId={orgId}
@@ -42,6 +51,9 @@ export default async function IntegrationsPage() {
       qboConnected={!!qboConnection}
       qboCompanyName={qboConnection?.company_name as string ?? null}
       qboConfigured={qboConfigured}
+      lastSyncAt={lastSync?.completed_at ?? null}
+      lastSyncRecords={lastSync?.records_synced ?? null}
+      lastSyncStatus={lastSync?.status ?? null}
     />
   );
 }

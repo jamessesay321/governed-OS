@@ -1,196 +1,44 @@
-'use client'
+import { getUserProfile } from '@/lib/auth/get-user-profile';
+import { createClient } from '@/lib/supabase/server';
+import { HomeClient } from './home-client';
 
-import { useState } from 'react'
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  DollarSign,
-  Brain,
-  FileText,
-  CheckCircle2,
-  Circle,
-  ArrowRight,
-} from 'lucide-react'
-import { EmptyStateIllustration } from '@/components/ui/illustrations'
+export default async function HomePage() {
+  const { orgId, displayName } = await getUserProfile();
+  const supabase = await createClient();
 
-const setupSteps = [
-  { label: 'Set up your Business Profile', href: '/interview', id: 'profile' },
-  { label: 'Connect your first integration', href: '/integrations', id: 'integration' },
-  { label: 'Explore your Dashboard', href: '/dashboard', id: 'dashboard' },
-] as const
+  // Check if business profile has been set up (interview completed)
+  const { data: org } = await supabase
+    .from('organisations')
+    .select('has_completed_onboarding')
+    .eq('id', orgId)
+    .single();
+  const profileComplete = !!(org as Record<string, unknown> | null)?.has_completed_onboarding;
 
-const quickLinks = [
-  {
-    title: 'Dashboard',
-    description: 'Overview of your business metrics',
-    href: '/dashboard',
-    icon: LayoutDashboard,
-    color: 'text-blue-600 bg-blue-50',
-  },
-  {
-    title: 'Financials',
-    description: 'Revenue, expenses, and cash flow',
-    href: '/financials',
-    icon: DollarSign,
-    color: 'text-emerald-600 bg-emerald-50',
-  },
-  {
-    title: 'Intelligence',
-    description: 'AI-powered insights and analysis',
-    href: '/intelligence',
-    icon: Brain,
-    color: 'text-purple-600 bg-purple-50',
-  },
-  {
-    title: 'Reports',
-    description: 'Generate and view reports',
-    href: '/reports',
-    icon: FileText,
-    color: 'text-amber-600 bg-amber-50',
-  },
-]
+  // Check if any integration is connected
+  const { data: xeroConn } = await supabase
+    .from('xero_connections')
+    .select('id')
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+    .maybeSingle();
+  const integrationConnected = !!xeroConn;
 
-export default function HomePage() {
-  const [completedSteps, setCompletedSteps] = useState<string[]>([])
-
-  const completedCount = completedSteps.length
-  const progressPercent = (completedCount / setupSteps.length) * 100
-
-  function toggleStep(id: string) {
-    setCompletedSteps((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]
-    )
-  }
+  // Get last sync info
+  const { data: lastSync } = await supabase
+    .from('sync_log')
+    .select('completed_at, records_synced, status')
+    .eq('org_id', orgId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-6 lg:p-8">
-      {/* Welcome Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
-          Welcome to Grove
-        </h1>
-        <p className="mt-1 text-gray-500">
-          Good to see you. Here's your command centre
-        </p>
-      </div>
-
-      {/* Getting Started Card */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Getting Started</h2>
-            <p className="text-sm text-gray-500">
-              Complete these steps to set up your workspace
-            </p>
-          </div>
-          <Link
-            href="/home/getting-started"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            View full guide
-            <ArrowRight className="ml-1 inline-block h-4 w-4" />
-          </Link>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="mb-1 flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-700">
-              {completedCount}/{setupSteps.length} complete
-            </span>
-            <span className="text-gray-500">{Math.round(progressPercent)}%</span>
-          </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-            <div
-              className={cn(
-                'h-full rounded-full bg-blue-600 transition-all duration-500',
-                completedCount === setupSteps.length && 'bg-emerald-500'
-              )}
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Checklist */}
-        <ul className="mt-4 space-y-3">
-          {setupSteps.map((step) => {
-            const done = completedSteps.includes(step.id)
-            return (
-              <li key={step.id} className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => toggleStep(step.id)}
-                  className="flex-shrink-0"
-                  aria-label={done ? `Mark "${step.label}" incomplete` : `Mark "${step.label}" complete`}
-                >
-                  {done ? (
-                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                  ) : (
-                    <Circle className="h-5 w-5 text-gray-300" />
-                  )}
-                </button>
-                <Link
-                  href={step.href}
-                  className={cn(
-                    'text-sm font-medium hover:underline',
-                    done ? 'text-gray-400 line-through' : 'text-gray-700'
-                  )}
-                >
-                  {step.label}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
-      </div>
-
-      {/* Quick Links Grid */}
-      <div>
-        <h2 className="mb-4 text-lg font-semibold text-gray-900">Quick Links</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {quickLinks.map((link) => (
-            <Link
-              key={link.title}
-              href={link.href}
-              className="group rounded-xl border border-gray-200 bg-white p-5 shadow-sm transition-shadow hover:shadow-md"
-            >
-              <div
-                className={cn(
-                  'mb-3 inline-flex h-10 w-10 items-center justify-center rounded-lg',
-                  link.color
-                )}
-              >
-                <link.icon className="h-5 w-5" />
-              </div>
-              <h3 className="font-semibold text-gray-900 group-hover:text-blue-600">
-                {link.title}
-              </h3>
-              <p className="mt-1 text-sm text-gray-500">{link.description}</p>
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Activity</h2>
-          <Link
-            href="/home/activity"
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
-          >
-            View all
-          </Link>
-        </div>
-        <div className="mt-8 flex flex-col items-center justify-center py-6 text-center">
-          <EmptyStateIllustration className="mb-3" />
-          <p className="text-sm font-medium text-gray-500">No activity yet</p>
-          <p className="mt-1 text-sm text-gray-400">
-            Complete setup to get started
-          </p>
-        </div>
-      </div>
-    </div>
-  )
+    <HomeClient
+      displayName={displayName}
+      profileComplete={profileComplete}
+      integrationConnected={integrationConnected}
+      lastSyncAt={lastSync?.completed_at ?? null}
+      lastSyncRecords={lastSync?.records_synced ?? null}
+    />
+  );
 }
