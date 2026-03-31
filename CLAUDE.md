@@ -14,6 +14,9 @@ Every feature, fix, or refactor must satisfy both documents. If in doubt, ask: "
 ### Build vs Buy Gate (MANDATORY)
 Before building ANY infrastructure feature (email sending, PDF generation, payment processing, search, background jobs, etc.), check `docs/BUILD_VS_BUY_ANALYSIS.md` first. If a third-party service is recommended for the current phase, use it instead of building custom. Do not re-invent what a $15/mo service does better.
 
+### FP&A UX Review Gate (MANDATORY)
+Before building or redesigning ANY financial page, read `.claude/skills/fpa-ux-review.md` and cross-reference against the 10 FP&A competitors in `docs/FPA_COMPETITIVE_AUDIT.md`. Never ship a financial page without checking what DataRails, Fathom, Kevin Steel, and Jirav do for that same feature. Adopt proven patterns; do not reinvent the wheel.
+
 ---
 
 ## Skills & Lessons Capture (MANDATORY)
