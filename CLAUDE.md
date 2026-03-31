@@ -11,6 +11,9 @@ Before writing any code, read and follow these governing documents:
 
 Every feature, fix, or refactor must satisfy both documents. If in doubt, ask: "Does this increase institutional trust?"
 
+### Semantic Intelligence Gate (MANDATORY — P0)
+Before displaying ANY financial number, ask: "Does the platform know what this number means for THIS specific business?" If the answer is no, the number is just reformatted Xero data. Read **[docs/SEMANTIC_INTELLIGENCE_LAYER_SPRINT.md](docs/SEMANTIC_INTELLIGENCE_LAYER_SPRINT.md)** — this defines the four layers (Data Validation → Semantic Mapping → Business Context → Intelligence) that must sit between raw Xero data and platform output. No feature that touches financial data ships without these layers considered.
+
 ### Build vs Buy Gate (MANDATORY)
 Before building ANY infrastructure feature (email sending, PDF generation, payment processing, search, background jobs, etc.), check `docs/BUILD_VS_BUY_ANALYSIS.md` first. If a third-party service is recommended for the current phase, use it instead of building custom. Do not re-invent what a $15/mo service does better.
 
