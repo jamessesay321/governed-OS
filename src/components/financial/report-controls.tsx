@@ -120,11 +120,15 @@ export function ReportControls({
   exportData,
 }: ReportControlsProps) {
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
+  // Staged selection: pending periods are local until user clicks "Apply"
+  const [pendingPeriods, setPendingPeriods] = useState<string[]>(state.selectedPeriods);
 
   const sortedPeriods = [...availablePeriods].sort();
 
   const handlePeriodMode = useCallback((mode: PeriodMode) => {
-    onChange({ ...state, periodMode: mode, selectedPeriods: availablePeriods });
+    const newPeriods = [...availablePeriods];
+    setPendingPeriods(newPeriods);
+    onChange({ ...state, periodMode: mode, selectedPeriods: newPeriods });
   }, [state, onChange, availablePeriods]);
 
   const handleComparison = useCallback((mode: ComparisonMode) => {
@@ -143,24 +147,44 @@ export function ReportControls({
     onChange({ ...state, searchQuery: query });
   }, [state, onChange]);
 
+  // Staged: toggle pending selection only (does NOT call onChange)
   const handlePeriodToggle = useCallback((period: string) => {
-    const current = new Set(state.selectedPeriods);
-    if (current.has(period)) {
-      current.delete(period);
-    } else {
-      current.add(period);
-    }
-    onChange({ ...state, selectedPeriods: Array.from(current) });
-  }, [state, onChange]);
+    setPendingPeriods((prev) => {
+      const current = new Set(prev);
+      if (current.has(period)) {
+        current.delete(period);
+      } else {
+        current.add(period);
+      }
+      return Array.from(current);
+    });
+  }, []);
 
   const handleSelectAll = useCallback(() => {
-    onChange({ ...state, selectedPeriods: availablePeriods });
-  }, [state, onChange, availablePeriods]);
+    setPendingPeriods([...availablePeriods]);
+  }, [availablePeriods]);
 
   const handleSelectLast = useCallback((n: number) => {
     const sorted = [...availablePeriods].sort().reverse();
-    onChange({ ...state, selectedPeriods: sorted.slice(0, n) });
-  }, [state, onChange, availablePeriods]);
+    setPendingPeriods(sorted.slice(0, n));
+  }, [availablePeriods]);
+
+  // Apply: commit pending periods to actual state
+  const handleApply = useCallback(() => {
+    onChange({ ...state, selectedPeriods: pendingPeriods });
+    setShowPeriodPicker(false);
+  }, [state, onChange, pendingPeriods]);
+
+  // Open picker: sync pending with current state
+  const handleOpenPicker = useCallback(() => {
+    setPendingPeriods(state.selectedPeriods);
+    setShowPeriodPicker(true);
+  }, [state.selectedPeriods]);
+
+  // Check if pending differs from applied
+  const hasPendingChanges = showPeriodPicker &&
+    (pendingPeriods.length !== state.selectedPeriods.length ||
+      pendingPeriods.some((p) => !state.selectedPeriods.includes(p)));
 
   // Period range label
   const selectedSorted = [...state.selectedPeriods].sort();
@@ -174,7 +198,7 @@ export function ReportControls({
       ? 'No periods'
       : selectedSorted.length === 1
         ? formatPeriodShort(selectedSorted[0])
-        : `${formatPeriodShort(selectedSorted[0])} - ${formatPeriodShort(selectedSorted[selectedSorted.length - 1])}`;
+        : `${formatPeriodShort(selectedSorted[0])} \u2013 ${formatPeriodShort(selectedSorted[selectedSorted.length - 1])}`;
 
   const classLabels: Record<string, string> = {
     REVENUE: 'Revenue',
@@ -210,7 +234,7 @@ export function ReportControls({
         {/* Period picker */}
         <div className="relative">
           <button
-            onClick={() => setShowPeriodPicker(!showPeriodPicker)}
+            onClick={showPeriodPicker ? () => setShowPeriodPicker(false) : handleOpenPicker}
             className="inline-flex items-center gap-1.5 rounded-lg border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted/50 transition-colors"
           >
             <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
@@ -219,7 +243,10 @@ export function ReportControls({
           </button>
 
           {showPeriodPicker && (
-            <div className="absolute top-full left-0 mt-1 z-50 rounded-lg border bg-card shadow-lg p-3 min-w-[240px]">
+            <div className="absolute top-full left-0 mt-1 z-50 rounded-lg border bg-card shadow-lg p-3 min-w-[260px]">
+              <p className="text-[10px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">
+                Select periods ({pendingPeriods.length} selected)
+              </p>
               <div className="flex gap-1.5 mb-2">
                 <button onClick={handleSelectAll} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50">All</button>
                 <button onClick={() => handleSelectLast(3)} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50">Last 3</button>
@@ -231,7 +258,7 @@ export function ReportControls({
                   <label key={p} className="flex items-center gap-2 px-1 py-0.5 rounded hover:bg-muted/30 cursor-pointer">
                     <input
                       type="checkbox"
-                      checked={state.selectedPeriods.includes(p)}
+                      checked={pendingPeriods.includes(p)}
                       onChange={() => handlePeriodToggle(p)}
                       className="rounded border-muted-foreground/30"
                     />
@@ -239,12 +266,24 @@ export function ReportControls({
                   </label>
                 ))}
               </div>
-              <button
-                onClick={() => setShowPeriodPicker(false)}
-                className="mt-2 w-full text-[10px] py-1 rounded bg-foreground text-background font-medium hover:opacity-90"
-              >
-                Done
-              </button>
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => setShowPeriodPicker(false)}
+                  className="flex-1 text-[10px] py-1.5 rounded border font-medium hover:bg-muted/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleApply}
+                  className={`flex-1 text-[10px] py-1.5 rounded font-medium transition-colors ${
+                    hasPendingChanges
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-foreground text-background hover:opacity-90'
+                  }`}
+                >
+                  {hasPendingChanges ? 'Apply Filters' : 'Apply'}
+                </button>
+              </div>
             </div>
           )}
         </div>

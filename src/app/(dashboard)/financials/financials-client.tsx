@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { VisualiseButton } from '@/components/ui/visualise-button';
@@ -9,6 +9,11 @@ import { ROLE_HIERARCHY } from '@/types';
 import { EmptyStateIllustration } from '@/components/ui/illustrations';
 import { NumberLegend } from '@/components/data-primitives';
 import { useCurrency } from '@/components/providers/currency-context';
+import {
+  ReportControls,
+  getDefaultReportState,
+  type ReportControlsState,
+} from '@/components/financial/report-controls';
 
 type PeriodSummary = {
   period: string;
@@ -100,6 +105,27 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
 
   const canSync = hasMinRole(role as Role, 'advisor');
 
+  // ReportControls state for period filtering
+  const availablePeriods = useMemo(
+    () => periods.map((p) => p.period).sort(),
+    [periods]
+  );
+  const [controls, setControls] = useState<ReportControlsState>(() =>
+    getDefaultReportState(availablePeriods)
+  );
+
+  // Filter periods by selected periods
+  const filteredPeriods = useMemo(
+    () => periods.filter((p) => controls.selectedPeriods.includes(p.period)),
+    [periods, controls.selectedPeriods]
+  );
+
+  // Filter financials by selected periods
+  const filteredFinancials = useMemo(
+    () => financials.filter((f) => controls.selectedPeriods.includes(f.period)),
+    [financials, controls.selectedPeriods]
+  );
+
   // Group accounts by class
   const accountsByClass = accounts.reduce<Record<string, Account[]>>((acc, a) => {
     const cls = a.class.toUpperCase() || 'OTHER';
@@ -108,9 +134,9 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
     return acc;
   }, {});
 
-  // Get financials for selected period
+  // Get financials for selected period (from filtered set)
   const periodFinancials = selectedPeriod
-    ? financials.filter((f) => f.period === selectedPeriod)
+    ? filteredFinancials.filter((f) => f.period === selectedPeriod)
     : [];
 
   // Group period financials by class
@@ -271,6 +297,27 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
         </div>
       )}
 
+      {/* Report Controls — period filtering */}
+      {periods.length > 0 && (
+        <ReportControls
+          availablePeriods={availablePeriods}
+          showComparison={false}
+          showViewMode={false}
+          showSearch={false}
+          onChange={setControls}
+          state={controls}
+          exportTitle="financials-summary"
+          exportData={filteredPeriods.map((p) => ({
+            Period: p.period,
+            Revenue: p.revenue,
+            'Cost of Sales': p.costs,
+            Expenses: p.expenses,
+            'Net Profit': p.netProfit,
+            Lines: p.accountLines,
+          }))}
+        />
+      )}
+
       {/* Empty state */}
       {periods.length === 0 && accounts.length === 0 && (
         <div className="rounded-lg border p-12 text-center flex flex-col items-center">
@@ -325,7 +372,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {periods.map((p) => (
+                    {filteredPeriods.map((p) => (
                       <tr key={p.period} className="hover:bg-muted/30">
                         <td className="px-4 py-2 font-medium">{formatPeriod(p.period)}</td>
                         <td className="px-4 py-2 text-right">{formatCurrency(p.revenue)}</td>
@@ -348,6 +395,11 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
                   </tbody>
                 </table>
               </div>
+              {filteredPeriods.length === 0 && periods.length > 0 && (
+                <p className="p-8 text-center text-sm text-muted-foreground">
+                  No periods match your filter. Adjust the date selection above.
+                </p>
+              )}
               {periods.length === 0 && (
                 <p className="p-8 text-center text-sm text-muted-foreground">
                   No financial data imported yet. Connect and sync Xero to get started.
@@ -401,7 +453,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
                   className="rounded border px-3 py-1.5 text-sm"
                 >
                   <option value="">Choose a period</option>
-                  {periods.map((p) => (
+                  {filteredPeriods.map((p) => (
                     <option key={p.period} value={p.period}>{formatPeriod(p.period)}</option>
                   ))}
                 </select>

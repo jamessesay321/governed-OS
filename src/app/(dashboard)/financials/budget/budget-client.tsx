@@ -17,19 +17,136 @@ type BudgetRow = {
   favorableWhenUnder?: boolean;
 };
 
+type PeriodPnLData = {
+  period: string;
+  accountsByClass: Record<string, Record<string, number>>;
+};
+
 type Props = {
   connected: boolean;
   hasBudget: boolean;
-  periodLabel: string;
-  rows: BudgetRow[];
   availablePeriods: string[];
+  periodPnLs: PeriodPnLData[];
+  budgetByCategory: Record<string, number>;
+  budgetByCategoryPeriod: Record<string, number>;
 };
 
-export function BudgetClient({ connected, hasBudget, periodLabel, rows, availablePeriods }: Props) {
+export function BudgetClient({
+  connected,
+  hasBudget,
+  availablePeriods,
+  periodPnLs,
+  budgetByCategory,
+  budgetByCategoryPeriod,
+}: Props) {
   const { format: formatCurrency } = useCurrency();
   const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods));
 
-  if (!connected || rows.length === 0) {
+  // Build rows dynamically based on selected periods
+  const { rows, periodLabel } = useMemo(() => {
+    const selectedSet = new Set(controls.selectedPeriods);
+    const filteredPnLs = periodPnLs.filter((p) => selectedSet.has(p.period));
+
+    if (filteredPnLs.length === 0) {
+      return { rows: [] as BudgetRow[], periodLabel: 'No periods selected' };
+    }
+
+    // Aggregate actuals by class → account name across selected periods
+    const actualsByClass = new Map<string, Map<string, number>>();
+    for (const pnl of filteredPnLs) {
+      for (const [cls, accounts] of Object.entries(pnl.accountsByClass)) {
+        if (!actualsByClass.has(cls)) actualsByClass.set(cls, new Map());
+        const accMap = actualsByClass.get(cls)!;
+        for (const [name, amount] of Object.entries(accounts)) {
+          accMap.set(name, (accMap.get(name) ?? 0) + amount);
+        }
+      }
+    }
+
+    // Aggregate budget for selected periods only
+    const budgetForSelected = new Map<string, number>();
+    for (const [key, amount] of Object.entries(budgetByCategoryPeriod)) {
+      const lastUnderscore = key.lastIndexOf('_');
+      const category = key.substring(0, lastUnderscore);
+      const period = key.substring(lastUnderscore + 1);
+      if (selectedSet.has(period)) {
+        budgetForSelected.set(category, (budgetForSelected.get(category) ?? 0) + amount);
+      }
+    }
+
+    // If no period-specific budgets, fall back to total budgets
+    const getBudget = (name: string): number => {
+      if (budgetForSelected.size > 0) return budgetForSelected.get(name) ?? 0;
+      return budgetByCategory[name] ?? 0;
+    };
+
+    // Build display rows
+    const result: BudgetRow[] = [];
+
+    // Revenue
+    const revenueAccounts = actualsByClass.get('REVENUE') ?? new Map();
+    result.push({ category: 'Revenue', budget: 0, actual: 0, header: true });
+    let totalRevBudget = 0, totalRevActual = 0;
+    for (const [name, actual] of Array.from(revenueAccounts.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+      const budget = getBudget(name);
+      totalRevBudget += budget;
+      totalRevActual += actual;
+      result.push({ category: name, budget, actual, indent: true, favorableWhenUnder: false });
+    }
+    result.push({ category: 'Total Revenue', budget: totalRevBudget, actual: totalRevActual, bold: true, separator: true, favorableWhenUnder: false });
+
+    // Cost of Sales
+    const cosAccounts = actualsByClass.get('DIRECTCOSTS') ?? new Map();
+    result.push({ category: 'Cost of Sales', budget: 0, actual: 0, header: true });
+    let totalCosBudget = 0, totalCosActual = 0;
+    for (const [name, actual] of Array.from(cosAccounts.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+      const budget = getBudget(name);
+      totalCosBudget += budget;
+      totalCosActual += actual;
+      result.push({ category: name, budget, actual, indent: true, favorableWhenUnder: true });
+    }
+    result.push({ category: 'Total Cost of Sales', budget: totalCosBudget, actual: totalCosActual, bold: true, separator: true, favorableWhenUnder: true });
+
+    // Gross Profit
+    const gpBudget = totalRevBudget - totalCosBudget;
+    const gpActual = totalRevActual - totalCosActual;
+    result.push({ category: 'Gross Profit', budget: gpBudget, actual: gpActual, bold: true, separator: true, favorableWhenUnder: false });
+
+    // Operating Expenses (combine EXPENSE + OVERHEADS)
+    const expAccounts = actualsByClass.get('EXPENSE') ?? new Map();
+    const ohAccounts = actualsByClass.get('OVERHEADS') ?? new Map();
+    result.push({ category: 'Operating Expenses', budget: 0, actual: 0, header: true });
+    let totalExpBudget = 0, totalExpActual = 0;
+
+    const allExpenses = new Map<string, number>();
+    for (const [name, amount] of expAccounts) allExpenses.set(name, (allExpenses.get(name) ?? 0) + amount);
+    for (const [name, amount] of ohAccounts) allExpenses.set(name, (allExpenses.get(name) ?? 0) + amount);
+
+    for (const [name, actual] of Array.from(allExpenses.entries()).sort((a, b) => a[0].localeCompare(b[0]))) {
+      const budget = getBudget(name);
+      totalExpBudget += budget;
+      totalExpActual += actual;
+      result.push({ category: name, budget, actual, indent: true, favorableWhenUnder: true });
+    }
+    result.push({ category: 'Total Operating Expenses', budget: totalExpBudget, actual: totalExpActual, bold: true, separator: true, favorableWhenUnder: true });
+
+    // Net Profit
+    const npBudget = gpBudget - totalExpBudget;
+    const npActual = gpActual - totalExpActual;
+    result.push({ category: 'Net Profit', budget: npBudget, actual: npActual, bold: true, separator: true, favorableWhenUnder: false });
+
+    // Period label
+    const sorted = [...controls.selectedPeriods].sort();
+    const first = new Date(sorted[0]);
+    const last = new Date(sorted[sorted.length - 1]);
+    const label = sorted.length === 1
+      ? first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })
+      : `${first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })} \u2013 ${last.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`;
+
+    return { rows: result, periodLabel: label };
+  }, [controls.selectedPeriods, periodPnLs, budgetByCategory, budgetByCategoryPeriod]);
+
+  if (!connected || periodPnLs.length === 0) {
     return (
       <div className="space-y-6 max-w-5xl">
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
@@ -120,99 +237,105 @@ export function BudgetClient({ connected, hasBudget, periodLabel, rows, availabl
         hasBudget={hasBudget}
       />
 
-      <div className="rounded-lg border bg-card overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b bg-muted/50">
-              <th className="text-left px-4 py-3 font-semibold min-w-[280px]">Category</th>
-              {hasBudget && <th className="text-right px-4 py-3 font-semibold min-w-[110px]">Budget</th>}
-              <th className="text-right px-4 py-3 font-semibold min-w-[110px]">Actual</th>
-              {hasBudget && <th className="text-right px-4 py-3 font-semibold min-w-[110px]">Variance</th>}
-              {hasBudget && <th className="text-right px-4 py-3 font-semibold min-w-[90px]">Variance %</th>}
-              {hasBudget && <th className="text-center px-4 py-3 font-semibold min-w-[80px]">Status</th>}
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((line, idx) => {
-              if (line.header) {
+      {rows.length === 0 ? (
+        <div className="rounded-lg border p-8 text-center text-sm text-muted-foreground">
+          No periods match your filter. Adjust the date selection above.
+        </div>
+      ) : (
+        <div className="rounded-lg border bg-card overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/50">
+                <th className="text-left px-4 py-3 font-semibold min-w-[280px]">Category</th>
+                {hasBudget && <th className="text-right px-4 py-3 font-semibold min-w-[110px]">Budget</th>}
+                <th className="text-right px-4 py-3 font-semibold min-w-[110px]">Actual</th>
+                {hasBudget && <th className="text-right px-4 py-3 font-semibold min-w-[110px]">Variance</th>}
+                {hasBudget && <th className="text-right px-4 py-3 font-semibold min-w-[90px]">Variance %</th>}
+                {hasBudget && <th className="text-center px-4 py-3 font-semibold min-w-[80px]">Status</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filteredRows.map((line, idx) => {
+                if (line.header) {
+                  return (
+                    <tr key={idx} className="border-b bg-muted/30">
+                      <td colSpan={hasBudget ? 6 : 2} className="px-4 py-2.5 font-semibold text-muted-foreground uppercase text-xs tracking-wide">
+                        {line.category}
+                      </td>
+                    </tr>
+                  );
+                }
+
+                const variance = line.actual - line.budget;
+                const variancePercent = line.budget !== 0 ? ((variance / Math.abs(line.budget)) * 100) : 0;
+
+                let favorable: boolean | null = null;
+                if (variance !== 0 && line.favorableWhenUnder !== undefined) {
+                  favorable = line.favorableWhenUnder ? variance < 0 : variance > 0;
+                }
+
+                const colorClass = favorable === true
+                  ? 'text-emerald-600'
+                  : favorable === false
+                    ? 'text-red-600'
+                    : 'text-muted-foreground';
+
                 return (
-                  <tr key={idx} className="border-b bg-muted/30">
-                    <td colSpan={hasBudget ? 6 : 2} className="px-4 py-2.5 font-semibold text-muted-foreground uppercase text-xs tracking-wide">
+                  <tr
+                    key={idx}
+                    className={`
+                      border-b last:border-b-0 hover:bg-muted/30 transition-colors
+                      ${line.separator ? 'border-t-2 border-t-border' : ''}
+                      ${line.bold ? 'bg-muted/20' : ''}
+                    `}
+                  >
+                    <td className={`px-4 py-2.5 ${line.bold ? 'font-semibold' : ''} ${line.indent ? 'pl-8 text-muted-foreground' : ''}`}>
                       {line.category}
                     </td>
+                    {hasBudget && (
+                      <td className={`text-right px-4 py-2.5 font-mono text-xs ${line.bold ? 'font-semibold' : ''}`}>
+                        {formatCurrency(line.budget)}
+                      </td>
+                    )}
+                    <td className={`text-right px-4 py-2.5 font-mono text-xs ${line.bold ? 'font-semibold' : ''}`}>
+                      {formatCurrency(line.actual)}
+                    </td>
+                    {hasBudget && (
+                      <td className={`text-right px-4 py-2.5 font-mono text-xs ${line.bold ? 'font-semibold' : ''} ${colorClass}`}>
+                        {variance !== 0 ? `${variance > 0 ? '+' : ''}${formatCurrency(variance)}` : '-'}
+                      </td>
+                    )}
+                    {hasBudget && (
+                      <td className={`text-right px-4 py-2.5 font-mono text-xs ${colorClass}`}>
+                        {variance !== 0 ? `${variancePercent > 0 ? '+' : ''}${variancePercent.toFixed(1)}%` : '-'}
+                      </td>
+                    )}
+                    {hasBudget && (
+                      <td className="text-center px-4 py-2.5">
+                        {favorable === true && (
+                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                            Favourable
+                          </span>
+                        )}
+                        {favorable === false && (
+                          <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                            Adverse
+                          </span>
+                        )}
+                        {favorable === null && variance === 0 && !line.bold && (
+                          <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+                            On Budget
+                          </span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
-              }
-
-              const variance = line.actual - line.budget;
-              const variancePercent = line.budget !== 0 ? ((variance / Math.abs(line.budget)) * 100) : 0;
-
-              let favorable: boolean | null = null;
-              if (variance !== 0 && line.favorableWhenUnder !== undefined) {
-                favorable = line.favorableWhenUnder ? variance < 0 : variance > 0;
-              }
-
-              const colorClass = favorable === true
-                ? 'text-emerald-600'
-                : favorable === false
-                  ? 'text-red-600'
-                  : 'text-muted-foreground';
-
-              return (
-                <tr
-                  key={idx}
-                  className={`
-                    border-b last:border-b-0 hover:bg-muted/30 transition-colors
-                    ${line.separator ? 'border-t-2 border-t-border' : ''}
-                    ${line.bold ? 'bg-muted/20' : ''}
-                  `}
-                >
-                  <td className={`px-4 py-2.5 ${line.bold ? 'font-semibold' : ''} ${line.indent ? 'pl-8 text-muted-foreground' : ''}`}>
-                    {line.category}
-                  </td>
-                  {hasBudget && (
-                    <td className={`text-right px-4 py-2.5 font-mono text-xs ${line.bold ? 'font-semibold' : ''}`}>
-                      {formatCurrency(line.budget)}
-                    </td>
-                  )}
-                  <td className={`text-right px-4 py-2.5 font-mono text-xs ${line.bold ? 'font-semibold' : ''}`}>
-                    {formatCurrency(line.actual)}
-                  </td>
-                  {hasBudget && (
-                    <td className={`text-right px-4 py-2.5 font-mono text-xs ${line.bold ? 'font-semibold' : ''} ${colorClass}`}>
-                      {variance !== 0 ? `${variance > 0 ? '+' : ''}${formatCurrency(variance)}` : '-'}
-                    </td>
-                  )}
-                  {hasBudget && (
-                    <td className={`text-right px-4 py-2.5 font-mono text-xs ${colorClass}`}>
-                      {variance !== 0 ? `${variancePercent > 0 ? '+' : ''}${variancePercent.toFixed(1)}%` : '-'}
-                    </td>
-                  )}
-                  {hasBudget && (
-                    <td className="text-center px-4 py-2.5">
-                      {favorable === true && (
-                        <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                          Favourable
-                        </span>
-                      )}
-                      {favorable === false && (
-                        <span className="inline-flex items-center rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
-                          Adverse
-                        </span>
-                      )}
-                      {favorable === null && variance === 0 && !line.bold && (
-                        <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
-                          On Budget
-                        </span>
-                      )}
-                    </td>
-                  )}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
