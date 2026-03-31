@@ -1,5 +1,6 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
+import { ensureBalanceSheetData } from '@/lib/xero/sync';
 import { BalanceSheetClient } from './balance-sheet-client';
 
 export default async function BalanceSheetPage() {
@@ -13,14 +14,21 @@ export default async function BalanceSheetPage() {
     .eq('status', 'active')
     .maybeSingle();
 
+  const connected = !!xeroConn;
+
+  // Auto-fetch balance sheet data if connected but none exists yet.
+  // This is a lightweight call (6 API requests max) that runs once —
+  // subsequent page loads find the data already in the DB.
+  if (connected) {
+    await ensureBalanceSheetData(orgId);
+  }
+
   // Fetch normalised financials with account info
   const { data: financials } = await supabase
     .from('normalised_financials')
     .select('*, chart_of_accounts!inner(code, name, type, class)')
     .eq('org_id', orgId)
     .order('period', { ascending: false });
-
-  const connected = !!xeroConn;
 
   // Get all unique periods sorted
   const availablePeriods = [...new Set((financials ?? []).map((f) => f.period))].sort();

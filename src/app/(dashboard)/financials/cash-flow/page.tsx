@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { buildPnL } from '@/lib/financial/aggregate';
+import { ensureBalanceSheetData } from '@/lib/xero/sync';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { CashFlowClient } from './cash-flow-client';
 
@@ -15,6 +16,13 @@ export default async function CashFlowPage() {
     .eq('status', 'active')
     .maybeSingle();
 
+  const connected = !!xeroConn;
+
+  // Auto-fetch balance sheet data if connected but none exists yet.
+  if (connected) {
+    await ensureBalanceSheetData(orgId);
+  }
+
   // Fetch normalised financials with account info
   const { data: financials } = await supabase
     .from('normalised_financials')
@@ -28,7 +36,6 @@ export default async function CashFlowPage() {
     .select('*')
     .eq('org_id', orgId);
 
-  const connected = !!xeroConn;
   const finData = (financials ?? []) as (NormalisedFinancial & {
     chart_of_accounts: { code: string; name: string; type: string; class: string };
   })[];

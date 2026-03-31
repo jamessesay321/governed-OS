@@ -618,3 +618,50 @@ export async function runFullSync(
     return { success: false, recordsSynced: 0, error: errorMessage };
   }
 }
+
+/**
+ * Lightweight balance sheet data fetch — called directly from server
+ * components when BS data is missing. Only makes 6-8 API calls (well
+ * within Xero's 60/min rate limit), unlike the full sync pipeline.
+ *
+ * Returns number of records upserted, or 0 if no data / not connected.
+ */
+export async function ensureBalanceSheetData(orgId: string): Promise<number> {
+  const supabase = await createServiceClient();
+
+  // Check if BS data already exists
+  const { data: existing } = await supabase
+    .from('normalised_financials')
+    .select('id, chart_of_accounts!inner(class)')
+    .eq('org_id', orgId)
+    .in('chart_of_accounts.class', ['ASSET', 'LIABILITY', 'EQUITY'])
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    // BS data already present — nothing to do
+    return 0;
+  }
+
+  // Get Xero tokens
+  let tokens: { accessToken: string; tenantId: string };
+  try {
+    tokens = await getValidTokens(orgId);
+  } catch {
+    // Not connected or tokens expired
+    return 0;
+  }
+
+  // Reset rate limit tracker for this lightweight call
+  xeroCallTimestamps = [];
+
+  console.log('[XERO SYNC] Auto-fetching balance sheet data (lightweight)...');
+  try {
+    const count = await syncBalanceSheetData(orgId, tokens.accessToken, tokens.tenantId);
+    console.log(`[XERO SYNC] Auto-fetch complete: ${count} BS records`);
+    return count;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[XERO SYNC] Auto-fetch balance sheet failed: ${msg}`);
+    return 0;
+  }
+}
