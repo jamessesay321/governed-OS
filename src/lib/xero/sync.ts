@@ -84,11 +84,36 @@ function extractDate(record: { Date: string; DateString?: string }): string {
   return parseXeroDate(record.Date);
 }
 
+/**
+ * Pause execution for a given number of milliseconds.
+ * Used to stay within Xero's rate limit (60 calls/minute).
+ */
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Track API calls and automatically pace to stay under Xero's 60-per-minute limit.
+ */
+let xeroCallTimestamps: number[] = [];
+
 async function xeroGet(
   endpoint: string,
   accessToken: string,
   tenantId: string
 ) {
+  // Rate-limit: if we've made 55+ calls in the last 60 seconds, wait
+  const now = Date.now();
+  xeroCallTimestamps = xeroCallTimestamps.filter((t) => now - t < 60_000);
+  if (xeroCallTimestamps.length >= 55) {
+    const oldest = xeroCallTimestamps[0];
+    const waitMs = 60_000 - (now - oldest) + 500; // Wait until the oldest call expires + buffer
+    console.log(`[XERO SYNC] Rate limit approaching (${xeroCallTimestamps.length} calls in 60s), pausing ${Math.round(waitMs / 1000)}s...`);
+    await delay(waitMs);
+  }
+
+  xeroCallTimestamps.push(Date.now());
+
   const response = await fetch(`https://api.xero.com/api.xro/2.0/${endpoint}`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -98,6 +123,26 @@ async function xeroGet(
   });
 
   if (!response.ok) {
+    // On 429, wait and retry once
+    if (response.status === 429) {
+      const retryAfter = parseInt(response.headers.get('Retry-After') || '30', 10);
+      console.log(`[XERO SYNC] 429 rate limited, waiting ${retryAfter}s before retry...`);
+      await delay(retryAfter * 1000);
+
+      const retryResponse = await fetch(`https://api.xero.com/api.xro/2.0/${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'xero-tenant-id': tenantId,
+          Accept: 'application/json',
+        },
+      });
+
+      if (retryResponse.ok) return retryResponse.json();
+
+      const body = await retryResponse.text().catch(() => '');
+      throw new Error(`Xero API error: ${retryResponse.status} ${retryResponse.statusText}: ${body.slice(0, 200)}`);
+    }
+
     const body = await response.text().catch(() => '');
     throw new Error(`Xero API error: ${response.status} ${response.statusText}: ${body.slice(0, 200)}`);
   }
@@ -264,7 +309,150 @@ async function syncBankTransactions(
 }
 
 /**
- * Full sync pipeline: accounts → invoices → bank transactions → normalise.
+ * Sync balance sheet data from Xero Reports API.
+ * Fetches the Trial Balance report for each month that has transaction data,
+ * extracts ASSET, LIABILITY, EQUITY account balances and writes them to
+ * normalised_financials.
+ *
+ * The Trial Balance gives end-of-period balances for every account —
+ * this is the authoritative source for balance sheet positions.
+ */
+async function syncBalanceSheetData(
+  orgId: string,
+  accessToken: string,
+  tenantId: string
+): Promise<number> {
+  const supabase = await createServiceClient();
+
+  // Get all periods that have transaction data
+  const { data: periodsData } = await supabase
+    .from('normalised_financials')
+    .select('period')
+    .eq('org_id', orgId);
+
+  const periods = [...new Set((periodsData ?? []).map((p) => p.period))].sort().reverse();
+  console.log(`[XERO SYNC] Fetching balance sheet data for ${periods.length} periods`);
+
+  if (periods.length === 0) return 0;
+
+  // Get chart of accounts lookup (code → id, and check class)
+  const { data: accounts } = await supabase
+    .from('chart_of_accounts')
+    .select('id, code, name, class')
+    .eq('org_id', orgId);
+
+  const accountByCode = new Map<string, { id: string; cls: string }>();
+  for (const acc of (accounts ?? [])) {
+    if (acc.code) {
+      accountByCode.set(acc.code, { id: acc.id, cls: (acc.class || '').toUpperCase() });
+    }
+  }
+
+  let totalUpserted = 0;
+
+  // Fetch Trial Balance for each period (latest periods first, cap at 6 to stay within rate limits)
+  const periodsToFetch = periods.slice(0, 6);
+
+  for (const period of periodsToFetch) {
+    try {
+      // period is YYYY-MM-01 — we need the last day of the month for the report date
+      const [year, month] = period.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const reportDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+      const data = await xeroGet(
+        `Reports/TrialBalance?date=${reportDate}`,
+        accessToken,
+        tenantId
+      );
+
+      const report = data?.Reports?.[0];
+      if (!report?.Rows) {
+        console.log(`[XERO SYNC] No Trial Balance data for ${period}`);
+        continue;
+      }
+
+      // Parse the Trial Balance report
+      // Xero TB structure: Rows[] → each Row has Cells[], RowType = 'Section'|'Row'|'SummaryRow'
+      const rows: Array<{ period: string; accountId: string; amount: number }> = [];
+
+      for (const section of report.Rows) {
+        if (section.RowType === 'Section' && section.Rows) {
+          for (const row of section.Rows) {
+            if (row.RowType !== 'Row' || !row.Cells) continue;
+
+            // Cells: [Account, Debit, Credit, YTD Debit, YTD Credit]
+            // Account cell has Attributes with Value = AccountID and Id = 'account'
+            const accountCell = row.Cells[0];
+            const accountCode = accountCell?.Attributes?.find(
+              (a: { Id: string; Value: string }) => a.Id === 'account'
+            )?.Value;
+
+            if (!accountCode) continue;
+
+            const accInfo = accountByCode.get(accountCode);
+            if (!accInfo) continue;
+
+            // Only process balance sheet accounts
+            const bsClasses = ['ASSET', 'LIABILITY', 'EQUITY'];
+            if (!bsClasses.includes(accInfo.cls)) continue;
+
+            // Get the net balance: Debit - Credit (for standard Trial Balance)
+            const debit = parseFloat(row.Cells[1]?.Value || '0') || 0;
+            const credit = parseFloat(row.Cells[2]?.Value || '0') || 0;
+            const netBalance = debit - credit;
+
+            if (netBalance === 0) continue;
+
+            rows.push({
+              period,
+              accountId: accInfo.id,
+              amount: netBalance,
+            });
+          }
+        }
+      }
+
+      console.log(`[XERO SYNC] Trial Balance ${period}: ${rows.length} BS account balances`);
+
+      // Upsert balance sheet data into normalised_financials
+      for (const row of rows) {
+        const { error } = await supabase.from('normalised_financials').upsert(
+          {
+            org_id: orgId,
+            period: row.period,
+            account_id: row.accountId,
+            amount: Math.round((row.amount + Number.EPSILON) * 100) / 100,
+            transaction_count: 0, // Report-derived, not transaction count
+            source: 'xero',
+          },
+          { onConflict: 'org_id,period,account_id' }
+        );
+
+        if (error) {
+          console.warn(`[XERO SYNC] BS upsert failed for ${row.period}/${row.accountId}: ${error.message}`);
+        } else {
+          totalUpserted++;
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // Log but don't fail the whole sync if one period's report fails
+      console.warn(`[XERO SYNC] Trial Balance fetch failed for ${period}: ${msg}`);
+
+      // If it's a 429 (rate limit), stop trying more periods
+      if (msg.includes('429')) {
+        console.warn(`[XERO SYNC] Rate limited — stopping balance sheet fetch`);
+        break;
+      }
+    }
+  }
+
+  return totalUpserted;
+}
+
+/**
+ * Full sync pipeline: accounts → invoices → bank transactions → normalise → balance sheet.
  */
 export async function runFullSync(
   orgId: string,
@@ -292,6 +480,9 @@ export async function runFullSync(
   try {
     const tokens = await getValidTokens(orgId);
     let totalSynced = 0;
+
+    // Reset rate limit tracker for this sync run
+    xeroCallTimestamps = [];
 
     // Sync in order: accounts first (needed for normalisation), then transactions
     console.log('[XERO SYNC] === Starting full sync ===');
@@ -328,6 +519,23 @@ export async function runFullSync(
     const normalised = await normaliseTransactions(orgId);
     console.log(`[XERO SYNC] Normalised: ${normalised} period-account records`);
 
+    // Sync balance sheet data from Xero Trial Balance reports (non-blocking)
+    let bsSynced = 0;
+    try {
+      console.log('[XERO SYNC] Syncing balance sheet data from Trial Balance...');
+      bsSynced = await syncBalanceSheetData(
+        orgId,
+        tokens.accessToken,
+        tokens.tenantId
+      );
+      totalSynced += bsSynced;
+      console.log(`[XERO SYNC] Balance sheet: ${bsSynced} account-period records synced`);
+    } catch (bsErr) {
+      // Balance sheet sync is non-blocking — P&L data should still be available
+      const bsMsg = bsErr instanceof Error ? bsErr.message : String(bsErr);
+      console.warn(`[XERO SYNC] Balance sheet sync failed (non-blocking): ${bsMsg}`);
+    }
+
     // Update sync log
     await supabase
       .from('sync_log')
@@ -345,7 +553,7 @@ export async function runFullSync(
       action: 'xero.sync_completed',
       entityType: 'sync_log',
       entityId: syncLog.id,
-      metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, totalSynced },
+      metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, bsSynced, totalSynced },
     });
 
     // Auto-map accounts after sync

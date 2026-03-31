@@ -52,7 +52,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
 
   const hasData = currentData.some((s) => s.accounts.length > 0);
 
-  if (!connected || !hasData) {
+  if (!connected) {
     return (
       <div className="space-y-6 max-w-4xl">
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 flex items-center justify-between">
@@ -65,6 +65,30 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
         <div>
           <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">&larr; Back to Financials</Link>
           <h2 className="text-2xl font-bold mt-1">Balance Sheet</h2>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasData) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div className="rounded-lg border border-blue-300 bg-blue-50 px-4 py-3">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-blue-200 px-2.5 py-0.5 text-xs font-semibold text-blue-800 uppercase tracking-wide">Syncing</span>
+            <span className="text-sm text-blue-800">
+              Your accounting software is connected, but balance sheet data hasn&apos;t been synced yet.
+              Go to <Link href="/financials" className="font-medium underline hover:no-underline">Financials</Link> and click &quot;Sync from Xero&quot; to pull your latest data.
+            </span>
+          </div>
+        </div>
+        <div>
+          <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">&larr; Back to Financials</Link>
+          <h2 className="text-2xl font-bold mt-1">Balance Sheet</h2>
+          <p className="text-sm text-muted-foreground mt-2">
+            Balance sheet positions are pulled from Xero&apos;s Trial Balance report during each sync.
+            If your last sync was interrupted by a rate limit, try again in a minute.
+          </p>
         </div>
       </div>
     );
