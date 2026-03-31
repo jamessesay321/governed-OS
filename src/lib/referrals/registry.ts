@@ -48,8 +48,8 @@ export const REFERRAL_TIERS: ReferralTier[] = [
 
 export function getMockReferralStats(): ReferralStats {
   return {
-    referralCode: 'ALONUKO-ADV-2026',
-    referralLink: 'https://governed.os/refer/ALONUKO-ADV-2026',
+    referralCode: 'GROVE-ADV-2026',
+    referralLink: 'https://governed.os/refer/GROVE-ADV-2026',
     invitationsSent: 5,
     colleaguesJoined: 3,
     creditsEarned: 200,

@@ -139,7 +139,7 @@ export default function AgentSettingsPage({ params }: { params: Promise<{ slug: 
           </div>
           <div className="space-y-2 pt-2">
             <Label htmlFor="notif-email-address" className="text-sm">Email summary to:</Label>
-            <Input id="notif-email-address" placeholder="finance@alonuko.co.uk" />
+            <Input id="notif-email-address" placeholder="finance@yourcompany.com" />
           </div>
         </CardContent>
       </Card>

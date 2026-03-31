@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/components/providers/user-context';
 
 function formatPence(pence: number): string {
   return `\u00a3${(pence / 100).toLocaleString()}`;
@@ -270,6 +271,7 @@ function InvestmentSummary({
 /* ------------------------------------------------------------------ */
 
 export function ProposalClient() {
+  const { orgName } = useUser();
   const proposal = useMemo(() => getMockProposal(), []);
 
   // Initialise toggles: recommended items start enabled
@@ -346,7 +348,7 @@ export function ProposalClient() {
             <div className="mb-3 flex items-center gap-2">
               <Zap className="h-4 w-4 text-primary" />
               <h2 className="text-sm font-semibold text-foreground">
-                Recommended for ALONUKO
+                Recommended for {orgName}
               </h2>
             </div>
             <div className="space-y-2">
@@ -403,7 +405,7 @@ export function ProposalClient() {
         <Clock className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p className="text-xs leading-relaxed text-muted-foreground">
           This proposal evolves with your business. As we learn more about
-          ALONUKO through your data and interactions, recommendations will
+          {orgName} through your data and interactions, recommendations will
           update automatically.
         </p>
       </div>

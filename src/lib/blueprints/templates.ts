@@ -215,7 +215,7 @@ const fashionLuxury: BlueprintTemplate = {
   name: 'Fashion / Luxury',
   industry: 'Fashion',
   description:
-    'Shaped by real learnings from luxury fashion businesses like Alonuko. Tracks revenue by product line (bridal, ready-to-wear, bespoke), material costs, stock and WIP movements, and consultation-to-conversion metrics. Perfect for designers, ateliers, and luxury brands.',
+    'Shaped by real learnings from luxury fashion businesses. Tracks revenue by product line (bridal, ready-to-wear, bespoke), material costs, stock and WIP movements, and consultation-to-conversion metrics. Perfect for designers, ateliers, and luxury brands.',
   account_mappings: [
     { source_pattern: 'Bridal Revenue', target_category: 'Revenue', target_subcategory: 'Bridal' },
     { source_pattern: 'Ready to Wear', target_category: 'Revenue', target_subcategory: 'Ready to Wear' },

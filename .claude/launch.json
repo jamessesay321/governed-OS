@@ -3,10 +3,9 @@
   "configurations": [
     {
       "name": "governed-os-dev",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["/Users/james/projects/governed-os/node_modules/.bin/next", "dev"],
-      "cwd": "/Users/james/projects/governed-os",
-      "autoPort": true
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "port": 3000
     }
   ]
 }

@@ -181,7 +181,7 @@ export function getRecommendedBundles(): RecommendedBundle[] {
       id: 'bundle-creative',
       name: 'Creative Empire',
       description: 'Built for multi-channel luxury businesses ready to scale internationally.',
-      tagline: 'Recommended for ALONUKO',
+      tagline: 'Recommended for you',
       color: 'purple',
       modules: ['Cash Flow Forecaster', 'SaaS Metrics Suite', 'Investment Readiness', 'Pricing & Margin Analyser', 'Revenue Recognition'],
       agents: ['Finance Agent', 'Marketing Agent', 'Secretarial Agent'],

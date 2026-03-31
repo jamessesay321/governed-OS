@@ -439,7 +439,7 @@ export async function runQboFullSync(
       entityType: 'sync_log',
       entityId: syncLog.id,
       metadata: { error: errorMessage },
-    });
+    }, { critical: false });
 
     return { success: false, recordsSynced: 0, error: errorMessage };
   }

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/components/providers/user-context';
 import {
   getMockServiceBreakdown,
   getMockInvoices,
@@ -36,6 +37,7 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export function BillingClient() {
+  const { orgName } = useUser();
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
 
   const breakdown = getMockServiceBreakdown();
@@ -652,7 +654,7 @@ export function BillingClient() {
             </CardHeader>
             <CardContent>
               <div className="text-sm leading-relaxed">
-                <p className="font-medium">ALONUKO Ltd</p>
+                <p className="font-medium">{orgName}</p>
                 <p className="text-muted-foreground">45 Conduit Street</p>
                 <p className="text-muted-foreground">Mayfair, London W1S 2YP</p>
               </div>
