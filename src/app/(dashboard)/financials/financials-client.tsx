@@ -42,6 +42,16 @@ type Financial = {
   };
 };
 
+type SenseCheckFlag = {
+  severity: 'error' | 'warning' | 'info';
+  code: string;
+  message: string;
+  period?: string;
+  field?: string;
+  value?: number;
+  expected?: string;
+};
+
 type Props = {
   periods: PeriodSummary[];
   accounts: Account[];
@@ -49,6 +59,7 @@ type Props = {
   rawTransactionCount: number;
   connected: boolean;
   role: string;
+  senseCheckFlags?: SenseCheckFlag[];
   lastSync: {
     status: string;
     recordsSynced: number;
@@ -79,7 +90,7 @@ const CLASS_LABELS: Record<string, string> = {
   EQUITY: 'Equity',
 };
 
-export function FinancialsClient({ periods, accounts, financials, rawTransactionCount, connected, role, lastSync }: Props) {
+export function FinancialsClient({ periods, accounts, financials, rawTransactionCount, connected, role, senseCheckFlags = [], lastSync }: Props) {
   const router = useRouter();
   const { format: formatCurrency } = useCurrency();
   const [tab, setTab] = useState<Tab>('overview');
@@ -209,6 +220,56 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
           </>
         )}
       </div>
+
+      {/* Sense-check flags */}
+      {senseCheckFlags.length > 0 && (
+        <div className="space-y-2">
+          {senseCheckFlags.filter((f) => f.severity === 'error').length > 0 && (
+            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/20 px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                </svg>
+                <span className="text-sm font-semibold text-red-800 dark:text-red-200">
+                  Data Errors Detected
+                </span>
+              </div>
+              <ul className="space-y-1">
+                {senseCheckFlags
+                  .filter((f) => f.severity === 'error')
+                  .map((flag, i) => (
+                    <li key={i} className="text-xs text-red-700 dark:text-red-300 flex items-start gap-1.5">
+                      <span className="mt-0.5 shrink-0">•</span>
+                      <span>{flag.message}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+          {senseCheckFlags.filter((f) => f.severity === 'warning').length > 0 && (
+            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                </svg>
+                <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                  Review Recommended
+                </span>
+              </div>
+              <ul className="space-y-1">
+                {senseCheckFlags
+                  .filter((f) => f.severity === 'warning')
+                  .map((flag, i) => (
+                    <li key={i} className="text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                      <span className="mt-0.5 shrink-0">•</span>
+                      <span>{flag.message}</span>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Empty state */}
       {periods.length === 0 && accounts.length === 0 && (
@@ -351,7 +412,8 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
                   {['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'].map((cls) => {
                     const items = periodByClass[cls];
                     if (!items || items.length === 0) return null;
-                    const total = items.reduce((sum, f) => sum + Number(f.amount), 0);
+                    const isCostClass = ['DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'].includes(cls);
+                    const total = items.reduce((sum, f) => sum + (isCostClass ? Math.abs(Number(f.amount)) : Number(f.amount)), 0);
                     return (
                       <div key={cls} className="rounded-lg border">
                         <div className="flex items-center justify-between border-b px-4 py-3 bg-muted/50">
@@ -369,7 +431,7 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
                               </div>
                               <div className="flex items-center gap-4">
                                 <span className="text-xs text-muted-foreground">{f.transaction_count} txns</span>
-                                <span className="font-mono w-28 text-right">{formatCurrency(Number(f.amount))}</span>
+                                <span className="font-mono w-28 text-right">{formatCurrency(isCostClass ? Math.abs(Number(f.amount)) : Number(f.amount))}</span>
                               </div>
                             </div>
                           ))}

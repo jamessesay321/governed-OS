@@ -103,7 +103,7 @@ export default async function HealthPage() {
     if (!acc) continue;
     const cls = acc.class.toUpperCase();
     if (cls === 'ASSET') totalAssets += Number(f.amount);
-    if (cls === 'LIABILITY') totalLiabilities += Number(f.amount);
+    if (cls === 'LIABILITY') totalLiabilities += Math.abs(Number(f.amount));
   }
 
   const latestPnl = pnls[0];
@@ -134,7 +134,7 @@ export default async function HealthPage() {
       const acc = accountMap.get(f.account_id);
       if (!acc) continue;
       if (acc.class.toUpperCase() === 'ASSET') assets += Number(f.amount);
-      if (acc.class.toUpperCase() === 'LIABILITY') liabs += Number(f.amount);
+      if (acc.class.toUpperCase() === 'LIABILITY') liabs += Math.abs(Number(f.amount));
     }
     return computeLiquidityScore(assets, liabs);
   }

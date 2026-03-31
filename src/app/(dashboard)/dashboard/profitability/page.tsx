@@ -72,8 +72,10 @@ export default async function ProfitabilityPage() {
     }
   }
 
+  // row.amount in sections is still raw Xero sign (negative for costs)
+  // so use absolute value for pie chart display
   const expenseBreakdown = Array.from(expenseMap.entries())
-    .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
+    .map(([name, value]) => ({ name, value: Math.round(Math.abs(value) * 100) / 100 }))
     .sort((a, b) => b.value - a.value);
 
   return (

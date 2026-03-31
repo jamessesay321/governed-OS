@@ -91,11 +91,21 @@ export function buildPnL(
     };
   });
 
+  // Xero stores costs/expenses as NEGATIVE amounts (debit convention).
+  // Normalise to positive values for intuitive P&L summary fields.
+  // Revenue is already positive. CostOfSales/Expenses/Overheads stored
+  // as negative by Xero — take absolute values so downstream consumers
+  // can use simple subtraction: grossProfit = revenue - costOfSales.
   const revenue = sections.find((s) => s.class === 'REVENUE')?.total || 0;
-  const costOfSales =
-    sections.find((s) => s.class === 'DIRECTCOSTS')?.total || 0;
-  const expenses = sections.find((s) => s.class === 'EXPENSE')?.total || 0;
-  const overheads = sections.find((s) => s.class === 'OVERHEADS')?.total || 0;
+  const costOfSales = Math.abs(
+    sections.find((s) => s.class === 'DIRECTCOSTS')?.total || 0
+  );
+  const expenses = Math.abs(
+    sections.find((s) => s.class === 'EXPENSE')?.total || 0
+  );
+  const overheads = Math.abs(
+    sections.find((s) => s.class === 'OVERHEADS')?.total || 0
+  );
 
   return {
     sections,

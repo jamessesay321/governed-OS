@@ -93,7 +93,7 @@ export async function calculateVariances(
 
   for (const budget of budgetLines) {
     const actualPence = actualsByCategory.get(budget.category) ?? 0;
-    const variancePence = actualPence - budget.amount_pence;
+    const variancePence = actualPence - budget.budgeted_amount;
 
     // Determine if the variance is favourable or adverse
     const isRevenueCategory = budget.category === 'revenue' || budget.category === 'gross_profit' || budget.category === 'net_profit';
@@ -103,8 +103,8 @@ export async function calculateVariances(
         ? 'favourable' as const
         : 'adverse' as const;
 
-    const variancePercentage = budget.amount_pence !== 0
-      ? roundCurrency((variancePence / Math.abs(budget.amount_pence)) * 100) / 100
+    const variancePercentage = budget.budgeted_amount !== 0
+      ? roundCurrency((variancePence / Math.abs(budget.budgeted_amount)) * 100) / 100
       : 0;
 
     const isMaterial =
@@ -113,7 +113,7 @@ export async function calculateVariances(
 
     lines.push({
       category: budget.category,
-      budget_pence: budget.amount_pence,
+      budget_pence: budget.budgeted_amount,
       actual_pence: actualPence,
       variance_pence: variancePence,
       variance_percentage: variancePercentage,
@@ -164,7 +164,7 @@ export async function getBudgetLines(
  */
 export async function upsertBudgetLines(
   orgId: string,
-  lines: { category: string; period: string; amount_pence: number }[]
+  lines: { category: string; period: string; budgeted_amount: number }[]
 ): Promise<number> {
   const supabase = await createServiceClient();
   let upserted = 0;
@@ -175,7 +175,7 @@ export async function upsertBudgetLines(
         org_id: orgId,
         category: line.category,
         period: line.period,
-        amount_pence: line.amount_pence,
+        budgeted_amount: line.budgeted_amount,
       },
       { onConflict: 'org_id,category,period' }
     );

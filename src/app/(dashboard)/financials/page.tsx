@@ -1,5 +1,6 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
+import { runAllPnLChecks } from '@/lib/financial/sense-check';
 import { FinancialsClient } from './financials-client';
 
 export default async function FinancialsPage() {
@@ -54,9 +55,10 @@ export default async function FinancialsPage() {
     const cls = account.class.toUpperCase();
     const amount = Number(fin.amount);
 
+    // Xero stores costs/expenses as negative — normalise to positive
     if (cls === 'REVENUE') existing.revenue += amount;
-    else if (cls === 'DIRECTCOSTS') existing.costs += amount;
-    else if (cls === 'EXPENSE' || cls === 'OVERHEADS') existing.expenses += amount;
+    else if (cls === 'DIRECTCOSTS') existing.costs += Math.abs(amount);
+    else if (cls === 'EXPENSE' || cls === 'OVERHEADS') existing.expenses += Math.abs(amount);
 
     existing.accounts += 1;
     periodSummary.set(period, existing);
@@ -73,6 +75,18 @@ export default async function FinancialsPage() {
       accountLines: data.accounts,
     }));
 
+  // Run sense-checks on P&L data
+  const senseCheckFlags = runAllPnLChecks(
+    periods.map((p) => ({
+      period: p.period,
+      revenue: p.revenue,
+      costOfSales: p.costs,
+      grossProfit: p.revenue - p.costs,
+      expenses: p.expenses,
+      netProfit: p.netProfit,
+    }))
+  );
+
   return (
     <FinancialsClient
       periods={periods}
@@ -81,6 +95,7 @@ export default async function FinancialsPage() {
       rawTransactionCount={rawCount ?? 0}
       connected={!!xeroConnection}
       role={role}
+      senseCheckFlags={senseCheckFlags}
       lastSync={lastSync ? {
         status: lastSync.status,
         recordsSynced: lastSync.records_synced,

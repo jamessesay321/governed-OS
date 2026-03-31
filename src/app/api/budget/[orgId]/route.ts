@@ -33,7 +33,9 @@ export async function GET(
 const budgetLineSchema = z.object({
   category: z.string().min(1),
   period: z.string().regex(/^\d{4}-\d{2}-01$/),
-  amount_pence: z.number().int(),
+  budgeted_amount: z.number(),
+  account_code: z.string().optional(),
+  account_name: z.string().optional(),
 });
 
 const budgetLinesSchema = z.object({

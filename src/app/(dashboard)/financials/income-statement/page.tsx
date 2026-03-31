@@ -39,16 +39,22 @@ export default async function IncomeStatementPage() {
     const pnl = buildPnL(finData, accData, p);
     return {
       period: p,
-      sections: pnl.sections.map((s) => ({
-        label: s.label,
-        class: s.class,
-        total: s.total,
-        rows: s.rows.map((r) => ({
-          name: r.accountName,
-          code: r.accountCode,
-          amount: r.amount,
-        })),
-      })),
+      // Normalise cost/expense section amounts to positive for P&L display.
+      // Revenue rows stay as-is (positive). Cost/Expense/Overhead rows are
+      // stored as negative by Xero — take absolute value for the P&L table.
+      sections: pnl.sections.map((s) => {
+        const isCostSection = ['DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'].includes(s.class);
+        return {
+          label: s.label,
+          class: s.class,
+          total: isCostSection ? Math.abs(s.total) : s.total,
+          rows: s.rows.map((r) => ({
+            name: r.accountName,
+            code: r.accountCode,
+            amount: isCostSection ? Math.abs(r.amount) : r.amount,
+          })),
+        };
+      }),
       revenue: pnl.revenue,
       costOfSales: pnl.costOfSales,
       grossProfit: pnl.grossProfit,

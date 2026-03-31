@@ -946,9 +946,17 @@ export type KPISnapshot = {
 export type BudgetLine = {
   id: string;
   org_id: string;
-  category: string;
   period: string;
-  amount_pence: number;
+  account_code: string;
+  account_name: string;
+  category: string;
+  budgeted_amount: number;
+  currency: string;
+  notes: string | null;
+  version: number;
+  created_by: string;
+  approved_by: string | null;
+  approved_at: string | null;
   created_at: string;
   updated_at: string;
 };

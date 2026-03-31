@@ -71,8 +71,7 @@ export default async function BudgetPage() {
   const budgetByCategory = new Map<string, number>();
   for (const bl of (budgetLines ?? [])) {
     const existing = budgetByCategory.get(bl.category) ?? 0;
-    // budget_lines stores amount_pence, convert to pounds
-    budgetByCategory.set(bl.category, existing + (bl.amount_pence / 100));
+    budgetByCategory.set(bl.category, existing + Number(bl.budgeted_amount ?? 0));
   }
 
   // Aggregate actuals by account name across all periods

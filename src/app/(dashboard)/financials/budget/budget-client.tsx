@@ -89,12 +89,23 @@ export function BudgetClient({ connected, hasBudget, periodLabel, rows, availabl
         </div>
       )}
 
-      <div>
-        <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          &larr; Back to Financials
+      <div className="flex items-center justify-between">
+        <div>
+          <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            &larr; Back to Financials
+          </Link>
+          <h2 className="text-2xl font-bold mt-1">Budget vs Actual</h2>
+          <p className="text-sm text-muted-foreground mt-1">{periodLabel}</p>
+        </div>
+        <Link
+          href="/financials/budget/edit"
+          className="inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium hover:bg-muted transition-colors"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+          </svg>
+          Set Budget
         </Link>
-        <h2 className="text-2xl font-bold mt-1">Budget vs Actual</h2>
-        <p className="text-sm text-muted-foreground mt-1">{periodLabel}</p>
       </div>
 
       <ReportControls
