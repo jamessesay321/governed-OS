@@ -10,7 +10,7 @@ type Params = { params: Promise<{ orgId: string }> };
 const VALID_TYPES = [
   'board_pack', 'scenario_output', 'kpi_snapshot', 'variance_analysis',
   'narrative', 'anomaly_report', 'interview_transcript',
-  'playbook_assessment', 'custom_report', 'ai_analysis',
+  'playbook_assessment', 'custom_report', 'ai_analysis', 'file_upload',
 ] as const;
 
 const storeSchema = z.object({
@@ -54,6 +54,8 @@ export async function GET(request: Request, { params }: Params) {
       search,
       limit,
       offset,
+      userId: profile.id as string,
+      userRole: profile.role as string,
     });
 
     return NextResponse.json({

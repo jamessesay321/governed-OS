@@ -10,6 +10,7 @@ import { callLLMCached } from '@/lib/ai/cache';
 import { createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { getThesis } from './thesis';
+import { governedOutput, xeroFinancialsSource } from '@/lib/governance/checkpoint';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -260,6 +261,23 @@ export async function generateCommentary(
       sentiment: 'neutral',
     }];
   }
+
+  // Governance checkpoint — audit trail for AI commentary
+  const narrativeContent = parsedSections.map((s) => `${s.title}: ${s.narrative}`).join('\n');
+  await governedOutput({
+    orgId,
+    outputType: 'narrative',
+    content: narrativeContent,
+    modelTier: 'sonnet',
+    modelId: 'claude-sonnet-4-20250514',
+    dataSources: [
+      xeroFinancialsSource(targetPeriod),
+      ...(prevPeriod ? [xeroFinancialsSource(prevPeriod)] : []),
+      { type: 'source_citations', reference: `${sources.length} cited references` },
+    ],
+    tokensUsed: llmResult.tokensUsed,
+    cached: false,
+  });
 
   const commentary: Commentary = {
     orgId,

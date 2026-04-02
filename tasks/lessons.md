@@ -109,3 +109,15 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Fix:** Changed to `as Record<string, unknown>` as a safer interim cast. Proper fix is to regenerate Supabase types after migration.
 
 **Preventative rule:** Never use `as any`. If types don't match, either update the type definitions or use `as Record<string, unknown>` with a TODO to regenerate types. `as any` hides real bugs.
+
+---
+
+## Lesson 10: Bank transactions double-count P&L when combined with invoices
+
+**Mistake:** `normaliseTransactions()` aggregated ALL raw_transactions (invoices + bank transactions) into normalised_financials. This caused every revenue and expense line to be counted twice — once from the invoice and once from the bank receipt. Alonuko showed £2.58m revenue and £245k profit when the real figures were £1.3m revenue and a £300k+ loss.
+
+**Root cause:** In Xero's double-entry accounting, an invoice (ACCREC) creates `Dr Receivable / Cr Revenue` with line items on the revenue account. The corresponding bank receipt also has line items referencing the same revenue account codes. Aggregating both doubles every P&L figure.
+
+**Fix:** Filter normalisation to `type IN ('invoice', 'bill')` only. Bank transactions are for cash flow analysis, not P&L. Also added a delete-before-rebuild step to clear stale double-counted data.
+
+**Preventative rule:** For ANY accounting integration (Xero, QBO, etc.), only use accrual-basis documents (invoices/bills) for P&L normalisation. Bank transactions are cash-basis and must be kept separate. Always verify platform numbers against the source system's own P&L report before shipping.

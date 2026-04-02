@@ -1,13 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { callLLMCached } from '@/lib/ai/cache';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
 import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
-import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { getSkillAsSystemPrompt } from '@/lib/skills/company-skill';
+import { governedOutput, xeroFinancialsSource, accountMappingsSource, companySkillSource } from '@/lib/governance/checkpoint';
 import { llmLimiter } from '@/lib/rate-limit';
 import { z } from 'zod';
-import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import type { NormalisedFinancial, ChartOfAccount, AccountMapping } from '@/types';
 
 const querySchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -46,20 +48,22 @@ export async function GET(
     }
 
     const supabase = await createServiceClient();
+    const untypedDb = await createUntypedServiceClient();
 
-    // Fetch financial data
-    const { data: financials } = await supabase
-      .from('normalised_financials')
-      .select('*')
-      .eq('org_id', orgId);
+    // Fetch financial data, accounts, mappings, and company skill in parallel
+    const [financialsResult, accountsResult, mappingsResult, companySystemPrompt, syncResult] =
+      await Promise.all([
+        supabase.from('normalised_financials').select('*').eq('org_id', orgId),
+        supabase.from('chart_of_accounts').select('*').eq('org_id', orgId),
+        untypedDb.from('account_mappings').select('*').eq('org_id', orgId),
+        getSkillAsSystemPrompt(orgId),
+        supabase.from('sync_log').select('completed_at').eq('org_id', orgId).eq('status', 'completed').order('completed_at', { ascending: false }).limit(1).single(),
+      ]);
 
-    const { data: accounts } = await supabase
-      .from('chart_of_accounts')
-      .select('*')
-      .eq('org_id', orgId);
-
-    const fins = (financials ?? []) as NormalisedFinancial[];
-    const accs = (accounts ?? []) as ChartOfAccount[];
+    const fins = (financialsResult.data ?? []) as NormalisedFinancial[];
+    const accs = (accountsResult.data ?? []) as ChartOfAccount[];
+    const mappings = (mappingsResult.data ?? []) as AccountMapping[];
+    const lastSync = syncResult.data;
 
     const periods = getAvailablePeriods(fins);
     if (periods.length === 0) {
@@ -75,37 +79,15 @@ export async function GET(
       ? parsed.data.period
       : periods[0];
 
-    // Build P&L for current and previous period
+    // Build P&L — semantic when mappings exist, class-based fallback
+    const hasMappings = mappings.length > 0;
     const currentPnL = buildPnL(fins, accs, period);
     const periodIdx = periods.indexOf(period);
     const previousPeriod = periodIdx < periods.length - 1 ? periods[periodIdx + 1] : null;
     const previousPnL = previousPeriod ? buildPnL(fins, accs, previousPeriod) : null;
 
-    // Fetch last sync time for data freshness
-    const { data: lastSync } = await supabase
-      .from('sync_log')
-      .select('completed_at')
-      .eq('org_id', orgId)
-      .eq('status', 'completed')
-      .order('completed_at', { ascending: false })
-      .limit(1)
-      .single();
-
-    // Fetch business profile for context
-    // TODO: Regenerate Supabase types after migration to remove this cast
-    const { data: orgRaw } = await supabase
-      .from('organisations')
-      .select('name')
-      .eq('id', orgId)
-      .single();
-
-    // business_scan column exists but isn't in generated types yet
-    const org = orgRaw as unknown as { name: string; business_scan?: Record<string, unknown> } | null;
-
-    // Build context for Claude API
-    const businessContext = org?.business_scan
-      ? `Business: ${org.business_scan.company_name || org.name || 'Unknown'}, Industry: ${org.business_scan.industry || 'Unknown'}, Stage: ${org.business_scan.estimated_stage || 'Unknown'}`
-      : `Business: ${org?.name || 'Unknown'}`;
+    // Semantic P&L for richer category-level detail
+    const semanticPnL = hasMappings ? buildSemanticPnL(fins, accs, mappings, period) : null;
 
     const currentData = {
       period,
@@ -128,16 +110,17 @@ export async function GET(
       netMargin: previousPnL.revenue > 0 ? ((previousPnL.netProfit / previousPnL.revenue) * 100).toFixed(1) : '0',
     } : null;
 
-    const systemPrompt = `You are the Grove financial intelligence engine. Generate a concise dashboard narrative summary for a UK-based business owner.
+    // Build system prompt: Company Skill + narrative-specific instructions
+    const systemPrompt = `${companySystemPrompt}
+
+## Narrative Task
+Generate a concise dashboard narrative summary (2-4 sentences).
 
 Rules:
-- Use £ currency, formatted with commas (e.g. £79,000)
 - Lead with the most important insight
-- Keep to 2-4 sentences maximum
 - Reference specific numbers from the data
 - If there's a previous period, highlight the most significant change
 - Include a brief assessment of overall financial health
-- Be direct and actionable — this is for a busy business owner
 - Respond with ONLY valid JSON
 
 Output JSON schema:
@@ -147,20 +130,43 @@ Output JSON schema:
   "confidence": "high | medium | low"
 }`;
 
-    const userMessage = `${businessContext}
+    // Build category-aware P&L breakdown when semantic mappings exist
+    const topLines = semanticPnL
+      ? semanticPnL.sections
+          .flatMap((s) =>
+            s.rows.map((r) => ({
+              name: r.accountName,
+              category: r.categoryLabel,
+              amount: r.amount,
+              section: s.label,
+            }))
+          )
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 10)
+          .map(
+            (r) =>
+              `- ${r.name} [${r.category}] (${r.section}): £${Math.abs(r.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
+          )
+          .join('\n')
+      : currentPnL.sections
+          .flatMap((s) =>
+            s.rows.map((r) => ({ name: r.accountName, amount: r.amount, section: s.label }))
+          )
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 8)
+          .map(
+            (r) =>
+              `- ${r.name} (${r.section}): £${Math.abs(r.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
+          )
+          .join('\n');
 
-Current period (${period}):
+    const userMessage = `Current period (${period}):
 ${JSON.stringify(currentData, null, 2)}
 
 ${previousData ? `Previous period (${previousData.period}):\n${JSON.stringify(previousData, null, 2)}` : 'No previous period data available.'}
 
 Top P&L lines by amount:
-${currentPnL.sections
-  .flatMap(s => s.rows.map(r => ({ name: r.accountName, amount: r.amount, section: s.label })))
-  .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
-  .slice(0, 8)
-  .map(r => `- ${r.name} (${r.section}): £${Math.abs(r.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`)
-  .join('\n')}`;
+${topLines}`;
 
     // Rate limit + budget checks
     const rateCheck = checkRateLimit(orgId, 'narrative');
@@ -185,6 +191,8 @@ ${currentPnL.sections
       userMessage,
       orgId,
       temperature: 0.3,
+      model: 'sonnet',
+      cacheSystemPrompt: true, // Company skill system prompt is large and reused
     });
     const responseText = llmResult.response;
     await trackTokenUsage(orgId, llmResult.tokensUsed, 'narrative');
@@ -207,12 +215,30 @@ ${currentPnL.sections
       };
     }
 
+    // Pass through governance checkpoint — audit trail + data lineage
+    const governed = await governedOutput({
+      orgId,
+      userId: profile.id as string,
+      outputType: 'narrative',
+      content: result.narrative,
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: [
+        xeroFinancialsSource(period, lastSync?.completed_at as string | undefined),
+        ...(hasMappings ? [accountMappingsSource(mappings.length)] : []),
+        companySkillSource('2'),
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: llmResult.cached,
+    });
+
     return NextResponse.json({
       narrative: result.narrative,
       reasoning: result.reasoning,
       confidence: result.confidence,
       period,
       dataFreshness: lastSync?.completed_at || null,
+      governanceId: governed.id,
     });
   } catch (err) {
     console.error('[NARRATIVE] Error:', err);

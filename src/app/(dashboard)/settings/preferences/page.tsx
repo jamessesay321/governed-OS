@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -50,17 +50,94 @@ const TIMEZONES = [
   { value: 'Pacific/Auckland', label: 'Auckland (NZST/NZDT)' },
 ];
 
+const NOTIFICATION_OPTIONS = [
+  { key: 'emailWeeklySummary', label: 'Weekly financial summary', description: 'A digest of key metrics and AI insights every Monday', defaultChecked: true },
+  { key: 'emailAgentReports', label: 'Agent activity reports', description: 'Daily summary of what your AI agents accomplished', defaultChecked: true },
+  { key: 'emailKpiAlerts', label: 'KPI threshold alerts', description: 'Immediate alerts when KPIs breach set thresholds', defaultChecked: true },
+  { key: 'emailBillingReminders', label: 'Invoice and billing reminders', description: 'Notifications about upcoming payments and invoices', defaultChecked: false },
+  { key: 'emailProductUpdates', label: 'Product updates and new features', description: 'Learn about platform improvements and new capabilities', defaultChecked: false },
+];
+
 export default function PreferencesPage() {
   const [language, setLanguage] = useState('en');
   const [dateFormat, setDateFormat] = useState('DD/MM/YYYY');
   const [numberFormat, setNumberFormat] = useState('comma-period');
   const [timezone, setTimezone] = useState('Europe/London');
+  const [notifications, setNotifications] = useState<Record<string, boolean>>({
+    emailWeeklySummary: true,
+    emailAgentReports: true,
+    emailKpiAlerts: true,
+    emailBillingReminders: false,
+    emailProductUpdates: false,
+  });
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  // Load preferences from API on mount
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/preferences');
+        if (res.ok) {
+          const prefs = await res.json();
+          setLanguage(prefs.language ?? 'en');
+          setDateFormat(prefs.dateFormat ?? 'DD/MM/YYYY');
+          setNumberFormat(prefs.numberFormat ?? 'comma-period');
+          setTimezone(prefs.timezone ?? 'Europe/London');
+          setNotifications({
+            emailWeeklySummary: prefs.emailWeeklySummary ?? true,
+            emailAgentReports: prefs.emailAgentReports ?? true,
+            emailKpiAlerts: prefs.emailKpiAlerts ?? true,
+            emailBillingReminders: prefs.emailBillingReminders ?? false,
+            emailProductUpdates: prefs.emailProductUpdates ?? false,
+          });
+        }
+      } catch {
+        // Fall back to defaults
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/preferences', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          language,
+          dateFormat,
+          numberFormat,
+          timezone,
+          ...notifications,
+        }),
+      });
+
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch {
+      // Silently fail — user sees button didn't change
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="space-y-6 max-w-3xl">
+        <div>
+          <h2 className="text-2xl font-bold" style={{ color: '#1c1b1b' }}>Preferences</h2>
+          <p className="text-sm text-muted-foreground mt-1">Loading your preferences...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -199,17 +276,14 @@ export default function PreferencesPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[
-              { label: 'Weekly financial summary', description: 'A digest of key metrics and AI insights every Monday', defaultChecked: true },
-              { label: 'Agent activity reports', description: 'Daily summary of what your AI agents accomplished', defaultChecked: true },
-              { label: 'KPI threshold alerts', description: 'Immediate alerts when KPIs breach set thresholds', defaultChecked: true },
-              { label: 'Invoice and billing reminders', description: 'Notifications about upcoming payments and invoices', defaultChecked: false },
-              { label: 'Product updates and new features', description: 'Learn about platform improvements and new capabilities', defaultChecked: false },
-            ].map((item) => (
-              <label key={item.label} className="flex items-start gap-3 cursor-pointer">
+            {NOTIFICATION_OPTIONS.map((item) => (
+              <label key={item.key} className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
-                  defaultChecked={item.defaultChecked}
+                  checked={notifications[item.key] ?? item.defaultChecked}
+                  onChange={(e) =>
+                    setNotifications((prev) => ({ ...prev, [item.key]: e.target.checked }))
+                  }
                   className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
                 />
                 <div>
@@ -226,14 +300,16 @@ export default function PreferencesPage() {
       <div className="flex justify-end">
         <button
           onClick={handleSave}
+          disabled={saving}
           className={cn(
             'rounded-lg px-6 py-2.5 text-sm font-medium transition-colors',
             saved
               ? 'bg-emerald-600 text-white'
-              : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              : 'bg-primary text-primary-foreground hover:bg-primary/90',
+            saving && 'opacity-50 cursor-not-allowed'
           )}
         >
-          {saved ? 'Saved' : 'Save Preferences'}
+          {saving ? 'Saving...' : saved ? 'Saved' : 'Save Preferences'}
         </button>
       </div>
     </div>

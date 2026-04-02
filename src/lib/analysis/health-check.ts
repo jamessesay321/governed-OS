@@ -9,6 +9,8 @@
 import { callLLMCached } from '@/lib/ai/cache';
 import { createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { getCompanyContextPrefix } from '@/lib/skills/company-skill';
+import { governedOutput, xeroFinancialsSource } from '@/lib/governance/checkpoint';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -419,13 +421,32 @@ export async function runHealthCheck(orgId: string): Promise<HealthCheckResult> 
       trend: m.trend,
     }));
 
+    const companyContext = await getCompanyContextPrefix(orgId);
     const llmResult = await callLLMCached({
-      systemPrompt: 'You are a financial health analyst. Given the health metrics below, write a 2-3 sentence plain English summary for a business owner. Be direct, specific, and actionable. Use £ currency. Do NOT use JSON — respond with plain text only.',
+      systemPrompt: `${companyContext ? companyContext + '\n\n' : ''}You are a financial health analyst. Given the health metrics below, write a 2-3 sentence plain English summary for a business owner. Be direct, specific, and actionable. Use £ currency. Do NOT use JSON — respond with plain text only.`,
       userMessage: `Organisation health score: ${overallScore}/100\n\nMetrics:\n${JSON.stringify(metricsJson, null, 2)}\n\nAlerts:\n${alerts.map((a) => `[${a.severity}] ${a.message}`).join('\n')}`,
       orgId,
       temperature: 0.3,
+      model: 'haiku',
+      maxTokens: 512,
+      cacheSystemPrompt: true,
     });
     summary = llmResult.response.trim();
+
+    // Governance checkpoint — audit trail for health summaries
+    await governedOutput({
+      orgId,
+      outputType: 'health_summary',
+      content: summary,
+      modelTier: 'haiku',
+      modelId: 'claude-haiku-4-20250414',
+      dataSources: [
+        xeroFinancialsSource(recentPeriods[0]),
+        { type: 'health_metrics', reference: `${metrics.length} metrics, score ${overallScore}/100` },
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: false,
+    });
   } catch (err) {
     console.error('[analysis/health-check] LLM summary failed, using fallback:', err);
   }

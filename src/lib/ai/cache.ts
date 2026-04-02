@@ -1,5 +1,5 @@
 import { createUntypedServiceClient } from '@/lib/supabase/server';
-import { callLLM } from './llm';
+import { callLLMWithUsage, type ModelTier } from './llm';
 
 type CallLLMCachedInput = {
   systemPrompt: string;
@@ -8,6 +8,15 @@ type CallLLMCachedInput = {
   temperature?: number;
   /** Cache time-to-live in minutes. Default: 60 */
   cacheTTLMinutes?: number;
+  /** Model tier — defaults to 'sonnet'. Use 'haiku' for simple tasks. */
+  model?: ModelTier;
+  /** Max tokens for the response. */
+  maxTokens?: number;
+  /**
+   * Enable Anthropic prompt caching on the system prompt.
+   * Use when the same system prompt is sent across multiple calls.
+   */
+  cacheSystemPrompt?: boolean;
 };
 
 type CachedResponse = {
@@ -61,6 +70,9 @@ export async function callLLMCached({
   orgId,
   temperature = 0.2,
   cacheTTLMinutes = CACHE_TTL.NARRATIVE,
+  model = 'sonnet',
+  maxTokens = 2048,
+  cacheSystemPrompt = false,
 }: CallLLMCachedInput): Promise<CachedResponse> {
   const cacheKey = await buildCacheKey(orgId, systemPrompt, userMessage);
   const promptHash = await sha256(systemPrompt);
@@ -89,13 +101,18 @@ export async function callLLMCached({
     };
   }
 
-  // --- Cache miss – call LLM -------------------------------------------------
-  const response = await callLLM({ systemPrompt, userMessage, temperature });
+  // --- Cache miss – call LLM with actual token tracking ----------------------
+  const result = await callLLMWithUsage({
+    systemPrompt,
+    userMessage,
+    temperature,
+    model,
+    maxTokens,
+    cacheSystemPrompt,
+  });
 
-  // Rough token estimate: ~4 chars per token for English prose.
-  const estimatedTokens = Math.ceil(
-    (systemPrompt.length + userMessage.length + response.length) / 4
-  );
+  // Use actual token counts from API response instead of rough estimate
+  const actualTokens = result.inputTokens + result.outputTokens;
 
   const expiresAt = new Date(Date.now() + cacheTTLMinutes * 60 * 1000).toISOString();
 
@@ -105,8 +122,8 @@ export async function callLLMCached({
       org_id: orgId,
       cache_key: cacheKey,
       prompt_hash: promptHash,
-      response,
-      tokens_used: estimatedTokens,
+      response: result.text,
+      tokens_used: actualTokens,
       expires_at: expiresAt,
       created_at: now,
     },
@@ -117,7 +134,7 @@ export async function callLLMCached({
     console.error('[ai/cache] failed to store cache entry:', upsertError.message);
   }
 
-  return { response, cached: false, tokensUsed: estimatedTokens };
+  return { response: result.text, cached: false, tokensUsed: actualTokens };
 }
 
 /**

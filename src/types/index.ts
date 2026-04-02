@@ -828,6 +828,48 @@ export type Database = {
           },
         ];
       };
+      account_mappings: {
+        Row: AccountMapping;
+        Insert: Omit<AccountMapping, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<AccountMapping, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'account_mappings_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      org_accounting_config: {
+        Row: OrgAccountingConfig;
+        Insert: Omit<OrgAccountingConfig, 'id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<OrgAccountingConfig, 'id' | 'created_at'>>;
+        Relationships: [
+          {
+            foreignKeyName: 'org_accounting_config_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: true;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      data_health_reports: {
+        Row: DataHealthReport;
+        Insert: Omit<DataHealthReport, 'id' | 'created_at' | 'checks'> & { checks: Record<string, unknown> | Record<string, unknown>[] };
+        Update: Partial<Omit<DataHealthReport, 'id' | 'created_at' | 'checks'>> & { checks?: Record<string, unknown> | Record<string, unknown>[] };
+        Relationships: [
+          {
+            foreignKeyName: 'data_health_reports_org_id_fkey';
+            columns: ['org_id'];
+            isOneToOne: false;
+            referencedRelation: 'organisations';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       notifications: {
         Row: Notification;
         Insert: Omit<Notification, 'id' | 'created_at'>;
@@ -1040,4 +1082,56 @@ export type AccountMapping = {
   user_overridden: boolean;
   created_at: string;
   updated_at: string;
+};
+
+// === Org Accounting Config (Semantic Intelligence Layer) ===
+export type OrgAccountingConfig = {
+  id: string;
+  org_id: string;
+  financial_year_end_month: number;
+  financial_year_end_day: number;
+  vat_scheme: string | null;
+  vat_period: string | null;
+  base_currency: string;
+  corporation_tax_period: string | null;
+  last_filed_accounts_date: string | null;
+  xero_org_type: string | null;
+  xero_org_status: string | null;
+  tax_number: string | null;
+  registration_number: string | null;
+  period_lock_date: string | null;
+  end_of_year_lock_date: string | null;
+  raw_response: Record<string, unknown> | null;
+  created_at: string;
+  updated_at: string;
+};
+
+// === Data Health Report (Semantic Intelligence Layer) ===
+export const DATA_HEALTH_CHECK_NAMES = [
+  'transaction_coverage',
+  'account_mapping_completeness',
+  'reconciliation_status',
+  'period_continuity',
+  'categorisation_quality',
+  'balance_sheet_completeness',
+] as const;
+export type DataHealthCheckName = (typeof DATA_HEALTH_CHECK_NAMES)[number];
+
+export type DataHealthCheck = {
+  name: DataHealthCheckName;
+  score: number; // 0-100
+  status: 'pass' | 'warn' | 'fail';
+  message: string;
+  details?: Record<string, unknown>;
+};
+
+export type DataHealthReport = {
+  id: string;
+  org_id: string;
+  period: string;
+  overall_score: number;
+  checks: DataHealthCheck[];
+  recommendations: string[];
+  forecast_ready: boolean;
+  created_at: string;
 };

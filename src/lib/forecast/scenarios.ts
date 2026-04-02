@@ -1,5 +1,6 @@
 import { createUntypedServiceClient } from '@/lib/supabase/server';
 import { callLLMCached } from '@/lib/ai/cache';
+import { governedOutput } from '@/lib/governance/checkpoint';
 import {
   generateForecast,
   getLatestForecast,
@@ -58,7 +59,7 @@ export async function parseScenarioFromNaturalLanguage(
   orgId: string,
   query: string,
 ): Promise<{ assumptions: ForecastAssumption[]; description: string }> {
-  const { response } = await callLLMCached({
+  const llmResult = await callLLMCached({
     systemPrompt: SCENARIO_SYSTEM_PROMPT,
     userMessage: query,
     orgId,
@@ -70,10 +71,10 @@ export async function parseScenarioFromNaturalLanguage(
   let assumptions: ForecastAssumption[];
   try {
     // Strip any markdown fences the LLM might add despite instructions
-    const cleaned = response.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
+    const cleaned = llmResult.response.replace(/```json?\n?/g, '').replace(/```/g, '').trim();
     assumptions = JSON.parse(cleaned);
   } catch {
-    console.error('[scenarios] Failed to parse LLM response as JSON:', response);
+    console.error('[scenarios] Failed to parse LLM response as JSON:', llmResult.response);
     assumptions = [];
   }
 
@@ -86,6 +87,22 @@ export async function parseScenarioFromNaturalLanguage(
       typeof a.value === 'number' &&
       typeof a.label === 'string',
   );
+
+  // Governance checkpoint — audit trail for scenario parsing
+  if (assumptions.length > 0) {
+    await governedOutput({
+      orgId,
+      outputType: 'scenario_interpretation',
+      content: JSON.stringify(assumptions),
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: [
+        { type: 'user_query', reference: query.slice(0, 100) },
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: llmResult.cached,
+    });
+  }
 
   return {
     assumptions,

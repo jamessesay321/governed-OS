@@ -9,7 +9,8 @@ import { PeriodSelector } from '@/components/dashboard/period-selector';
 import { SyncStatus } from '@/components/dashboard/sync-status';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
-import { DrillDownPanel } from '@/components/dashboard/drill-down-panel';
+import { DataHealthWidget } from '@/components/dashboard/data-health-widget';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { WaterfallChart } from '@/components/dashboard/waterfall-chart';
 import { VariancePanel } from '@/components/dashboard/variance-panel';
 import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
@@ -175,7 +176,7 @@ export function DashboardClient({
   businessContext,
 }: DashboardClientProps) {
   const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
-  const [drillSection, setDrillSection] = useState<PnLSection | null>(null);
+  const { openDrill } = useDrillDown();
   const [showVariance, setShowVariance] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const pnl = pnlByPeriod[selectedPeriod];
@@ -242,7 +243,7 @@ export function DashboardClient({
   }
 
   function handleSectionClick(section: PnLSection) {
-    setDrillSection(section);
+    openDrill({ type: 'pnl_section', section, period: selectedPeriod });
   }
 
   const insight = getContextualInsight(pnl, previousPnl, businessContext);
@@ -384,6 +385,7 @@ export function DashboardClient({
             canSync={canSync}
             canConnect={canConnect}
           />
+          <DataHealthWidget />
           <RoadmapWidget />
           <ProposalWidget />
         </div>
@@ -407,15 +409,7 @@ export function DashboardClient({
         </CardContent>
       </Card>
 
-      {/* Drill-down slide-in panel */}
-      {drillSection && (
-        <DrillDownPanel
-          section={drillSection}
-          period={selectedPeriod}
-          orgId={orgId}
-          onClose={() => setDrillSection(null)}
-        />
-      )}
+      {/* Drill-down is now handled by the shared DrillDownProvider in layout */}
 
       {/* Variance analysis slide-in panel */}
       {showVariance && (

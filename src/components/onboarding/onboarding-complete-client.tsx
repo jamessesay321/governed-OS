@@ -9,13 +9,45 @@ import { Badge } from '@/components/ui/badge';
 import { Celebration } from '@/components/ui/celebration';
 import { OnboardingProgress } from './onboarding-progress';
 
+type SetupStats = {
+  accountsMapped: number;
+  dataHealthScore: number | null;
+  periodsAvailable: number;
+};
+
 type Props = {
   orgName: string;
   interviewCompleted: boolean;
   xeroConnected: boolean;
+  setupStats?: SetupStats;
 };
 
-export function OnboardingCompleteClient({ orgName, interviewCompleted, xeroConnected }: Props) {
+function buildSetupTasks(stats?: SetupStats, xeroConnected?: boolean): { label: string; done: boolean }[] {
+  const tasks: { label: string; done: boolean }[] = [];
+
+  if (xeroConnected && stats?.accountsMapped && stats.accountsMapped > 0) {
+    tasks.push({ label: `Mapped ${stats.accountsMapped} Xero accounts to platform categories`, done: true });
+  } else if (xeroConnected) {
+    tasks.push({ label: 'Account mapping in progress', done: false });
+  }
+
+  if (stats?.periodsAvailable && stats.periodsAvailable > 0) {
+    tasks.push({ label: `Imported ${stats.periodsAvailable} months of financial data`, done: true });
+  }
+
+  if (stats?.dataHealthScore != null) {
+    tasks.push({ label: `Data quality score: ${stats.dataHealthScore}/100`, done: true });
+  }
+
+  // Always show at least one task
+  if (tasks.length === 0) {
+    tasks.push({ label: 'Platform configured and ready', done: true });
+  }
+
+  return tasks;
+}
+
+export function OnboardingCompleteClient({ orgName, interviewCompleted, xeroConnected, setupStats }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -120,19 +152,15 @@ export function OnboardingCompleteClient({ orgName, interviewCompleted, xeroConn
                 {'\uD83D\uDD27'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-foreground">Your Setup Agent is configuring your platform</p>
+                <p className="text-sm font-semibold text-foreground">Your Setup Agent has configured your platform</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <div className="h-2 w-2 rounded-full bg-teal-500 animate-pulse" />
-                  <span className="text-xs text-teal-600 font-medium">Active</span>
+                  <div className="h-2 w-2 rounded-full bg-teal-500" />
+                  <span className="text-xs text-teal-600 font-medium">Complete</span>
                 </div>
               </div>
             </div>
             <div className="space-y-2">
-              {[
-                { label: 'Mapped 47 Xero accounts to platform categories', done: true },
-                { label: 'Generated budget baselines from 12 months of data', done: true },
-                { label: 'Data quality score: 82/100', done: true },
-              ].map((task) => (
+              {buildSetupTasks(setupStats, xeroConnected).map((task) => (
                 <div key={task.label} className="flex items-center gap-2 text-sm">
                   <svg className="h-4 w-4 text-teal-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />

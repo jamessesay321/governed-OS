@@ -8,6 +8,8 @@ import {
   getDefaultReportState,
   ReportControlsState,
 } from '@/components/financial/report-controls';
+import { useAccountingConfig } from '@/components/providers/accounting-config-context';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -48,8 +50,10 @@ export function IncomeStatementClient({ connected, periods }: Props) {
     [periods]
   );
 
+  const { yearEndMonth } = useAccountingConfig();
+  const { openDrill } = useDrillDown();
   const [controls, setControls] = useState<ReportControlsState>(() =>
-    getDefaultReportState(availablePeriods)
+    getDefaultReportState(availablePeriods, yearEndMonth)
   );
 
   const filteredPeriods = useMemo(
@@ -93,6 +97,16 @@ export function IncomeStatementClient({ connected, periods }: Props) {
     OVERHEADS: 'Overheads',
   };
 
+  // Plain-English descriptions for each P&L section
+  const sectionDescriptions: Record<string, string> = {
+    REVENUE: 'What the business earned from sales and services',
+    DIRECTCOSTS: 'Costs directly tied to delivering your products or services',
+    EXPENSE: 'Day-to-day costs of running the business',
+    OVERHEADS: 'Fixed costs like rent, utilities, and insurance',
+  };
+
+  const isDetailedView = controls.viewMode === 'detailed';
+
   // Collect all account names per section
   const sectionAccounts = new Map<string, string[]>();
   for (const cls of sectionOrder) {
@@ -124,44 +138,79 @@ export function IncomeStatementClient({ connected, periods }: Props) {
 
   type RowDef = {
     label: string;
+    description?: string;
     values: number[];
     bold?: boolean;
     indent?: boolean;
     separator?: boolean;
     profitRow?: boolean;
+    /** Inline margin % for subtotal rows (e.g. Gross Profit = GP/Revenue) */
+    marginPcts?: (string | null)[];
+    sectionHeader?: boolean;
+    /** If set, clicking this row opens the drill-down sheet for the first period */
+    drillSectionClass?: string;
   };
 
   const rows: RowDef[] = [];
 
   for (const cls of sectionOrder) {
     const names = sectionAccounts.get(cls) ?? [];
-    // Section total row
+    // Section total row with plain-English description
     const sectionTotals = sortedPeriods.map((p) => {
       const section = p.sections.find((s) => s.class === cls);
       return section?.total ?? 0;
     });
-    rows.push({ label: sectionLabels[cls] ?? cls, values: sectionTotals, bold: true });
+    rows.push({
+      label: sectionLabels[cls] ?? cls,
+      description: sectionDescriptions[cls],
+      values: sectionTotals,
+      bold: true,
+      sectionHeader: true,
+      drillSectionClass: cls,
+    });
 
-    // Individual account rows
-    for (const name of names) {
-      const values = sortedPeriods.map((p) => {
-        const sectionMap = lookup.get(p.period);
-        const accMap = sectionMap?.get(cls);
-        return accMap?.get(name) ?? 0;
-      });
-      rows.push({ label: name, values, indent: true });
+    // Individual account rows (only shown in detailed view)
+    if (isDetailedView) {
+      for (const name of names) {
+        const values = sortedPeriods.map((p) => {
+          const sectionMap = lookup.get(p.period);
+          const accMap = sectionMap?.get(cls);
+          return accMap?.get(name) ?? 0;
+        });
+        rows.push({ label: name, values, indent: true });
+      }
     }
 
-    // After DIRECTCOSTS, add Gross Profit
+    // After DIRECTCOSTS, add Gross Profit with inline margin %
     if (cls === 'DIRECTCOSTS') {
       const gpValues = sortedPeriods.map((p) => p.grossProfit);
-      rows.push({ label: 'Gross Profit', values: gpValues, bold: true, separator: true, profitRow: true });
+      const gpMargins = sortedPeriods.map((p) =>
+        p.revenue > 0 ? `${((p.grossProfit / p.revenue) * 100).toFixed(1)}%` : null
+      );
+      rows.push({
+        label: 'Gross Profit',
+        values: gpValues,
+        bold: true,
+        separator: true,
+        profitRow: true,
+        marginPcts: gpMargins,
+      });
     }
   }
 
-  // Net Profit
+  // Net Profit with inline margin %
   const netProfitValues = sortedPeriods.map((p) => p.netProfit);
-  rows.push({ label: 'Net Profit', values: netProfitValues, bold: true, separator: true, profitRow: true });
+  const netMargins = sortedPeriods.map((p) =>
+    p.revenue > 0 ? `${((p.netProfit / p.revenue) * 100).toFixed(1)}%` : null
+  );
+  rows.push({
+    label: 'Net Profit',
+    values: netProfitValues,
+    bold: true,
+    separator: true,
+    profitRow: true,
+    marginPcts: netMargins,
+  });
 
   // Apply search filter to rows
   const displayRows = controls.searchQuery
@@ -238,6 +287,9 @@ export function IncomeStatementClient({ connected, periods }: Props) {
           <tbody>
             {displayRows.map((row, idx) => {
               const total = row.values.reduce((a, b) => a + b, 0);
+              const totalMarginPct = row.marginPcts && totalRevenue > 0
+                ? `${((total / totalRevenue) * 100).toFixed(1)}%`
+                : null;
               return (
                 <tr
                   key={idx}
@@ -245,14 +297,49 @@ export function IncomeStatementClient({ connected, periods }: Props) {
                     border-b last:border-b-0 hover:bg-muted/30 transition-colors
                     ${row.separator ? 'border-t-2 border-t-border' : ''}
                     ${row.bold ? 'bg-muted/20' : ''}
+                    ${row.drillSectionClass ? 'cursor-pointer' : ''}
                   `}
+                  onClick={() => {
+                    if (row.drillSectionClass && sortedPeriods.length > 0) {
+                      // Use the latest period for drill-down; build a PnLSection-like object
+                      const latestPeriod = sortedPeriods[sortedPeriods.length - 1];
+                      const section = latestPeriod.sections.find((s) => s.class === row.drillSectionClass);
+                      if (section) {
+                        openDrill({
+                          type: 'pnl_section',
+                          section: {
+                            label: section.label,
+                            class: section.class,
+                            total: section.total,
+                            rows: section.rows.map((r) => ({
+                              accountId: r.code, // use code as ID fallback
+                              accountCode: r.code,
+                              accountName: r.name,
+                              accountType: '',
+                              accountClass: section.class,
+                              amount: r.amount,
+                              transactionCount: 0,
+                            })),
+                          },
+                          period: latestPeriod.period,
+                        });
+                      }
+                    }
+                  }}
                 >
                   <td
                     className={`px-4 py-2.5 sticky left-0 bg-card ${
                       row.bold ? 'font-semibold bg-muted/20' : ''
                     } ${row.indent ? 'pl-8 text-muted-foreground' : ''}`}
                   >
-                    {row.label}
+                    <div>
+                      {row.label}
+                      {row.sectionHeader && row.description && (
+                        <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
+                          {row.description}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   {row.values.map((v, i) => (
                     <td
@@ -269,7 +356,12 @@ export function IncomeStatementClient({ connected, periods }: Props) {
                             : ''
                       }`}
                     >
-                      {formatCurrency(v)}
+                      <div>{formatCurrency(v)}</div>
+                      {row.marginPcts?.[i] && (
+                        <div className="text-[10px] text-muted-foreground font-normal">
+                          {row.marginPcts[i]} margin
+                        </div>
+                      )}
                     </td>
                   ))}
                   <td
@@ -283,7 +375,12 @@ export function IncomeStatementClient({ connected, periods }: Props) {
                         : ''
                     }`}
                   >
-                    {formatCurrency(total)}
+                    <div>{formatCurrency(total)}</div>
+                    {totalMarginPct && (
+                      <div className="text-[10px] text-muted-foreground font-normal">
+                        {totalMarginPct} margin
+                      </div>
+                    )}
                   </td>
                 </tr>
               );

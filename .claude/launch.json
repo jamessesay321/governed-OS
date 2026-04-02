@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "governed-os-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": ["/tmp/start-governed-os.sh"],
       "port": 3000
     }
   ]

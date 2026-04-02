@@ -1,6 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { logAudit } from '@/lib/audit/log';
-import { resolveAssumptionsForPeriod, generatePeriodTimeline, hashAssumptions } from './assumptions';
+import { generatePeriodTimeline, hashAssumptions } from './assumptions';
 import type { AssumptionInput } from './assumptions';
 import { generateFullProjection } from './calculations';
 import type { ActualsInput } from './calculations';
@@ -355,15 +355,13 @@ export async function runModelPipeline(
     a.period.localeCompare(b.period)
   );
 
-  // Resolve assumptions and compute hash
+  // Compute assumption hash for reproducibility verification
   const assumptionHash = hashAssumptions(assumptions);
 
-  // Resolve assumptions for the first forecast period
-  const firstForecastPeriod = periods.find((p) => !actualsMap.has(p)) ?? periods[0];
-  const resolvedAssumptions = resolveAssumptionsForPeriod(assumptions, firstForecastPeriod);
-
-  // Run deterministic projection
-  const projections = generateFullProjection(actuals, resolvedAssumptions, periods);
+  // Run deterministic projection — pass raw assumptions so each period resolves
+  // its own effective values (time-varying assumptions like phased growth rates
+  // or seasonal overrides take effect at the correct period)
+  const projections = generateFullProjection(actuals, assumptions, periods);
 
   // Create model version
   const { data: modelVersion, error: mvError } = await supabase

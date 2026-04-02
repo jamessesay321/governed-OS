@@ -5,12 +5,15 @@ import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { SourceBadge } from '@/components/data-primitives';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
+type BenchmarkStatus = 'green' | 'amber' | 'red' | 'none';
+
 interface KPICardData {
   label: string;
   value: number;
   previousValue?: number;
   format: 'currency' | 'percentage';
   higherIsBetter: boolean;
+  benchmarkStatus?: BenchmarkStatus;
 }
 
 interface KPICardsProps {
@@ -22,6 +25,13 @@ interface KPICardsProps {
   previousGrossProfit?: number;
   previousExpenses?: number;
   previousNetProfit?: number;
+  /** Traffic-light benchmark statuses for each card (Fathom-style) */
+  benchmarkStatuses?: {
+    revenue?: BenchmarkStatus;
+    grossMargin?: BenchmarkStatus;
+    expenses?: BenchmarkStatus;
+    netProfit?: BenchmarkStatus;
+  };
   onCardClick?: (metric: string) => void;
 }
 
@@ -77,6 +87,20 @@ function TrendIcon({ direction }: { direction: 'up' | 'down' | 'flat' }) {
   return <Minus className="h-3 w-3" />;
 }
 
+const statusBorderColors: Record<BenchmarkStatus, string> = {
+  green: 'border-l-4 border-l-green-500',
+  amber: 'border-l-4 border-l-yellow-500',
+  red: 'border-l-4 border-l-red-500',
+  none: '',
+};
+
+const statusLabels: Record<BenchmarkStatus, { text: string; className: string }> = {
+  green: { text: 'Above benchmark', className: 'text-green-600 bg-green-50' },
+  amber: { text: 'Near benchmark', className: 'text-yellow-700 bg-yellow-50' },
+  red: { text: 'Below benchmark', className: 'text-red-600 bg-red-50' },
+  none: { text: '', className: '' },
+};
+
 export function KPICards({
   revenue,
   grossProfit,
@@ -86,6 +110,7 @@ export function KPICards({
   previousGrossProfit,
   previousExpenses,
   previousNetProfit,
+  benchmarkStatuses,
   onCardClick,
 }: KPICardsProps) {
   const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
@@ -100,6 +125,7 @@ export function KPICards({
       previousValue: previousRevenue,
       format: 'currency',
       higherIsBetter: true,
+      benchmarkStatus: benchmarkStatuses?.revenue,
     },
     {
       label: 'Gross Margin',
@@ -107,6 +133,7 @@ export function KPICards({
       previousValue: prevGrossMargin,
       format: 'percentage',
       higherIsBetter: true,
+      benchmarkStatus: benchmarkStatuses?.grossMargin,
     },
     {
       label: 'Expenses',
@@ -114,6 +141,7 @@ export function KPICards({
       previousValue: previousExpenses,
       format: 'currency',
       higherIsBetter: false,
+      benchmarkStatus: benchmarkStatuses?.expenses,
     },
     {
       label: 'Net Profit',
@@ -121,6 +149,7 @@ export function KPICards({
       previousValue: previousNetProfit,
       format: 'currency',
       higherIsBetter: true,
+      benchmarkStatus: benchmarkStatuses?.netProfit,
     },
   ];
 
@@ -131,22 +160,33 @@ export function KPICards({
         const color = getVarianceColor(variance.direction, card.higherIsBetter);
         const bg = getVarianceBg(variance.direction, card.higherIsBetter);
 
+        const status = card.benchmarkStatus ?? 'none';
+        const borderClass = statusBorderColors[status];
+        const statusLabel = statusLabels[status];
+
         return (
           <Card
             key={card.label}
-            className={`transition-shadow hover:shadow-md ${onCardClick ? 'cursor-pointer' : ''}`}
+            className={`transition-shadow hover:shadow-md ${borderClass} ${onCardClick ? 'cursor-pointer' : ''}`}
             onClick={() => onCardClick?.(card.label.toLowerCase().replace(/\s+/g, '_'))}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 <FinancialTooltip term={card.label}>{card.label}</FinancialTooltip>
               </CardTitle>
-              {variance.direction !== 'flat' && (
-                <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${bg} ${color}`}>
-                  <TrendIcon direction={variance.direction} />
-                  {Math.abs(variance.percentage).toFixed(1)}%
-                </span>
-              )}
+              <div className="flex items-center gap-1.5">
+                {status !== 'none' && (
+                  <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusLabel.className}`}>
+                    {statusLabel.text}
+                  </span>
+                )}
+                {variance.direction !== 'flat' && (
+                  <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${bg} ${color}`}>
+                    <TrendIcon direction={variance.direction} />
+                    {Math.abs(variance.percentage).toFixed(1)}%
+                  </span>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-baseline gap-2">

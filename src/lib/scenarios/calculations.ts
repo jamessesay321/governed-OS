@@ -1,5 +1,6 @@
 import { roundCurrency } from '@/lib/financial/normalise';
-import type { ResolvedAssumptions } from './assumptions';
+import { resolveAssumptionsForPeriod } from './assumptions';
+import type { AssumptionInput, ResolvedAssumptions } from './assumptions';
 
 // === Input Types ===
 
@@ -154,12 +155,15 @@ export function calcBreakEven(projections: PeriodProjection[]): BreakEvenResult 
 
 /**
  * MASTER FUNCTION: Generate full projection for all periods.
- * Takes actuals array, resolved assumptions, and timeline periods.
+ * Takes actuals array, raw assumptions, and timeline periods.
  * Returns PeriodProjection[] — one per period.
+ *
+ * Accepts either raw AssumptionInput[] (resolves per-period for time-varying
+ * assumptions) or a pre-resolved ResolvedAssumptions Map (legacy callers).
  */
 export function generateFullProjection(
   actuals: ActualsInput[],
-  assumptions: ResolvedAssumptions,
+  assumptions: AssumptionInput[] | ResolvedAssumptions,
   periods: string[]
 ): PeriodProjection[] {
   const actualsMap = new Map<string, ActualsInput>();
@@ -167,20 +171,32 @@ export function generateFullProjection(
     actualsMap.set(a.period, a);
   }
 
-  // Read assumptions with defaults
-  const growthRate = assumptions.get('revenue_growth_rate') ?? 0;
-  const seasonalityFactor = assumptions.get('seasonality_factor') ?? 1;
-  const variableCostRate = assumptions.get('variable_cost_rate') ?? 0.35;
-  const fixedCosts = assumptions.get('fixed_costs') ?? 0;
-  const receivablesDays = assumptions.get('receivables_days') ?? 30;
-  const payablesDays = assumptions.get('payables_days') ?? 30;
-  const capitalExpenditure = assumptions.get('capital_expenditure') ?? 0;
+  // Determine whether we received raw assumptions or pre-resolved
+  const isRawAssumptions = Array.isArray(assumptions);
+
+  // Helper: resolve assumptions for a given period
+  function getAssumptions(period: string): ResolvedAssumptions {
+    if (isRawAssumptions) {
+      return resolveAssumptionsForPeriod(assumptions as AssumptionInput[], period);
+    }
+    return assumptions as ResolvedAssumptions;
+  }
 
   const projections: PeriodProjection[] = [];
   let prevCash = actuals.length > 0 ? actuals[actuals.length - 1].cash_balance : 0;
 
   for (const period of periods) {
     const actual = actualsMap.get(period);
+
+    // Resolve assumptions for THIS period (time-varying assumptions take effect correctly)
+    const resolved = getAssumptions(period);
+    const growthRate = resolved.get('revenue_growth_rate') ?? 0;
+    const seasonalityFactor = resolved.get('seasonality_factor') ?? 1;
+    const variableCostRate = resolved.get('variable_cost_rate') ?? 0.35;
+    const fixedCosts = resolved.get('fixed_costs') ?? 0;
+    const receivablesDays = resolved.get('receivables_days') ?? 30;
+    const payablesDays = resolved.get('payables_days') ?? 30;
+    const capitalExpenditure = resolved.get('capital_expenditure') ?? 0;
 
     let revenue: number;
     let costOfSales: number;

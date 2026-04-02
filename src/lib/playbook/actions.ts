@@ -1,10 +1,11 @@
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMWithUsage } from '@/lib/ai/llm';
 import type {
   PlaybookAction,
   PlaybookAssessment,
   ActionStatus,
   ActionPriority,
 } from '@/types/playbook';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 /**
  * Generate recommended actions from an assessment.
@@ -23,7 +24,7 @@ export async function generateActions(
   const targetDimensions = sorted.slice(0, 3);
 
   try {
-    const actionsJson = await callLLM({
+    const llmResult = await callLLMWithUsage({
       systemPrompt: `You are a senior business advisor creating an action plan for an SME.
 Generate specific, actionable recommendations based on the dimension scores provided.
 
@@ -51,10 +52,25 @@ ${targetDimensions
   .join('\n')}
 
 Generate actionable recommendations for these dimensions.`,
+      model: 'haiku',
+    });
+
+    // Governance checkpoint — audit trail for playbook action generation
+    await governedOutput({
+      orgId: assessment.orgId,
+      outputType: 'playbook_recommendation',
+      content: llmResult.text,
+      modelTier: 'haiku',
+      modelId: 'claude-haiku-4-20250414',
+      dataSources: [
+        { type: 'playbook_assessment', reference: `Assessment ${assessment.id}` },
+      ],
+      tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+      cached: false,
     });
 
     // Parse AI response
-    const parsed = JSON.parse(actionsJson) as Array<{
+    const parsed = JSON.parse(llmResult.text) as Array<{
       dimensionId: string;
       dimensionName: string;
       title: string;

@@ -9,6 +9,8 @@ import {
   type ReportTemplate,
   type ReportSectionConfig,
 } from './templates';
+import { governedOutput } from '@/lib/governance/checkpoint';
+import { getCompanyContextPrefix } from '@/lib/skills/company-skill';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -380,13 +382,17 @@ async function generateNarrative(
   financialContext: string
 ): Promise<string> {
   try {
-    const systemPrompt = `You are a senior financial advisor generating a report section titled "${sectionTitle}".
+    // Inject business context so narratives reference THIS company, not generic advice
+    const companyContext = await getCompanyContextPrefix(orgId).catch(() => '');
+
+    const systemPrompt = `${companyContext ? companyContext + '\n\n' : ''}You are a senior financial advisor generating a report section titled "${sectionTitle}".
 Write professional, concise commentary suitable for board-level readers.
 Maximum ${maxWords} words. Do not use markdown formatting. Do not use em dashes.
 Write in plain professional English. Be specific about numbers when available.
+Reference the company by name and tailor insights to their industry and goals.
 Focus on actionable insights and trends.`;
 
-    const { response } = await callLLMCached({
+    const llmResult = await callLLMCached({
       systemPrompt,
       userMessage: `${prompt}\n\nFinancial context:\n${financialContext}`,
       orgId,
@@ -394,7 +400,21 @@ Focus on actionable insights and trends.`;
       cacheTTLMinutes: CACHE_TTL.NARRATIVE,
     });
 
-    return response;
+    // Governance checkpoint — audit trail for report section narratives
+    await governedOutput({
+      orgId,
+      outputType: 'report_section',
+      content: llmResult.response,
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: [
+        { type: 'financial_context', reference: `Report section: ${sectionTitle}` },
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: llmResult.cached,
+    });
+
+    return llmResult.response;
   } catch (error) {
     console.error(`[REPORT BUILDER] Narrative generation failed for ${sectionTitle}:`, error);
     return `Commentary generation unavailable for "${sectionTitle}". Please review the data and add manual commentary.`;
@@ -541,13 +561,57 @@ function resolveKpiValue(
         value: `${current.toFixed(0)} months`,
         status: current > 12 ? 'good' : current > 6 ? 'warning' : 'critical',
       };
+    case 'ebitda': {
+      // EBITDA approximation: Net Profit + Expenses (as proxy for D&A not broken out)
+      // This is a rough proxy since Xero doesn't separate depreciation/amortisation
+      const ebitda = (currentPnl?.netProfit ?? 0) + Math.abs(currentPnl?.expenses ?? 0) * 0.1;
+      const priorEbitda = (priorPnl?.netProfit ?? 0) + Math.abs(priorPnl?.expenses ?? 0) * 0.1;
+      current = ebitda;
+      prior = priorEbitda;
+      break;
+    }
+    case 'revenue_growth': {
+      const rev = currentPnl?.revenue ?? 0;
+      const prevRev = priorPnl?.revenue ?? 0;
+      if (prevRev > 0) {
+        const growth = ((rev - prevRev) / Math.abs(prevRev)) * 100;
+        return {
+          value: `${growth >= 0 ? '+' : ''}${growth.toFixed(1)}%`,
+          status: growth > 10 ? 'good' : growth > 0 ? 'neutral' : 'critical',
+        };
+      }
+      return { value: 'N/A', status: 'neutral' };
+    }
+    case 'net_margin': {
+      if (currentPnl && currentPnl.revenue > 0) {
+        const margin = (currentPnl.netProfit / currentPnl.revenue) * 100;
+        const priorMargin =
+          priorPnl && priorPnl.revenue > 0
+            ? (priorPnl.netProfit / priorPnl.revenue) * 100
+            : 0;
+        return {
+          value: `${margin.toFixed(1)}%`,
+          change: priorPnl ? `${(margin - priorMargin).toFixed(1)}pp` : undefined,
+          status: margin > 10 ? 'good' : margin > 0 ? 'warning' : 'critical',
+        };
+      }
+      return { value: '0.0%', status: 'neutral' };
+    }
+    case 'expense_ratio': {
+      if (currentPnl && currentPnl.revenue > 0) {
+        const ratio = (Math.abs(currentPnl.expenses) / currentPnl.revenue) * 100;
+        return {
+          value: `${ratio.toFixed(1)}%`,
+          status: ratio < 30 ? 'good' : ratio < 50 ? 'warning' : 'critical',
+        };
+      }
+      return { value: 'N/A', status: 'neutral' };
+    }
     case 'cash_inflow':
     case 'cash_outflow':
     case 'headcount':
     case 'arr':
     case 'mrr':
-    case 'ebitda':
-    case 'revenue_growth':
     case 'net_retention':
     case 'customers':
     case 'ltv_cac_ratio':

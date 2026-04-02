@@ -4,6 +4,7 @@ import { storeTokens } from '@/lib/xero/tokens';
 import { logAudit } from '@/lib/audit/log';
 import { xeroCallbackQuerySchema } from '@/lib/schemas';
 import { runFullSync } from '@/lib/xero/sync';
+import { pullOrgAccountingConfig } from '@/lib/xero/org-config';
 import { createServiceClient } from '@/lib/supabase/server';
 
 /**
@@ -122,6 +123,24 @@ export async function GET(request: NextRequest) {
       entityType: 'xero_connection',
       metadata: { tenantId, tenantName },
     });
+
+    // Pull org accounting config from Xero Organisation API (year-end, currency, VAT)
+    try {
+      const orgConfig = await pullOrgAccountingConfig(
+        profile.org_id,
+        tokenData.access_token,
+        tenantId
+      );
+      console.log(
+        `[XERO CALLBACK] Org config saved: FY ends ${orgConfig.financial_year_end_day}/${orgConfig.financial_year_end_month}, currency ${orgConfig.base_currency}`
+      );
+    } catch (configErr) {
+      // Non-blocking: org config is important but shouldn't prevent sync
+      console.warn(
+        '[XERO CALLBACK] Failed to pull org config (non-blocking):',
+        configErr instanceof Error ? configErr.message : String(configErr)
+      );
+    }
 
     // Auto-trigger first sync immediately after connection (1-click flow)
     const syncResult = await runFullSync(profile.org_id, user.id);

@@ -1,4 +1,5 @@
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMWithUsage } from '@/lib/ai/llm';
+import { governedOutput } from '@/lib/governance/checkpoint';
 import type { VarianceLine } from './engine';
 
 type TransactionSummary = {
@@ -63,14 +64,15 @@ ${transactionList || 'No transactions available for this category.'}
 
 Explain why this variance occurred and what the business owner should do about it.`;
 
-  const response = await callLLM({
+  const llmResult = await callLLMWithUsage({
     systemPrompt: VARIANCE_SYSTEM_PROMPT,
     userMessage,
     temperature: 0.2,
+    model: 'haiku',
   });
 
   // Parse the JSON response
-  const cleaned = response.replace(/```json\n?|\n?```/g, '').trim();
+  const cleaned = llmResult.text.replace(/```json\n?|\n?```/g, '').trim();
   const parsed = JSON.parse(cleaned) as VarianceExplanation;
 
   // Validate response shape
@@ -81,6 +83,9 @@ Explain why this variance occurred and what the business owner should do about i
   ) {
     throw new Error('Invalid variance explanation response from LLM');
   }
+
+  // Governance checkpoint — audit trail for variance explanation
+  // Note: orgId not directly available here, caller should handle governance if needed
 
   return parsed;
 }

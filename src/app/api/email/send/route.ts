@@ -7,6 +7,7 @@ import {
   passwordResetEmailTemplate,
   invitationEmailTemplate,
 } from '@/lib/email/templates';
+import { sendEmail } from '@/lib/email/resend';
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -95,23 +96,18 @@ export async function POST(req: NextRequest) {
     const payload = result.data;
     const html = renderTemplate(payload);
 
-    // TODO: Replace with Resend or SendGrid integration
-    // Example with Resend:
-    //   import { Resend } from 'resend';
-    //   const resend = new Resend(process.env.RESEND_API_KEY);
-    //   await resend.emails.send({
-    //     from: 'Grove <notifications@grove.dev>',
-    //     to: payload.to,
-    //     subject: getSubject(payload.template),
-    //     html,
-    //   });
-    console.log('[email/send] Sending email', {
-      template: payload.template,
+    const { id, dev } = await sendEmail({
       to: payload.to,
-      htmlLength: html.length,
+      template: payload.template,
+      html,
     });
 
-    return NextResponse.json({ success: true, template: payload.template });
+    return NextResponse.json({
+      success: true,
+      template: payload.template,
+      emailId: id,
+      dev,
+    });
   } catch (error) {
     if (error instanceof AuthorizationError) {
       return NextResponse.json({ error: error.message }, { status: 401 });

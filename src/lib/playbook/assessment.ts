@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMWithUsage } from '@/lib/ai/llm';
 import { roundCurrency } from '@/lib/financial/normalise';
+import { governedOutput } from '@/lib/governance/checkpoint';
 import { getTemplate, getOverallLabel } from './templates';
 import type {
   PlaybookAssessment,
@@ -309,6 +310,7 @@ function calculateOverallScore(scores: DimensionScore[]): number {
 // === AI Narrative ===
 
 async function generateAINarrative(
+  orgId: string,
   scores: DimensionScore[],
   overallScore: number,
   overallLabel: string
@@ -321,7 +323,7 @@ async function generateAINarrative(
     .join('\n');
 
   try {
-    const narrative = await callLLM({
+    const llmResult = await callLLMWithUsage({
       systemPrompt: `You are a senior business advisor. Generate a concise, professional assessment summary for an SME.
 Focus on:
 1. Overall position and what the maturity level means
@@ -337,9 +339,24 @@ Dimension scores:
 ${scoresSummary}
 
 Generate a professional narrative summary of this assessment.`,
+      model: 'haiku',
     });
 
-    return narrative;
+    // Governance checkpoint — audit trail for playbook assessment narrative
+    await governedOutput({
+      orgId,
+      outputType: 'playbook_recommendation',
+      content: llmResult.text,
+      modelTier: 'haiku',
+      modelId: 'claude-haiku-4-20250414',
+      dataSources: [
+        { type: 'playbook_assessment', reference: `Overall: ${overallScore.toFixed(1)}/5` },
+      ],
+      tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+      cached: false,
+    });
+
+    return llmResult.text;
   } catch {
     // Fallback if AI is unavailable
     const weakest = [...scores].sort((a, b) => a.score - b.score)[0];
@@ -381,7 +398,7 @@ export async function runAssessment(
   const overallLabel = getOverallLabel(overallScore);
 
   // Generate AI narrative (AI - for narrative only)
-  const aiSummary = await generateAINarrative(dimensionScores, overallScore, overallLabel);
+  const aiSummary = await generateAINarrative(orgId, dimensionScores, overallScore, overallLabel);
 
   const assessment: PlaybookAssessment = {
     id: `assess-${orgId}-${Date.now()}`,

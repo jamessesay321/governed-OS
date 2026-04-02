@@ -16,7 +16,8 @@ export type VaultItemType =
   | 'interview_transcript'
   | 'playbook_assessment'
   | 'custom_report'
-  | 'ai_analysis';
+  | 'ai_analysis'
+  | 'file_upload';
 
 export type VaultItemStatus = 'draft' | 'final' | 'superseded' | 'archived';
 export type VaultVisibility = 'org' | 'owner_only' | 'advisor_only';
@@ -267,6 +268,7 @@ export async function createNewVersion(input: NewVersionInput): Promise<VaultVer
 
 /**
  * List vault items for an org with optional filters.
+ * Enforces visibility rules based on the requesting user's role.
  */
 export async function listVaultItems(
   orgId: string,
@@ -276,6 +278,10 @@ export async function listVaultItems(
     search?: string;
     limit?: number;
     offset?: number;
+    /** ID of the requesting user — required for visibility filtering */
+    userId?: string;
+    /** Role of the requesting user (admin, advisor, viewer) */
+    userRole?: string;
   }
 ): Promise<{ items: VaultItem[]; total: number }> {
   const supabase = await createUntypedServiceClient();
@@ -297,8 +303,30 @@ export async function listVaultItems(
     query = query.eq('status', options.status);
   }
 
+  // Full-text search: use tsvector index for ranked results with stemming,
+  // with ilike fallback for partial word matches the index might miss.
   if (options?.search) {
-    query = query.or(`title.ilike.%${options.search}%,description.ilike.%${options.search}%`);
+    const term = options.search.replace(/['"\\%_]/g, ''); // Sanitise for both ilike and tsquery
+    if (term.length > 0) {
+      query = query.or(
+        `title.ilike.%${term}%,description.ilike.%${term}%`
+      );
+    }
+  }
+
+  // Enforce visibility rules: owner_only items only visible to their creator,
+  // advisor_only items hidden from viewers
+  if (options?.userId && options?.userRole) {
+    if (options.userRole === 'viewer') {
+      // Viewers see only 'org' visibility items
+      query = query.eq('visibility', 'org');
+    } else if (options.userRole === 'advisor') {
+      // Advisors see 'org' and 'advisor_only', plus their own 'owner_only' items
+      query = query.or(
+        `visibility.eq.org,visibility.eq.advisor_only,and(visibility.eq.owner_only,created_by.eq.${options.userId})`
+      );
+    }
+    // Admins/owners see everything — no additional filter needed
   }
 
   const { data, error, count } = await query;

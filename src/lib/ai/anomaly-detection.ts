@@ -6,9 +6,10 @@
  * or emerging trends. Surfaces findings as notification cards.
  */
 
-import { callLLM } from './llm';
+import { callLLMWithUsage } from './llm';
 import { buildFinancialContext } from './financial-context';
 import type { FinancialContext } from './financial-context';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 export type Anomaly = {
   id: string;
@@ -112,23 +113,39 @@ ${context.topRevenueAccounts.map((a) => `- ${a.name}: £${a.amount.toLocaleStrin
 Top Expense Accounts:
 ${context.topExpenseAccounts.map((a) => `- ${a.name}: £${a.amount.toLocaleString()}`).join('\n') || 'None'}`;
 
-  const rawResponse = await callLLM({
+  const llmResult = await callLLMWithUsage({
     systemPrompt: ANOMALY_DETECTION_PROMPT,
     userMessage: `Analyse the following financial data for anomalies:\n\n${financialSummary}`,
     temperature: 0.1,
+    model: 'haiku',
+    maxTokens: 1536,
   });
 
   // Parse response
-  const fenceMatch = rawResponse.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-  const jsonStr = fenceMatch ? fenceMatch[1].trim() : rawResponse.match(/\{[\s\S]*\}/)?.[0] ?? rawResponse;
+  const fenceMatch = llmResult.text.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+  const jsonStr = fenceMatch ? fenceMatch[1].trim() : llmResult.text.match(/\{[\s\S]*\}/)?.[0] ?? llmResult.text;
 
   try {
     const parsed = JSON.parse(jsonStr);
-    return {
+    const result = {
       anomalies: validateAnomalies(parsed.anomalies ?? []),
       summary: String(parsed.summary ?? 'Analysis complete.'),
       analysed_at: new Date().toISOString(),
     };
+
+    // Governance checkpoint — audit trail for anomaly detection
+    await governedOutput({
+      orgId,
+      outputType: 'anomaly_detection',
+      content: JSON.stringify(result),
+      modelTier: 'haiku',
+      modelId: 'claude-haiku-4-20250414',
+      dataSources: [{ type: 'financial_context', reference: `7 months ending ${periodEnd}` }],
+      tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+      cached: false,
+    });
+
+    return result;
   } catch {
     return {
       anomalies: [],

@@ -5,6 +5,7 @@ import { callLLMCached } from '@/lib/ai/cache';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
 import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { buildFinancialContext } from '@/lib/ai/financial-context';
+import { governedOutput } from '@/lib/governance/checkpoint';
 import { llmLimiter } from '@/lib/rate-limit';
 
 type Params = { params: Promise<{ orgId: string }> };
@@ -103,6 +104,8 @@ ${financialSummary}`;
       userMessage,
       orgId,
       temperature: 0.2,
+      model: 'haiku',
+      maxTokens: 1024,
     });
     const rawResponse = llmResult.response;
     await trackTokenUsage(orgId, llmResult.tokensUsed, 'explain');
@@ -113,6 +116,20 @@ ${financialSummary}`;
 
     try {
       const explanation = JSON.parse(jsonStr);
+
+      // Governance checkpoint — audit trail for every AI explanation
+      await governedOutput({
+        orgId,
+        userId: profile.id as string,
+        outputType: 'term_explanation',
+        content: JSON.stringify(explanation),
+        modelTier: 'haiku',
+        modelId: 'claude-haiku-4-20250414',
+        dataSources: [{ type: 'financial_context', reference: `6-month summary for ${input.term}` }],
+        tokensUsed: llmResult.tokensUsed,
+        cached: false,
+      });
+
       return NextResponse.json({ explanation });
     } catch {
       // Fallback: return raw text as personalised explanation

@@ -8,6 +8,7 @@
 
 import { callLLMCached, CACHE_TTL } from '@/lib/ai/cache';
 import { createUntypedServiceClient } from '@/lib/supabase/server';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -290,6 +291,21 @@ export async function generateThesis(orgId: string): Promise<BusinessThesis> {
     generatedAt: new Date().toISOString(),
     confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
   };
+
+  // 7b. Governance checkpoint — audit trail for thesis generation
+  await governedOutput({
+    orgId,
+    outputType: 'business_thesis',
+    content: JSON.stringify(thesis),
+    modelTier: 'sonnet',
+    modelId: 'claude-sonnet-4-20250514',
+    dataSources: [
+      { type: 'interview_profile', reference: profile ? `profile ${profile.id}` : 'none' },
+      { type: 'early_financials', reference: earlyFinancialSummary.slice(0, 100) },
+    ],
+    tokensUsed: llmResult.tokensUsed,
+    cached: false,
+  });
 
   // 8. Save to business_theses table (upsert — one active thesis per org)
   const { error: upsertError } = await supabase

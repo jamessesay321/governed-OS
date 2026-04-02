@@ -37,7 +37,7 @@ export function OnboardingInterviewClient({
   if (showCompletion && activeInterviewId) {
     return (
       <div>
-        <OnboardingProgress currentStep={1} completedSteps={{ interview: true, xero: false }} />
+        <OnboardingProgress currentStep={2} completedSteps={{ interview: true, xero: false }} />
         <InterviewCompletion
           orgId={orgId}
           interviewId={activeInterviewId}

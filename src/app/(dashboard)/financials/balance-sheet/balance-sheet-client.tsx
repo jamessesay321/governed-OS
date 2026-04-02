@@ -8,6 +8,7 @@ import {
   getDefaultReportState,
   ReportControlsState,
 } from '@/components/financial/report-controls';
+import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 
 type AccountEntry = { name: string; amount: number };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -32,9 +33,10 @@ function formatPeriodLabel(period: string | null): string {
 
 export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData }: Props) {
   const { format: formatCurrency } = useCurrency();
+  const { yearEndMonth } = useAccountingConfig();
 
   const [controls, setControls] = useState<ReportControlsState>(() =>
-    getDefaultReportState(availablePeriods)
+    getDefaultReportState(availablePeriods, yearEndMonth)
   );
 
   // Derive current and prior periods from controls.selectedPeriods

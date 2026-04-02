@@ -63,9 +63,16 @@ export function KPIGrid({ kpis, history, onSelect }: KPIGridProps) {
           >
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  {kpi.label}
-                </CardTitle>
+                <div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    {kpi.label}
+                  </CardTitle>
+                  {kpi.plainEnglish && (
+                    <p className="text-[10px] text-muted-foreground/70 font-normal mt-0.5 leading-tight">
+                      {kpi.plainEnglish}
+                    </p>
+                  )}
+                </div>
                 {kpi.benchmark_status !== 'none' && (
                   <Badge
                     variant="outline"

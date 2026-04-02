@@ -336,6 +336,7 @@ const navigation: NavGroup[] = [
       { href: '/settings', label: 'Account' },
       { href: '/settings/team', label: 'Team & Roles' },
       { href: '/settings/preferences', label: 'Preferences' },
+      { href: '/settings/modules', label: 'Modules' },
       { href: '/settings/blueprints', label: 'Industry Blueprints' },
       { href: '/settings/exports', label: 'Data Exports' },
     ],

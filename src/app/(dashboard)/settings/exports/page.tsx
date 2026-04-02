@@ -13,37 +13,29 @@ const EXPORT_OPTIONS = [
   {
     label: 'Financial Statements',
     description: 'P&L, Balance Sheet, Cash Flow, last 12 months',
-    formats: ['PDF', 'XLSX', 'CSV'],
+    formats: ['CSV'],
+    apiType: 'financials',
     icon: '📊',
   },
   {
     label: 'Transaction History',
     description: 'All synced transactions with categories and notes',
-    formats: ['XLSX', 'CSV'],
+    formats: ['CSV'],
+    apiType: 'transactions',
     icon: '📋',
   },
   {
     label: 'KPI & Metrics Report',
     description: 'All tracked KPIs with historical data and targets',
-    formats: ['PDF', 'XLSX'],
+    formats: ['CSV'],
+    apiType: 'kpis',
     icon: '📈',
-  },
-  {
-    label: 'Agent Activity Logs',
-    description: 'Complete AI agent timesheets and task history',
-    formats: ['PDF', 'CSV'],
-    icon: '🤖',
-  },
-  {
-    label: 'Board Pack Template',
-    description: 'Pre-formatted executive summary for board reporting',
-    formats: ['PDF', 'PPTX'],
-    icon: '📄',
   },
   {
     label: 'Audit Trail',
     description: 'Full governance and compliance audit log',
-    formats: ['PDF', 'CSV'],
+    formats: ['CSV'],
+    apiType: 'audit_trail',
     icon: '🔒',
   },
 ];
@@ -56,9 +48,31 @@ const SCHEDULED_EXPORTS = [
 export default function ExportsPage() {
   const [exporting, setExporting] = useState<string | null>(null);
 
-  const handleExport = (label: string) => {
-    setExporting(label);
-    setTimeout(() => setExporting(null), 2000);
+  const handleExport = async (apiType: string, format: string, label: string) => {
+    const key = label + format;
+    setExporting(key);
+    try {
+      const res = await fetch('/api/exports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: apiType, format: format.toLowerCase() }),
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? `grove-export.${format.toLowerCase()}`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch {
+      console.error('Export failed');
+    } finally {
+      setTimeout(() => setExporting(null), 1500);
+    }
   };
 
   return (
@@ -87,7 +101,7 @@ export default function ExportsPage() {
                   {opt.formats.map((fmt) => (
                     <button
                       key={fmt}
-                      onClick={() => handleExport(opt.label + fmt)}
+                      onClick={() => handleExport(opt.apiType, fmt, opt.label)}
                       className={cn(
                         'rounded-md border px-3 py-1.5 text-xs font-medium transition-colors',
                         exporting === opt.label + fmt

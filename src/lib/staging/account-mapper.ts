@@ -1,5 +1,14 @@
 import { createUntypedServiceClient } from '@/lib/supabase/server';
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMWithUsage } from '@/lib/ai/llm';
+import { governedOutput } from '@/lib/governance/checkpoint';
+import {
+  STANDARD_CATEGORIES,
+  CATEGORY_META,
+  classToDefaultCategory,
+  getTaxonomyPromptContext,
+  type StandardCategory,
+} from '@/lib/financial/taxonomy';
+import type { AccountMapping } from '@/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -8,68 +17,51 @@ import { callLLM } from '@/lib/ai/llm';
 export interface AccountInput {
   code: string;
   name: string;
-}
-
-export interface AccountMapping {
-  id: string;
-  org_id: string;
-  source_account_code: string;
-  source_account_name: string;
-  target_category: string;
-  target_subcategory: string | null;
-  mapping_source: 'auto' | 'manual' | 'blueprint';
-  confidence: number;
-  verified: boolean;
-  created_at: string;
-  updated_at: string;
+  type?: string;
+  class?: string;
 }
 
 interface LLMMappingSuggestion {
   code: string;
   category: string;
-  subcategory: string | null;
   confidence: number;
+  reasoning?: string;
 }
 
+export type MappingChangeSource = 'auto' | 'manual' | 'blueprint' | 'bulk_confirm';
+
+// Re-export taxonomy for backward compatibility
+export { STANDARD_CATEGORIES, CATEGORY_META };
+
 // ---------------------------------------------------------------------------
-// Management account categories
+// Mapping history (immutable audit trail)
 // ---------------------------------------------------------------------------
 
-export const CATEGORIES = {
-  'Revenue': [
-    'Product Sales',
-    'Service Revenue',
-    'Subscription Revenue',
-    'Licensing Revenue',
-    'Other Revenue',
-  ],
-  'Direct Costs': [
-    'Materials',
-    'Direct Staff',
-    'Subcontractors',
-    'Production Costs',
-    'Cost of Goods Sold',
-  ],
-  'Overheads': [
-    'Establishment',
-    'Admin',
-    'Marketing',
-    'Legal',
-    'Finance',
-    'IT & Technology',
-    'Insurance',
-    'Travel & Entertainment',
-  ],
-  'Other': [
-    'Depreciation',
-    'Amortisation',
-    'Exceptional Items',
-    'Interest',
-    'Tax',
-  ],
-} as const;
-
-export type Category = keyof typeof CATEGORIES;
+async function logMappingChange(
+  orgId: string,
+  accountId: string,
+  previousCategory: string | null,
+  newCategory: string,
+  changeSource: MappingChangeSource,
+  confidence: number | null,
+  reasoning: string | null,
+  changedBy: string | null = null
+): Promise<void> {
+  const supabase = await createUntypedServiceClient();
+  const { error } = await supabase.from('account_mapping_history').insert({
+    org_id: orgId,
+    account_id: accountId,
+    previous_category: previousCategory,
+    new_category: newCategory,
+    changed_by: changedBy,
+    change_source: changeSource,
+    confidence,
+    reasoning,
+  });
+  if (error) {
+    console.warn(`[ACCOUNT-MAPPER] Failed to log mapping history: ${error.message}`);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Auto-map accounts using LLM
@@ -83,45 +75,76 @@ export async function autoMapAccounts(
 
   const supabase = await createUntypedServiceClient();
 
-  // Build the category reference for the prompt
-  const categoryList = Object.entries(CATEGORIES)
-    .map(([cat, subs]) => `${cat}: ${subs.join(', ')}`)
-    .join('\n');
+  // Build taxonomy context for the prompt
+  const taxonomyContext = getTaxonomyPromptContext();
 
   const accountList = accounts
-    .map((a) => `${a.code}: ${a.name}`)
+    .map((a) => {
+      const parts = [`${a.code}: ${a.name}`];
+      if (a.type) parts.push(`(type: ${a.type})`);
+      if (a.class) parts.push(`(class: ${a.class})`);
+      return parts.join(' ');
+    })
     .join('\n');
 
-  const systemPrompt = `You are a financial data mapping assistant. Your job is to map chart of accounts entries to management accounting categories.
+  const systemPrompt = `You are the Grove account mapping engine. Map Xero chart of accounts entries to standard financial categories.
 
-Available categories and subcategories:
-${categoryList}
+${taxonomyContext}
 
-Respond ONLY with valid JSON. No markdown, no explanation. Return an array of objects with these fields:
-- code (string): the account code
-- category (string): one of Revenue, Direct Costs, Overheads, Other
-- subcategory (string or null): one of the subcategories listed above, or null if unsure
-- confidence (number): 0 to 1, how confident you are in the mapping`;
+Rules:
+- Map each account to exactly ONE standard category key (e.g. "revenue", "employee_costs")
+- Use the account code, name, type, and class to determine the best match
+- UK accounting conventions apply
+- Assign confidence 0-1 (1 = certain)
+- Provide brief reasoning for each mapping
 
-  const userMessage = `Map these accounts to management categories:\n\n${accountList}`;
+Respond ONLY with valid JSON array. No markdown, no explanation.
+Schema: [{ "code": "string", "category": "string", "confidence": number, "reasoning": "string" }]`;
+
+  const userMessage = `Map these Xero accounts:\n\n${accountList}`;
 
   let suggestions: LLMMappingSuggestion[];
 
   try {
-    const response = await callLLM({ systemPrompt, userMessage, temperature: 0.1 });
+    const llmResult = await callLLMWithUsage({ systemPrompt, userMessage, temperature: 0.1, model: 'haiku' });
 
     // Parse JSON from response (handle potential markdown wrapping)
-    const jsonStr = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    suggestions = JSON.parse(jsonStr) as LLMMappingSuggestion[];
-  } catch (err) {
-    console.error('[ACCOUNT-MAPPER] LLM mapping failed:', err);
-    throw new Error('Failed to generate account mappings via AI');
-  }
+    const jsonMatch = llmResult.text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) throw new Error('No JSON array in LLM response');
+    const parsed = JSON.parse(jsonMatch[0]) as LLMMappingSuggestion[];
 
-  // Build a lookup from original accounts for the name
-  const accountByCode = new Map<string, string>();
-  for (const a of accounts) {
-    accountByCode.set(a.code, a.name);
+    // Validate categories against the unified taxonomy
+    suggestions = parsed.map((s) => ({
+      ...s,
+      category: (STANDARD_CATEGORIES as readonly string[]).includes(s.category)
+        ? s.category
+        : classToDefaultCategory(
+            accounts.find((a) => a.code === s.code)?.class ?? 'EXPENSE'
+          ),
+    }));
+
+    // Governance checkpoint — audit trail for account mapping
+    await governedOutput({
+      orgId,
+      outputType: 'account_mapping',
+      content: JSON.stringify(suggestions),
+      modelTier: 'haiku',
+      modelId: 'claude-haiku-4-20250414',
+      dataSources: [
+        { type: 'chart_of_accounts', reference: `${accounts.length} accounts` },
+      ],
+      tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+      cached: false,
+    });
+  } catch (err) {
+    console.error('[ACCOUNT-MAPPER] LLM mapping failed, using heuristic fallback:', err);
+    // Fallback: map by Xero class heuristic
+    suggestions = accounts.map((a) => ({
+      code: a.code,
+      category: classToDefaultCategory(a.class ?? 'EXPENSE'),
+      confidence: 0.3,
+      reasoning: 'AI mapping failed, using class-based heuristic',
+    }));
   }
 
   // Look up account IDs from chart_of_accounts by code
@@ -135,23 +158,27 @@ Respond ONLY with valid JSON. No markdown, no explanation. Return an array of ob
     accountIdByCode.set(acc.code, acc.id);
   }
 
-  // Upsert the mappings using account_id (matching DB schema)
+  // Fetch existing mappings so we can log previous_category in history
+  const { data: existingMappings } = await supabase
+    .from('account_mappings')
+    .select('account_id, standard_category')
+    .eq('org_id', orgId);
+
+  const previousCategoryByAccountId = new Map<string, string>();
+  for (const m of existingMappings ?? []) {
+    previousCategoryByAccountId.set(m.account_id, m.standard_category);
+  }
+
+  // Upsert the mappings
   let mapped = 0;
   for (const suggestion of suggestions) {
-    const accountName = accountByCode.get(suggestion.code);
-    if (!accountName) continue;
-
     const accountId = accountIdByCode.get(suggestion.code);
     if (!accountId) {
       console.warn(`[ACCOUNT-MAPPER] No chart_of_accounts entry for code ${suggestion.code}`);
       continue;
     }
 
-    // Validate category
-    if (!(suggestion.category in CATEGORIES)) {
-      console.warn(`[ACCOUNT-MAPPER] Invalid category "${suggestion.category}" for ${suggestion.code}`);
-      continue;
-    }
+    const previousCategory = previousCategoryByAccountId.get(accountId) ?? null;
 
     const { error } = await supabase.from('account_mappings').upsert(
       {
@@ -160,6 +187,7 @@ Respond ONLY with valid JSON. No markdown, no explanation. Return an array of ob
         standard_category: suggestion.category,
         ai_confidence: suggestion.confidence,
         ai_suggested: true,
+        ai_reasoning: suggestion.reasoning ?? null,
         user_confirmed: false,
         user_overridden: false,
       },
@@ -171,10 +199,21 @@ Respond ONLY with valid JSON. No markdown, no explanation. Return an array of ob
       continue;
     }
 
+    // Log to immutable history
+    await logMappingChange(
+      orgId,
+      accountId,
+      previousCategory,
+      suggestion.category,
+      'auto',
+      suggestion.confidence,
+      suggestion.reasoning ?? null
+    );
+
     mapped++;
   }
 
-  console.log(`[ACCOUNT-MAPPER] Mapped ${mapped} accounts via AI`);
+  console.log(`[ACCOUNT-MAPPER] Mapped ${mapped}/${accounts.length} accounts via AI`);
   return mapped;
 }
 
@@ -229,35 +268,40 @@ export async function applyBlueprintMappings(
 ): Promise<number> {
   const supabase = await createUntypedServiceClient();
 
-  // Fetch the blueprint definition
-  // Blueprints are stored as JSON objects with code -> category mappings
-  const blueprints: Record<string, Record<string, { category: string; subcategory: string | null }>> = {
+  // Industry blueprints using unified StandardCategory taxonomy
+  const blueprints: Record<string, Record<string, StandardCategory>> = {
     'saas': {
-      '200': { category: 'Revenue', subcategory: 'Subscription Revenue' },
-      '210': { category: 'Revenue', subcategory: 'Service Revenue' },
-      '400': { category: 'Direct Costs', subcategory: 'Direct Staff' },
-      '410': { category: 'Direct Costs', subcategory: 'Production Costs' },
-      '500': { category: 'Overheads', subcategory: 'Marketing' },
-      '600': { category: 'Overheads', subcategory: 'Admin' },
-      '610': { category: 'Overheads', subcategory: 'IT & Technology' },
-      '700': { category: 'Other', subcategory: 'Depreciation' },
+      '200': 'revenue',
+      '210': 'revenue',
+      '400': 'cost_of_sales',
+      '410': 'cost_of_sales',
+      '500': 'marketing_and_advertising',
+      '600': 'office_and_admin',
+      '610': 'technology_and_software',
+      '700': 'depreciation_and_amortisation',
+      '710': 'employee_costs',
+      '720': 'rent_and_occupancy',
+      '730': 'professional_fees',
     },
     'ecommerce': {
-      '200': { category: 'Revenue', subcategory: 'Product Sales' },
-      '300': { category: 'Direct Costs', subcategory: 'Cost of Goods Sold' },
-      '310': { category: 'Direct Costs', subcategory: 'Materials' },
-      '400': { category: 'Overheads', subcategory: 'Establishment' },
-      '500': { category: 'Overheads', subcategory: 'Marketing' },
-      '600': { category: 'Overheads', subcategory: 'Admin' },
+      '200': 'revenue',
+      '300': 'cost_of_sales',
+      '310': 'cost_of_sales',
+      '400': 'rent_and_occupancy',
+      '500': 'marketing_and_advertising',
+      '600': 'office_and_admin',
+      '610': 'technology_and_software',
+      '700': 'employee_costs',
     },
     'professional-services': {
-      '200': { category: 'Revenue', subcategory: 'Service Revenue' },
-      '210': { category: 'Revenue', subcategory: 'Licensing Revenue' },
-      '400': { category: 'Direct Costs', subcategory: 'Direct Staff' },
-      '410': { category: 'Direct Costs', subcategory: 'Subcontractors' },
-      '500': { category: 'Overheads', subcategory: 'Establishment' },
-      '510': { category: 'Overheads', subcategory: 'Legal' },
-      '600': { category: 'Overheads', subcategory: 'Admin' },
+      '200': 'revenue',
+      '210': 'revenue',
+      '400': 'employee_costs',
+      '410': 'cost_of_sales',
+      '500': 'rent_and_occupancy',
+      '510': 'professional_fees',
+      '600': 'office_and_admin',
+      '610': 'technology_and_software',
     },
   };
 
@@ -266,7 +310,7 @@ export async function applyBlueprintMappings(
     throw new Error(`Unknown blueprint: ${blueprintId}`);
   }
 
-  // Fetch existing accounts to get IDs and names
+  // Fetch existing accounts to get IDs
   const { data: existingAccounts } = await supabase
     .from('chart_of_accounts')
     .select('id, code, name')
@@ -277,18 +321,32 @@ export async function applyBlueprintMappings(
     accountByCode.set(acc.code, { id: acc.id, name: acc.name });
   }
 
+  // Fetch existing mappings for history tracking
+  const { data: existingMappings } = await supabase
+    .from('account_mappings')
+    .select('account_id, standard_category')
+    .eq('org_id', orgId);
+
+  const previousCategoryByAccountId = new Map<string, string>();
+  for (const m of existingMappings ?? []) {
+    previousCategoryByAccountId.set(m.account_id, m.standard_category);
+  }
+
   let applied = 0;
-  for (const [code, mapping] of Object.entries(blueprint)) {
+  for (const [code, category] of Object.entries(blueprint)) {
     const account = accountByCode.get(code);
     if (!account) continue;
+
+    const previousCategory = previousCategoryByAccountId.get(account.id) ?? null;
 
     const { error } = await supabase.from('account_mappings').upsert(
       {
         org_id: orgId,
         account_id: account.id,
-        standard_category: mapping.category,
+        standard_category: category,
         ai_confidence: 0.85,
         ai_suggested: false,
+        ai_reasoning: `Blueprint mapping (${blueprintId})`,
         user_confirmed: false,
         user_overridden: false,
       },
@@ -299,6 +357,17 @@ export async function applyBlueprintMappings(
       console.warn(`[ACCOUNT-MAPPER] Blueprint mapping failed for ${code}: ${error.message}`);
       continue;
     }
+
+    // Log to immutable history
+    await logMappingChange(
+      orgId,
+      account.id,
+      previousCategory,
+      category,
+      'blueprint',
+      0.85,
+      `Blueprint mapping (${blueprintId})`
+    );
 
     applied++;
   }

@@ -1,5 +1,7 @@
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMWithUsage } from '@/lib/ai/llm';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getCompanyContextPrefix } from '@/lib/skills/company-skill';
+import { governedOutput } from '@/lib/governance/checkpoint';
 import type { IntelligenceEvent, IntelligenceImpact, ImpactType } from '@/types';
 
 type OrgContext = {
@@ -64,14 +66,21 @@ Organisation:
 
 Analyse the specific impact of this event on this organisation.`;
 
-  const response = await callLLM({
-    systemPrompt: IMPACT_SYSTEM_PROMPT,
+  // Enrich system prompt with company context if available
+  const companyContext = await getCompanyContextPrefix(org.orgId).catch(() => '');
+  const enrichedPrompt = companyContext
+    ? `${companyContext}\n\n${IMPACT_SYSTEM_PROMPT}`
+    : IMPACT_SYSTEM_PROMPT;
+
+  const llmResult = await callLLMWithUsage({
+    systemPrompt: enrichedPrompt,
     userMessage,
     temperature: 0.2,
+    model: 'haiku',
   });
 
   // Parse the JSON response — strip any markdown code fences
-  const cleaned = response.replace(/```json\n?|\n?```/g, '').trim();
+  const cleaned = llmResult.text.replace(/```json\n?|\n?```/g, '').trim();
   const parsed = JSON.parse(cleaned) as ImpactAnalysis;
 
   // Validate the response shape
@@ -86,6 +95,21 @@ Analyse the specific impact of this event on this organisation.`;
 
   // Clamp relevance score to [0, 1]
   parsed.relevance_score = Math.max(0, Math.min(1, parsed.relevance_score));
+
+  // Governance checkpoint — audit trail for intelligence impact analysis
+  await governedOutput({
+    orgId: org.orgId,
+    outputType: 'kpi_insight',
+    content: JSON.stringify(parsed),
+    modelTier: 'haiku',
+    modelId: 'claude-haiku-4-20250414',
+    dataSources: [
+      { type: 'intelligence_event', reference: event.title.slice(0, 100) },
+      { type: 'organisation_profile', reference: org.orgName },
+    ],
+    tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+    cached: false,
+  });
 
   return parsed;
 }

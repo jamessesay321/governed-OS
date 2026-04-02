@@ -15,6 +15,8 @@ type Message = {
   warnings?: ValidationWarning[];
 };
 
+type ScenarioMode = 'what_if' | 'goalseek';
+
 type Props = {
   scenarioId: string;
   assumptionSetId: string;
@@ -22,6 +24,19 @@ type Props = {
   basePeriodEnd: string;
   forecastHorizonMonths: number;
   onChangesApplied?: () => void;
+};
+
+const MODE_CONFIG: Record<ScenarioMode, { label: string; placeholder: string; hint: string }> = {
+  what_if: {
+    label: 'What-if',
+    placeholder: 'e.g. What if revenue grows 10% with a new hire at £8k/month?',
+    hint: 'Describe a change and see the projected impact.',
+  },
+  goalseek: {
+    label: 'Goalseek',
+    placeholder: 'e.g. What revenue do I need to hit 20% net margin?',
+    hint: 'Set a target and work backwards to find what needs to change.',
+  },
 };
 
 export function ScenarioChatBuilder({
@@ -36,6 +51,7 @@ export function ScenarioChatBuilder({
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [mode, setMode] = useState<ScenarioMode>('what_if');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -59,15 +75,23 @@ export function ScenarioChatBuilder({
           basePeriodStart,
           basePeriodEnd,
           forecastHorizonMonths,
+          mode,
         }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
+        // Surface specific error messages for rate limits
+        const errorMessage = res.status === 429
+          ? 'You\'re sending requests too quickly. Please wait a moment before trying again.'
+          : res.status === 402
+          ? 'Monthly AI token budget exhausted. Please try again next month or upgrade your plan.'
+          : data.error || 'Something went wrong.';
+
         setMessages((prev) => [
           ...prev,
-          { role: 'assistant', content: data.error || 'Something went wrong.' },
+          { role: 'assistant', content: errorMessage },
         ]);
         return;
       }
@@ -147,15 +171,45 @@ export function ScenarioChatBuilder({
     }
   }
 
+  const modeConfig = MODE_CONFIG[mode];
+
   return (
     <div className="flex flex-col h-full">
+      {/* Mode Toggle */}
+      <div className="flex items-center gap-1 border-b px-3 py-2">
+        {(Object.entries(MODE_CONFIG) as [ScenarioMode, typeof modeConfig][]).map(([key, cfg]) => (
+          <button
+            key={key}
+            onClick={() => setMode(key)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              mode === key
+                ? 'bg-primary text-primary-foreground'
+                : 'text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {cfg.label}
+          </button>
+        ))}
+        <span className="ml-auto text-[10px] text-muted-foreground">{modeConfig.hint}</span>
+      </div>
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto space-y-3 p-3">
         {messages.length === 0 && (
           <p className="text-sm text-muted-foreground text-center py-8">
-            Describe a what-if scenario in plain English. For example:
-            <br />
-            <em>&quot;What if revenue grows 10% monthly with a new hire at $8k/month?&quot;</em>
+            {mode === 'what_if' ? (
+              <>
+                Describe a what-if scenario in plain English. For example:
+                <br />
+                <em>&quot;What if revenue grows 10% monthly with a new hire at £8k/month?&quot;</em>
+              </>
+            ) : (
+              <>
+                Set a target and I will work backwards. For example:
+                <br />
+                <em>&quot;What revenue do I need to achieve a 20% net margin?&quot;</em>
+              </>
+            )}
           </p>
         )}
 
@@ -187,7 +241,7 @@ export function ScenarioChatBuilder({
         {loading && (
           <div className="flex justify-start">
             <div className="bg-muted rounded-lg px-3 py-2 text-sm text-muted-foreground">
-              Interpreting your request...
+              {mode === 'goalseek' ? 'Working backwards from your target...' : 'Interpreting your request...'}
             </div>
           </div>
         )}
@@ -213,7 +267,7 @@ export function ScenarioChatBuilder({
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe a what-if scenario..."
+            placeholder={modeConfig.placeholder}
             className="flex-1 rounded border px-3 py-2 text-sm"
             disabled={loading}
           />

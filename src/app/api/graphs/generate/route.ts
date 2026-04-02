@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { callLLMCached } from '@/lib/ai/cache';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
 import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 export async function POST(req: Request) {
   try {
@@ -131,6 +132,23 @@ Rules:
     // Override chart type if specified by user
     if (chartType) {
       parsed.chartType = chartType;
+    }
+
+    // Governance checkpoint — audit trail for AI-generated charts
+    if (orgId) {
+      await governedOutput({
+        orgId,
+        userId: user.id,
+        outputType: 'ask_grove_answer',
+        content: JSON.stringify({ title: parsed.title, chartType: parsed.chartType, summary: parsed.summary }),
+        modelTier: 'sonnet',
+        modelId: 'claude-sonnet-4-20250514',
+        dataSources: [
+          { type: 'chart_generation', reference: prompt.slice(0, 100) },
+        ],
+        tokensUsed: llmResult.tokensUsed,
+        cached: llmResult.cached,
+      });
     }
 
     return NextResponse.json(parsed);

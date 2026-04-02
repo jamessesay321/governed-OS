@@ -1,105 +1,124 @@
 # Advisory OS — Task Tracker
 
-## Sprint 1: Foundation — COMPLETE
+## Sprints 1–9: All COMPLETE
 
-- [x] Project scaffolding (Next.js 15, TypeScript, Tailwind, shadcn/ui)
-- [x] Supabase schema & RLS migration (`supabase/migrations/001_schema.sql`)
-- [x] Authentication (login, signup, callback, middleware)
-- [x] Organisation setup (create org + owner profile on signup)
-- [x] Role-based access control (owner > admin > advisor > viewer)
-- [x] Invitation flow (invite by email, accept by token)
-- [x] Xero OAuth 2.0 integration (connect, callback, disconnect, status)
-- [x] Xero data sync pipeline (chart of accounts, invoices, bank transactions)
-- [x] Financial normalisation engine (raw → monthly aggregates)
-- [x] Core actuals dashboard (P&L table, KPI cards, period selector)
-- [x] Sync status indicator
-- [x] Immutable audit logging (utility + viewer page)
-- [x] Supabase Database types with full generic support
-- [x] Zod validation on API routes
-- [x] Unit tests (financial calculations, role checks)
-- [x] Self-improvement loop (`/tasks/lessons.md`)
-- [x] Onboarding flow (welcome, website scan, interview, Xero connect, completion)
-- [x] Website scanning with Claude AI (business intelligence extraction)
-- [x] Org-scoped onboarding flag (`has_completed_onboarding`)
-- [x] Supabase migration: onboarding columns on organisations table
-- [x] Xero env vars added to Vercel
-- [x] Deployed to Vercel (staging)
-- [x] Security: SSRF protection, Zod validation, HTTP headers, Skills defense suite, no `as any`
-- [x] Framework: Updated lessons.md, strengthened CLAUDE.md with enforcement gates
+All core sprints shipped. See CLAUDE.md sprint table for details.
 
-## Technical Debt (Carry-forward)
+## Platform Enhancements — COMPLETE
 
-- [ ] End-to-end manual testing (Xero connect → sync → dashboard reconciliation)
-- [ ] RLS policy integration tests (cross-tenant read denial)
-- [ ] Write tests for onboarding flow
-- [ ] Audit RLS policies on new onboarding columns
-- [ ] Re-enable email confirmation for production
-- [ ] Regenerate Supabase TypeScript types after migration
-- [ ] Reconciliation function (`src/lib/financial/reconcile.ts`)
+- [x] Token optimisation, governance checkpoint, persona config, DrillableNumber, two-path onboarding
+- [x] Copy/tone cleanup, quick actions, visual warmth
 
-## Sprint 2: Xero Integration with Governed Data Pipeline — IN PROGRESS
+## Feature Benchmark Audits — ALL 15 COMPLETE
 
-- [ ] Database: Create governed data model tables (xero_raw, xero_mapped, mapping_rules)
-- [ ] Auto-mapping: Claude API maps Xero chart of accounts to standard KPI framework
-- [ ] Pull: Trial Balance, P&L, Balance Sheet, Aged AR/AP, Bank Transactions
-- [ ] Sync: Daily auto-sync + manual refresh, raw + normalised storage
-- [ ] UK Tax Engine: Corporation Tax, VAT settings, PAYE/NI/Pension rate fields
-- [ ] HMRC Payment Plans: VAT, Corp Tax, PAYE payment plan support
-- [ ] 13-Week Cash Flow: Direct + indirect method views
-- [ ] Data freshness indicator on all data screens
-- [ ] RLS policies on all new tables
-- [ ] Audit logging on all sync operations
+All audit files written to `docs/audits/`:
+- [x] 01–05: Dashboard, KPI/Variance, Financial Statements, Charts, Scenario Planning
+- [x] 06–10: Forecasting/Budgeting, Board Pack, Search/Intelligence, Onboarding, Collaboration
+- [x] 11–15: Knowledge Vault, Advisor Portal, Investor Portal, Settings/Config, Automations/Alerts
 
-## Sprint 3: KPI Engine with Variance Analysis — PLANNED
+## Completed P0 Fixes (from audits)
 
-- [ ] Pre-built KPI library (30+ KPIs: profitability, liquidity, growth, efficiency)
-- [ ] Custom KPI support (plain English formula → Claude API calculation)
-- [ ] KPI configuration (cadence, targets, alert thresholds)
-- [ ] Narrative-first dashboard (Claude API-generated text summary with inline numbers)
-- [ ] One-click drill-down (KPI → category → Xero transactions)
-- [ ] Variance analysis panel (slide-in, compare to: month/quarter/year/budget/target)
-- [ ] Dashboard widget system (KPI cards with sparklines, waterfall charts, financial tables)
-- [ ] Variance colour coding (green/amber/red, auto-determined by metric type)
+### Audits 01–04 P0 fixes
+- [x] KPI traffic-light indicators, P&L summary/detail toggle, plain-English headers
+- [x] Inline margin %, shared drill-down panel, waterfall interactivity, plain-English KPI labels
 
-## Sprint 4: AI Onboarding Interview Enhancement — PLANNED
+### Audit 05 P0 fixes
+- [x] Currency $ → £, modal dialog for duplicate, what-if mode toggle, error surfacing
 
-- [ ] Enhance interview with Xero data context (P&L, Balance Sheet in prompts)
-- [ ] Auto-suggest KPI configuration from interview outputs
-- [ ] Auto-suggest dashboard layout from business profile
-- [ ] Voice option via Vapi.ai (chat as default)
+### ARCH-3 Bug Fix
+- [x] Per-period assumption resolution (union type approach, all 84 scenario tests pass)
 
-## Sprint 5: NL Scenario Engine — PLANNED
+### Audit 08 P0 fixes (Search & Intelligence)
+- [x] Inject Company Skill into Ask Grove (replaced 110 lines of ad-hoc context)
+- [x] Create CMD+K AI endpoint (`/api/intelligence/query`)
+- [x] Variance AI import confirmed NOT broken (false alarm)
 
-- [ ] Single text box NL interface ("What happens if...")
-- [ ] Three-statement impact analysis (P&L, BS, CF)
-- [ ] Goalseek mode ("What do I need to...")
-- [ ] Scenario save/compare (up to 3 side-by-side)
-- [ ] Smart context resolution (auto-identify clients, teams from Xero data)
+### Audit 09 P0 fixes (Onboarding)
+- [x] Fix step order inversion in progress indicator (currentStep=2 on completion)
+- [x] Replace hardcoded complete page data with real DB stats
 
-## Sprint 6: Modules and Playbook Maturity Scoring — PLANNED
+### Audit 11 P0 fixes (Knowledge Vault)
+- [x] Enforce vault visibility filtering (owner_only, advisor_only rules in listVaultItems)
+- [x] Sanitise search input in vault queries
 
-- [ ] Operational maturity visualisation (radar chart, scoring)
-- [ ] Module system (cash-forecast, workforce-planning, unit-economics, etc.)
-- [ ] Playbook actions linked to maturity gaps
+### Audit 14 P0 fix (Settings)
+- [x] Fix deceptive Save Preferences button (now uses localStorage + honest "Saved to this browser" label)
 
-## Sprint 7: Macro-to-Micro Intelligence Layer — PLANNED
+### Audit 15 P0 fix (Automations & Alerts)
+- [x] Wire createNotification() into event flows:
+  - Xero sync success → system notification with record count
+  - Xero sync failure → system notification with error message
+  - Anomaly detection → intelligence notification for high-severity anomalies
+  - Health check → intelligence notification for critical alerts
 
-- [ ] Personalised monetary impact statements
-- [ ] Automated insights (weekly/monthly/quarterly digests)
-- [ ] Proactive anomaly detection on each Xero sync
-- [ ] Financial explainer library (contextualised to user's actual data)
+## Remaining P0 Items (Next Priority)
 
-## Sprint 8: Board Pack PDF Generation — PLANNED
+### Audit 06: Forecasting & Budgeting
+- [ ] Build budget entry UI (budget_lines table + form + comparison view)
+- [ ] Fix compare-mode disconnect in variance backend
+- [ ] Wire drill-down page for forecast vs actuals
 
-- [ ] Claude API content generation (exec summary, P&L, KPIs, recommendations)
-- [ ] Board pack builder UI (section selection, reorder, commentary)
-- [ ] Interactive HTML export (dark mode, collapsible, tooltips)
-- [ ] PDF export (block-by-block rendering, governance metadata)
-- [ ] Theme presets (7 themes, white-label ready)
-- [ ] Version history (immutable, diff tracking)
+### Audit 07: Board Pack & Reporting
+- [x] Inject business context into report narratives
+- [x] Switch PDF to headless browser (puppeteer-core + @sparticuz/chromium)
+- [x] Fix KPI N/A fields in board pack
 
-## Sprint 9: Knowledge Vault Foundations — PLANNED
+### Audit 10: Collaboration & Sharing
+- [x] Wire Resend to email API for invitations
+- [x] Build invitation landing page
+- [x] Wire notifications on key events (done in previous session)
+- [x] Fix team management actions (remove, role change)
 
-- [ ] Document storage with full provenance chain
-- [ ] Immutable versioning (cell-level audit trail pattern)
-- [ ] Search across all stored outputs
+### Audit 11: Knowledge Vault
+- [x] Build file upload pipeline (Supabase Storage)
+- [ ] Build content renderer for vault JSONB items
+- [x] Wire AI Outputs sub-page to filtered vault query
+
+### Audit 12: Advisor Portal (CRITICAL ARCHITECTURE)
+- [ ] Build multi-org data model (advisor_clients junction table)
+- [ ] Build client switcher in header
+- [ ] Build advisor portfolio dashboard
+- [ ] Add role-gated middleware
+
+### Audit 13: Investor Portal
+- [ ] Wire investor dashboard to real KPI data
+- [ ] Create investor-specific DB tables
+- [ ] Build investor auth with magic links
+
+### Audit 14: Settings & Configuration
+- [x] Build settings persistence layer (user_preferences table + API)
+- [ ] Integrate Stripe for billing
+- [x] Build functional data exports
+- [ ] Add GDPR data deletion workflow
+- [x] Complete team management CRUD
+- [ ] Build audit log viewer UI
+- [ ] Persist module toggle state
+
+### Audit 15: Automations & Alerts
+- [x] Implement scheduled Xero sync (Vercel Cron)
+- [x] Build KPI threshold alert configuration UI
+- [x] Wire email sending via Resend
+- [x] Build budget variance alert engine
+- [x] Fix dead-link CTAs in recommendations
+
+## P0 CRITICAL: Xero Data Accuracy (Alonuko Reconciliation)
+
+- [x] Fix double-counting: normaliseTransactions now filters to invoices/bills only (bank transactions excluded)
+- [x] Add clear-before-rebuild step in normalise to remove stale double-counted data
+- [x] Create xero-reconciliation skill (.claude/skills/xero-reconciliation.md)
+- [x] Document lesson in tasks/lessons.md and research-analyst/reconciliation/
+- [ ] **RE-SYNC REQUIRED**: Trigger Xero re-sync for Alonuko to regenerate normalised_financials with correct data
+- [ ] After re-sync: verify revenue matches management accounts (~£1.3m/year, NOT £2.58m)
+- [ ] After re-sync: verify net profit shows a LOSS (not £245k profit)
+- [ ] Investigate deferred income (£647k): check if deposit accounts classified as REVENUE in Xero CoA
+- [ ] Investigate stock/WIP movements: may need inclusion in COGS for correct gross margin
+- [ ] Investigate interest charges (£222k in 2025): verify classification as EXPENSE
+- [ ] Add financial year reference to dashboard period selector (currently just "All 12 months")
+
+## Infrastructure & Technical Debt
+
+- [ ] Run migration 023 on Supabase (account_mapping_history + tracking_category_mappings)
+- [ ] Regenerate Supabase TypeScript types after latest migrations
+- [ ] End-to-end manual testing (Xero connect → sync → dashboard)
+- [ ] RLS policy integration tests
+- [ ] Fix pre-existing test: getYTDPeriods date-sensitive assertion

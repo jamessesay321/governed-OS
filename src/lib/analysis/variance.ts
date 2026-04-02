@@ -8,6 +8,8 @@
 import { callLLMCached } from '@/lib/ai/cache';
 import { createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { getCompanyContextPrefix } from '@/lib/skills/company-skill';
+import { governedOutput, xeroFinancialsSource } from '@/lib/governance/checkpoint';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -190,13 +192,31 @@ export async function explainVariance(
       direction: d.direction,
     }));
 
+    const companyContext = await getCompanyContextPrefix(orgId);
     const llmResult = await callLLMCached({
-      systemPrompt: `You are a financial analyst explaining a variance. Given the metric change and its component drivers, write 2-3 sentences explaining what happened, why it matters, and what to watch for next month. Be specific. Use £ currency. Respond with plain text only.`,
+      systemPrompt: `${companyContext ? companyContext + '\n\n' : ''}You are a financial analyst explaining a variance. Given the metric change and its component drivers, write 2-3 sentences explaining what happened, why it matters, and what to watch for next month. Be specific. Use £ currency. Respond with plain text only.`,
       userMessage: `Metric: ${metric}\nPeriod: ${period} vs ${prevPeriod}\nChange: £${change.toLocaleString('en-GB', { minimumFractionDigits: 2 })} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(1)}%)\nCurrent value: £${currentValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}\nPrevious value: £${previousValue.toLocaleString('en-GB', { minimumFractionDigits: 2 })}\n\nTop drivers:\n${JSON.stringify(topDrivers, null, 2)}`,
       orgId,
       temperature: 0.3,
+      model: 'sonnet',
+      cacheSystemPrompt: true,
     });
     aiInsight = llmResult.response.trim();
+
+    // Governance checkpoint — audit trail for variance AI insights
+    await governedOutput({
+      orgId,
+      outputType: 'variance_commentary',
+      content: aiInsight,
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: [
+        xeroFinancialsSource(period),
+        { type: 'variance_drivers', reference: `${drivers.length} account-level drivers for ${metric}` },
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: false,
+    });
   } catch (err) {
     console.error('[analysis/variance] LLM insight failed, using fallback:', err);
   }

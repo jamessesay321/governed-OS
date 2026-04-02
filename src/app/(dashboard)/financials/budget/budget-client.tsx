@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
 import { ReportControls, getDefaultReportState } from '@/components/financial/report-controls';
 import type { ReportControlsState } from '@/components/financial/report-controls';
+import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -73,7 +74,8 @@ export function BudgetClient({
   budgetByCategoryPeriod,
 }: Props) {
   const { format: formatCurrency } = useCurrency();
-  const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods));
+  const { yearEndMonth } = useAccountingConfig();
+  const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods, yearEndMonth));
   const [suppressMinor, setSuppressMinor] = useState(false);
 
   // ─── Build rows dynamically based on selected periods ─────────────

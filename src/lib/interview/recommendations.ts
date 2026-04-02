@@ -6,10 +6,11 @@
  * Sprint 4: AI Onboarding Interview Enhancement
  */
 
-import { callLLM } from '@/lib/ai/llm';
+import { callLLMWithUsage } from '@/lib/ai/llm';
 import type { BusinessContextProfile } from '@/types';
 import { ALL_KPI_DEFINITIONS, type BusinessType } from '@/lib/kpi/definitions';
 import { DASHBOARD_TEMPLATES, type WidgetType } from '@/lib/dashboard/templates';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 export type KPIRecommendation = {
   key: string;
@@ -126,24 +127,46 @@ export async function generateRecommendations(
 ): Promise<InterviewRecommendations> {
   const profileSummary = buildProfileSummary(profile);
 
-  const rawResponse = await callLLM({
+  const llmResult = await callLLMWithUsage({
     systemPrompt: RECOMMENDATION_PROMPT,
     userMessage: `Business Profile:\n${profileSummary}`,
     temperature: 0.2,
+    model: 'haiku',
   });
 
   // Extract JSON
+  const rawResponse = llmResult.text;
   const fenceMatch = rawResponse.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
   const jsonStr = fenceMatch ? fenceMatch[1].trim() : rawResponse.match(/\{[\s\S]*\}/)?.[0] ?? rawResponse;
 
   try {
     const parsed = JSON.parse(jsonStr);
-    return {
+    const result: InterviewRecommendations = {
       kpis: validateKPIRecommendations(parsed.kpis ?? []),
       dashboard: validateDashboardRecommendation(parsed.dashboard ?? {}),
       playbook_modules: validatePlaybookRecommendations(parsed.playbook_modules ?? []),
       reasoning: String(parsed.reasoning ?? 'Recommendations based on business profile.'),
     };
+
+    // Governance checkpoint — audit trail for interview recommendations
+    // Note: orgId not available here (profile-level, not org-level), use placeholder
+    const orgId = (profile as Record<string, unknown>).org_id as string | undefined;
+    if (orgId) {
+      await governedOutput({
+        orgId,
+        outputType: 'interview_recommendation',
+        content: JSON.stringify(result),
+        modelTier: 'haiku',
+        modelId: 'claude-haiku-4-20250414',
+        dataSources: [
+          { type: 'business_context_profile', reference: profileSummary.slice(0, 100) },
+        ],
+        tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+        cached: false,
+      });
+    }
+
+    return result;
   } catch {
     // Return sensible defaults if AI parsing fails
     return getDefaultRecommendations();

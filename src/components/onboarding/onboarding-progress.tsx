@@ -86,7 +86,7 @@ export function OnboardingProgress({ currentStep, completedSteps }: Props) {
                 <div
                   className={cn(
                     'h-0.5 flex-1 mx-2 sm:mx-3 mt-[-1rem] sm:mt-[-1.5rem]',
-                    isCompleted || (isCurrent && index === 0)
+                    isCompleted || isCurrent
                       ? 'bg-primary'
                       : 'bg-muted-foreground/20'
                   )}

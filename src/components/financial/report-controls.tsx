@@ -3,6 +3,8 @@
 import { useState, useCallback } from 'react';
 import { Download, Filter, ChevronDown, Calendar, BarChart3, Table2 } from 'lucide-react';
 import { useCurrency } from '@/components/providers/currency-context';
+import { useAccountingConfig } from '@/components/providers/accounting-config-context';
+import { getYTDPeriods, getDefaultDisplayPeriods, getFinancialQuarter } from '@/lib/financial/periods';
 
 // ─── Types ───────────────────────────────────────────────────────────
 export type PeriodMode = 'monthly' | 'quarterly' | 'annual';
@@ -49,23 +51,30 @@ function formatPeriodShort(period: string): string {
   return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
 }
 
-function getQuarter(period: string): string {
-  const month = new Date(period).getMonth();
-  const year = new Date(period).getFullYear();
-  const q = Math.floor(month / 3) + 1;
-  return `Q${q} ${year}`;
-}
-
 function getYear(period: string): string {
   return new Date(period).getFullYear().toString();
 }
 
-function groupPeriods(periods: string[], mode: PeriodMode): string[][] {
+function groupPeriods(periods: string[], mode: PeriodMode, yearEndMonth?: number): string[][] {
   if (mode === 'monthly') return periods.map((p) => [p]);
 
   const groups = new Map<string, string[]>();
   for (const p of periods) {
-    const key = mode === 'quarterly' ? getQuarter(p) : getYear(p);
+    let key: string;
+    if (mode === 'quarterly') {
+      // Use FY-aware quarters when year-end config is available
+      if (yearEndMonth && yearEndMonth !== 12) {
+        const q = getFinancialQuarter(p, yearEndMonth);
+        key = q.label; // e.g. "Q1 FY26"
+      } else {
+        // Calendar year fallback
+        const month = new Date(p).getMonth();
+        const year = new Date(p).getFullYear();
+        key = `Q${Math.floor(month / 3) + 1} ${year}`;
+      }
+    } else {
+      key = getYear(p);
+    }
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(p);
   }
@@ -94,10 +103,19 @@ function exportCSV(data: Record<string, unknown>[], filename: string) {
 }
 
 // ─── Default State ───────────────────────────────────────────────────
-export function getDefaultReportState(availablePeriods: string[]): ReportControlsState {
+export function getDefaultReportState(
+  availablePeriods: string[],
+  yearEndMonth?: number
+): ReportControlsState {
+  // If we have a year-end config, default to current FY periods
+  let defaultPeriods = availablePeriods;
+  if (yearEndMonth) {
+    const ytd = getYTDPeriods(availablePeriods, yearEndMonth);
+    defaultPeriods = ytd.length > 0 ? ytd : getDefaultDisplayPeriods(availablePeriods, yearEndMonth);
+  }
   return {
     periodMode: 'monthly',
-    selectedPeriods: availablePeriods,
+    selectedPeriods: defaultPeriods,
     comparisonMode: 'none',
     accountFilter: null,
     viewMode: 'summary',
@@ -122,6 +140,9 @@ export function ReportControls({
   const [showPeriodPicker, setShowPeriodPicker] = useState(false);
   // Staged selection: pending periods are local until user clicks "Apply"
   const [pendingPeriods, setPendingPeriods] = useState<string[]>(state.selectedPeriods);
+
+  // FY-aware config from context (graceful fallback to calendar year)
+  const accountingConfig = useAccountingConfig();
 
   const sortedPeriods = [...availablePeriods].sort();
 
@@ -168,6 +189,19 @@ export function ReportControls({
     const sorted = [...availablePeriods].sort().reverse();
     setPendingPeriods(sorted.slice(0, n));
   }, [availablePeriods]);
+
+  // FY-aware: select only periods in the current financial year
+  const handleSelectThisFY = useCallback(() => {
+    const ytd = accountingConfig.getYTD(availablePeriods);
+    // If no YTD periods (FY just started), include all FY periods available
+    if (ytd.length > 0) {
+      setPendingPeriods(ytd);
+    } else {
+      // Fallback: filter from FY start to end of available data
+      const fyStart = accountingConfig.fyStartPeriod;
+      setPendingPeriods(availablePeriods.filter((p) => p >= fyStart).sort());
+    }
+  }, [availablePeriods, accountingConfig]);
 
   // Apply: commit pending periods to actual state
   const handleApply = useCallback(() => {
@@ -243,12 +277,20 @@ export function ReportControls({
           </button>
 
           {showPeriodPicker && (
-            <div className="absolute top-full left-0 mt-1 z-50 rounded-lg border bg-card shadow-lg p-3 min-w-[260px]">
-              <p className="text-[10px] text-muted-foreground font-medium mb-2 uppercase tracking-wide">
-                Select periods ({pendingPeriods.length} selected)
-              </p>
-              <div className="flex gap-1.5 mb-2">
+            <div className="absolute top-full left-0 mt-1 z-50 rounded-lg border bg-card shadow-lg p-3 min-w-[280px]">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">
+                  Select periods ({pendingPeriods.length} selected)
+                </p>
+                {accountingConfig.isConfigured && (
+                  <span className="text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">
+                    FY: {accountingConfig.fyLabel}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-2">
                 <button onClick={handleSelectAll} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50">All</button>
+                <button onClick={handleSelectThisFY} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50 font-medium text-primary">This FY</button>
                 <button onClick={() => handleSelectLast(3)} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50">Last 3</button>
                 <button onClick={() => handleSelectLast(6)} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50">Last 6</button>
                 <button onClick={() => handleSelectLast(12)} className="text-[10px] px-2 py-1 rounded border hover:bg-muted/50">Last 12</button>

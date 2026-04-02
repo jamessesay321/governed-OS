@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
-import { createUntypedServiceClient } from '@/lib/supabase/server';
+import { createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { callLLMCached } from '@/lib/ai/cache';
 import { llmLimiter } from '@/lib/rate-limit';
 import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
+import { governedOutput } from '@/lib/governance/checkpoint';
+import { getSkillAsSystemPrompt } from '@/lib/skills/company-skill';
+import { roundCurrency } from '@/lib/financial/normalise';
 
 // POST /api/ask-grove
 export async function POST(request: Request) {
@@ -36,94 +39,59 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Question too long (max 2000 characters)' }, { status: 400 });
     }
 
-    // Build financial context
-    const supabase = await createUntypedServiceClient();
+    // Build system prompt from Company Skill (aggregated business context)
+    // The skill includes: business profile, financial structure, semantic mappings,
+    // tracking dimensions, data quality, communication preferences, and standing instructions.
+    const [skillPrompt, realtimeFinancials] = await Promise.all([
+      getSkillAsSystemPrompt(orgId),
+      fetchRecentFinancials(orgId),
+    ]);
 
-    // Fetch org profile
-    const { data: orgProfile } = await supabase
-      .from('organisations')
-      .select('*')
-      .eq('id', orgId)
-      .maybeSingle();
+    const sources: { source: string; reference: string }[] = [
+      { source: 'Company Skill', reference: 'Aggregated business context (profile, mappings, config)' },
+    ];
 
-    // Fetch latest normalised financials (last 3 months)
-    const { data: financials } = await supabase
-      .from('normalised_financials')
-      .select('*')
-      .eq('org_id', orgId)
-      .order('period_start', { ascending: false })
-      .limit(3);
-
-    // Fetch chart of accounts
-    const { data: accounts } = await supabase
-      .from('chart_of_accounts')
-      .select('*')
-      .eq('org_id', orgId)
-      .limit(100);
-
-    // Fetch latest health check
-    const { data: healthCheck } = await supabase
-      .from('health_checks')
-      .select('*')
-      .eq('org_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // Fetch latest thesis
-    const { data: thesis } = await supabase
-      .from('theses')
-      .select('*')
-      .eq('org_id', orgId)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // Build context string
-    const contextParts: string[] = [];
-    const sources: { source: string; reference: string }[] = [];
-
-    if (orgProfile) {
-      contextParts.push(`Organisation: ${JSON.stringify(orgProfile)}`);
-      sources.push({ source: 'Organisation', reference: 'Profile data' });
+    // Append real-time financials (the skill caches for 7 days, but P&L changes with every sync)
+    let financialSection = '';
+    if (realtimeFinancials.length > 0) {
+      const lines = realtimeFinancials.map((p) =>
+        `${p.period}: Rev £${Math.round(p.revenue).toLocaleString()}, GP £${Math.round(p.grossProfit).toLocaleString()} (${p.revenue > 0 ? ((p.grossProfit / p.revenue) * 100).toFixed(0) : 0}%), Exp £${Math.round(Math.abs(p.expenses)).toLocaleString()}, NP £${Math.round(p.netProfit).toLocaleString()}`
+      );
+      financialSection = `\n\n## Recent Financial Performance (${realtimeFinancials.length} months)\n${lines.join('\n')}`;
+      sources.push({ source: 'Xero', reference: `Last ${realtimeFinancials.length} months of normalised financials` });
     }
 
-    if (financials && financials.length > 0) {
-      contextParts.push(`Recent Financials (last ${financials.length} months): ${JSON.stringify(financials)}`);
-      sources.push({ source: 'Xero', reference: `Last ${financials.length} months of normalised financials` });
-    }
+    const systemPrompt = `${skillPrompt}
 
-    if (accounts && accounts.length > 0) {
-      contextParts.push(`Chart of Accounts (${accounts.length} accounts): ${JSON.stringify(accounts)}`);
-      sources.push({ source: 'Xero', reference: `${accounts.length} chart of accounts entries` });
-    }
+## Your Role
+You are Grove, the user's financial analyst. Answer questions using the business context and financial data above. Always cite specific numbers with their source. Be direct and actionable. Never use em dashes. Keep responses concise (2-4 paragraphs max).${financialSection}`;
 
-    if (healthCheck) {
-      contextParts.push(`Latest Health Check: ${JSON.stringify(healthCheck)}`);
-      sources.push({ source: 'Calculated', reference: 'Most recent health check score' });
-    }
-
-    if (thesis) {
-      contextParts.push(`Latest Thesis: ${JSON.stringify(thesis)}`);
-      sources.push({ source: 'Calculated', reference: 'Latest business thesis' });
-    }
-
-    const systemPrompt = `You are Grove, a financial analyst assistant. Answer questions about the user's business using the provided financial data. Always cite specific numbers with their source. Be direct and actionable. Never use em dashes. Keep responses concise (2-4 paragraphs max).
-
-Here is the business context:
-${contextParts.join('\n\n')}`;
-
-    // Call LLM (cached)
+    // Call LLM (cached in DB + Anthropic prompt caching for system prompt)
     const { response, tokensUsed } = await callLLMCached({
       systemPrompt,
       userMessage: question,
       orgId,
       temperature: 0.3,
       cacheTTLMinutes: 30,
+      model: 'sonnet',
+      cacheSystemPrompt: true, // Business context is stable between questions
     });
 
     // Track token usage
     await trackTokenUsage(orgId, tokensUsed, 'ask-grove');
+
+    // Governance checkpoint — audit trail for every AI answer
+    await governedOutput({
+      orgId,
+      userId: profile.id as string,
+      outputType: 'ask_grove_answer',
+      content: response,
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: sources.map((s) => ({ type: s.source, reference: s.reference })),
+      tokensUsed,
+      cached: false,
+    });
 
     return NextResponse.json({
       answer: response,
@@ -135,5 +103,64 @@ ${contextParts.join('\n\n')}`;
     }
     console.error('[ask-grove] POST error:', e);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Real-time financial summary (complements the cached Company Skill) */
+/* ------------------------------------------------------------------ */
+
+type PeriodSnapshot = {
+  period: string;
+  revenue: number;
+  grossProfit: number;
+  expenses: number;
+  netProfit: number;
+};
+
+async function fetchRecentFinancials(orgId: string): Promise<PeriodSnapshot[]> {
+  try {
+    const supabase = await createServiceClient();
+
+    const { data: financials } = await supabase
+      .from('normalised_financials')
+      .select('*, chart_of_accounts!inner(class)')
+      .eq('org_id', orgId);
+
+    if (!financials || financials.length === 0) return [];
+
+    // Aggregate by period
+    const periodMap = new Map<string, { revenue: number; costOfSales: number; expenses: number }>();
+    for (const fin of financials) {
+      const period = fin.period as string;
+      const existing = periodMap.get(period) ?? { revenue: 0, costOfSales: 0, expenses: 0 };
+      const accountClass = ((fin.chart_of_accounts as Record<string, string>)?.class ?? '').toUpperCase();
+      const amount = Number(fin.amount);
+
+      if (accountClass === 'REVENUE') {
+        existing.revenue += amount;
+      } else if (accountClass === 'DIRECTCOSTS') {
+        existing.costOfSales += amount;
+      } else if (accountClass === 'EXPENSE' || accountClass === 'OVERHEADS') {
+        existing.expenses += amount;
+      }
+
+      periodMap.set(period, existing);
+    }
+
+    // Sort descending and take last 6 months
+    return [...periodMap.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 6)
+      .reverse()
+      .map(([period, data]) => ({
+        period,
+        revenue: roundCurrency(data.revenue),
+        grossProfit: roundCurrency(data.revenue - data.costOfSales),
+        expenses: roundCurrency(data.expenses),
+        netProfit: roundCurrency(data.revenue - data.costOfSales - data.expenses),
+      }));
+  } catch {
+    return [];
   }
 }

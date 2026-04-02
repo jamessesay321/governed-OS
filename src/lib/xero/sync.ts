@@ -1,6 +1,11 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { getValidTokens } from './tokens';
 import { logAudit } from '@/lib/audit/log';
+import { xeroGet, resetRateLimitTracker } from './api';
+import { pullOrgAccountingConfig } from './org-config';
+import { runDataHealthForRecentPeriods } from './data-health';
+import { createNotification } from '@/lib/notifications/notify';
+import { checkBudgetVariances } from '@/lib/alerts/budget-variance';
 
 interface XeroAccount {
   AccountID: string;
@@ -84,71 +89,7 @@ function extractDate(record: { Date: string; DateString?: string }): string {
   return parseXeroDate(record.Date);
 }
 
-/**
- * Pause execution for a given number of milliseconds.
- * Used to stay within Xero's rate limit (60 calls/minute).
- */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * Track API calls and automatically pace to stay under Xero's 60-per-minute limit.
- */
-let xeroCallTimestamps: number[] = [];
-
-async function xeroGet(
-  endpoint: string,
-  accessToken: string,
-  tenantId: string
-) {
-  // Rate-limit: if we've made 55+ calls in the last 60 seconds, wait
-  const now = Date.now();
-  xeroCallTimestamps = xeroCallTimestamps.filter((t) => now - t < 60_000);
-  if (xeroCallTimestamps.length >= 55) {
-    const oldest = xeroCallTimestamps[0];
-    const waitMs = 60_000 - (now - oldest) + 500; // Wait until the oldest call expires + buffer
-    console.log(`[XERO SYNC] Rate limit approaching (${xeroCallTimestamps.length} calls in 60s), pausing ${Math.round(waitMs / 1000)}s...`);
-    await delay(waitMs);
-  }
-
-  xeroCallTimestamps.push(Date.now());
-
-  const response = await fetch(`https://api.xero.com/api.xro/2.0/${endpoint}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'xero-tenant-id': tenantId,
-      Accept: 'application/json',
-    },
-  });
-
-  if (!response.ok) {
-    // On 429, wait and retry once
-    if (response.status === 429) {
-      const retryAfter = parseInt(response.headers.get('Retry-After') || '30', 10);
-      console.log(`[XERO SYNC] 429 rate limited, waiting ${retryAfter}s before retry...`);
-      await delay(retryAfter * 1000);
-
-      const retryResponse = await fetch(`https://api.xero.com/api.xro/2.0/${endpoint}`, {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          'xero-tenant-id': tenantId,
-          Accept: 'application/json',
-        },
-      });
-
-      if (retryResponse.ok) return retryResponse.json();
-
-      const body = await retryResponse.text().catch(() => '');
-      throw new Error(`Xero API error: ${retryResponse.status} ${retryResponse.statusText}: ${body.slice(0, 200)}`);
-    }
-
-    const body = await response.text().catch(() => '');
-    throw new Error(`Xero API error: ${response.status} ${response.statusText}: ${body.slice(0, 200)}`);
-  }
-
-  return response.json();
-}
+// xeroGet and resetRateLimitTracker now imported from ./api
 
 /**
  * Sync chart of accounts from Xero.
@@ -482,7 +423,7 @@ export async function runFullSync(
     let totalSynced = 0;
 
     // Reset rate limit tracker for this sync run
-    xeroCallTimestamps = [];
+    resetRateLimitTracker();
 
     // Sync in order: accounts first (needed for normalisation), then transactions
     console.log('[XERO SYNC] === Starting full sync ===');
@@ -556,17 +497,46 @@ export async function runFullSync(
       metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, bsSynced, totalSynced },
     });
 
+    // Refresh org accounting config (year-end, currency, VAT scheme)
+    try {
+      console.log('[XERO SYNC] Refreshing org accounting config...');
+      await pullOrgAccountingConfig(orgId, tokens.accessToken, tokens.tenantId);
+    } catch (configErr) {
+      console.warn('[XERO SYNC] Org config refresh failed (non-blocking):', configErr instanceof Error ? configErr.message : String(configErr));
+    }
+
+    // Run data health checks for recent periods
+    try {
+      console.log('[XERO SYNC] Running data health checks...');
+      const healthReports = await runDataHealthForRecentPeriods(orgId, 3);
+      console.log(`[XERO SYNC] Data health: ${healthReports.map((r) => `${r.period}=${r.overall_score}`).join(', ')}`);
+    } catch (healthErr) {
+      console.warn('[XERO SYNC] Data health checks failed (non-blocking):', healthErr instanceof Error ? healthErr.message : String(healthErr));
+    }
+
+    // Pull tracking categories (Xero dimensions like Department, Location)
+    try {
+      console.log('[XERO SYNC] Pulling tracking categories...');
+      const { pullTrackingCategories } = await import('./tracking-categories');
+      const tcCount = await pullTrackingCategories(orgId, tokens.accessToken, tokens.tenantId);
+      console.log(`[XERO SYNC] Tracking categories: ${tcCount} mapped`);
+    } catch (tcErr) {
+      console.warn('[XERO SYNC] Tracking categories pull failed (non-blocking):', tcErr instanceof Error ? tcErr.message : String(tcErr));
+    }
+
     // Auto-map accounts after sync
     try {
       const { autoMapAccounts } = await import('@/lib/staging/account-mapper');
       // Fetch synced accounts for mapping
       const { data: syncedAccounts } = await supabase
         .from('chart_of_accounts')
-        .select('code, name')
+        .select('code, name, type, class')
         .eq('org_id', orgId);
       const accountInputs = (syncedAccounts ?? []).map((a) => ({
         code: a.code as string,
         name: a.name as string,
+        type: (a.type as string) ?? undefined,
+        class: (a.class as string) ?? undefined,
       }));
       if (accountInputs.length > 0) {
         await autoMapAccounts(orgId, accountInputs);
@@ -589,6 +559,20 @@ export async function runFullSync(
     }
 
     console.log(`[XERO SYNC] === Complete: ${totalSynced} total records, ${normalised} normalised ===`);
+
+    // Push notification to user
+    await createNotification({
+      userId,
+      orgId,
+      type: 'system',
+      title: 'Xero sync complete',
+      body: `Synced ${totalSynced.toLocaleString()} records and normalised ${normalised} period-account entries.`,
+      actionUrl: '/dashboard',
+    }).catch(() => {}); // Fire-and-forget
+
+    // Check budget variances after sync (fire-and-forget)
+    checkBudgetVariances(orgId, userId).catch(() => {});
+
     return { success: true, recordsSynced: totalSynced };
   } catch (err) {
     const errorMessage =
@@ -614,6 +598,16 @@ export async function runFullSync(
       entityId: syncLog.id,
       metadata: { error: errorMessage },
     }, { critical: false });
+
+    // Notify user of sync failure
+    await createNotification({
+      userId,
+      orgId,
+      type: 'system',
+      title: 'Xero sync failed',
+      body: `Sync encountered an error: ${errorMessage.slice(0, 200)}. Please try again or check your Xero connection.`,
+      actionUrl: '/xero',
+    }).catch(() => {}); // Fire-and-forget
 
     return { success: false, recordsSynced: 0, error: errorMessage };
   }
@@ -652,7 +646,7 @@ export async function ensureBalanceSheetData(orgId: string): Promise<number> {
   }
 
   // Reset rate limit tracker for this lightweight call
-  xeroCallTimestamps = [];
+  resetRateLimitTracker();
 
   console.log('[XERO SYNC] Auto-fetching balance sheet data (lightweight)...');
   try {

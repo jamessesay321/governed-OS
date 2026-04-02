@@ -1,8 +1,9 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
-import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { getDefaultTemplate, getTemplateById } from '@/lib/dashboard/templates';
 import { DashboardClient } from './dashboard-client';
+import type { AccountMapping } from '@/types';
 
 // Extract default recs for server-side fallback
 function getDefaultRecommendationsSync() {
@@ -30,8 +31,9 @@ export default async function DashboardPage() {
   const { orgId, role, displayName, userId } = await getUserProfile();
   const supabase = await createClient();
 
-  // Fetch financial data, profile, and preferences in parallel
-  const [financialsResult, accountsResult, xeroResult, syncResult, profileResult, prefResult] =
+  // Fetch financial data, profile, mappings, and preferences in parallel
+  const svc = await createUntypedServiceClient();
+  const [financialsResult, accountsResult, xeroResult, syncResult, profileResult, prefResult, mappingsResult] =
     await Promise.all([
       supabase.from('normalised_financials').select('*').eq('org_id', orgId),
       supabase.from('chart_of_accounts').select('*').eq('org_id', orgId),
@@ -55,15 +57,17 @@ export default async function DashboardPage() {
         .eq('id', orgId)
         .single(),
       // Fetch dashboard preference (table may not be in typed schema yet)
-      (async () => {
-        const svc = await createUntypedServiceClient();
-        return svc
-          .from('dashboard_preferences')
-          .select('*')
-          .eq('org_id', orgId)
-          .eq('user_id', userId)
-          .single();
-      })(),
+      svc
+        .from('dashboard_preferences')
+        .select('*')
+        .eq('org_id', orgId)
+        .eq('user_id', userId)
+        .single(),
+      // Fetch account mappings for semantic P&L
+      svc
+        .from('account_mappings')
+        .select('*')
+        .eq('org_id', orgId),
     ]);
 
   const financials = financialsResult.data;
@@ -72,14 +76,45 @@ export default async function DashboardPage() {
   const lastSync = syncResult.data;
   const orgProfile = profileResult.data as Record<string, unknown> | null;
   const dashPref = prefResult.data as Record<string, unknown> | null;
+  const mappings = (mappingsResult.data ?? []) as AccountMapping[];
 
   const periods = getAvailablePeriods(financials || []);
   const defaultPeriod = periods[0] || '';
 
-  // Build P&L for all periods
+  // Build P&L for all periods — use semantic mapping when available
+  const hasMappings = mappings.length > 0;
   const pnlByPeriod: Record<string, ReturnType<typeof buildPnL>> = {};
   for (const period of periods) {
-    pnlByPeriod[period] = buildPnL(financials || [], accounts || [], period);
+    if (hasMappings) {
+      // Build semantic P&L and convert to PnLSummary shape for backward compat
+      const spnl = buildSemanticPnL(financials || [], accounts || [], mappings, period);
+      pnlByPeriod[period] = {
+        sections: spnl.sections
+          .filter((s) => s.section !== 'balance_sheet')
+          .map((s) => ({
+            label: s.label,
+            class: s.section.toUpperCase(),
+            rows: s.rows.map((r) => ({
+              accountId: r.accountId,
+              accountCode: r.accountCode,
+              accountName: r.accountName,
+              accountType: r.standardCategory,
+              accountClass: s.section.toUpperCase(),
+              amount: r.amount,
+              transactionCount: r.transactionCount,
+            })),
+            total: s.total,
+          })),
+        revenue: spnl.revenue,
+        costOfSales: spnl.costOfSales,
+        grossProfit: spnl.grossProfit,
+        expenses: spnl.operatingExpenses,
+        netProfit: spnl.netProfit,
+        period,
+      };
+    } else {
+      pnlByPeriod[period] = buildPnL(financials || [], accounts || [], period);
+    }
   }
 
   // Determine dashboard template based on preference or role

@@ -3,6 +3,7 @@ import { requireRole } from '@/lib/supabase/roles';
 import { detectAnomalies } from '@/lib/ai/anomaly-detection';
 import { logAudit } from '@/lib/audit/log';
 import { llmLimiter } from '@/lib/rate-limit';
+import { createNotification } from '@/lib/notifications/notify';
 
 type Params = { params: Promise<{ orgId: string }> };
 
@@ -26,6 +27,8 @@ export async function GET(request: Request, { params }: Params) {
     const result = await detectAnomalies(orgId, periodEnd);
 
     if (result.anomalies.length > 0) {
+      const highCount = result.anomalies.filter((a) => a.severity === 'high').length;
+
       await logAudit({
         orgId,
         userId: user.id,
@@ -34,10 +37,26 @@ export async function GET(request: Request, { params }: Params) {
         entityId: orgId,
         metadata: {
           anomalyCount: result.anomalies.length,
-          highSeverity: result.anomalies.filter((a) => a.severity === 'high').length,
+          highSeverity: highCount,
           periodEnd,
         },
       });
+
+      // Push notification for high-severity anomalies
+      if (highCount > 0) {
+        await createNotification({
+          userId: user.id,
+          orgId,
+          type: 'intelligence',
+          title: `${highCount} high-severity anomal${highCount === 1 ? 'y' : 'ies'} detected`,
+          body: result.anomalies
+            .filter((a) => a.severity === 'high')
+            .slice(0, 3)
+            .map((a) => a.title)
+            .join('; '),
+          actionUrl: '/intelligence/anomalies',
+        }).catch(() => {}); // Fire-and-forget
+      }
     }
 
     return NextResponse.json(result);

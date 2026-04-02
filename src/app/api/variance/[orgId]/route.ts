@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { callLLMCached } from '@/lib/ai/cache';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
 import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
+import { getCompanyContextPrefix } from '@/lib/skills/company-skill';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 // GET /api/variance/[orgId]?period=YYYY-MM-01: Get variance analysis (viewer+)
 export async function GET(
@@ -99,13 +101,30 @@ export async function POST(
     // Use the LLM to generate an explanation
     let explanation: string;
     try {
+      const companyContext = await getCompanyContextPrefix(orgId);
       const result = await callLLMCached({
-        systemPrompt: 'You are a financial analyst. Given the top budget variances, provide a concise 2-3 sentence executive summary explaining the overall financial picture. Use plain English suitable for a business owner. Reference specific line items and amounts in pounds.',
+        systemPrompt: `${companyContext ? companyContext + '\n\n' : ''}You are a financial analyst. Given the top budget variances, provide a concise 2-3 sentence executive summary explaining the overall financial picture. Use plain English suitable for a business owner. Reference specific line items and amounts in pounds.`,
         userMessage: `Top variances for this period:\n${lines}\n\nProvide an executive summary.`,
         orgId,
+        model: 'haiku',
+        maxTokens: 512,
+        cacheSystemPrompt: true,
       });
       explanation = result.response;
       await trackTokenUsage(orgId, result.tokensUsed, 'variance');
+
+      // Governance checkpoint — audit trail for variance explanations
+      await governedOutput({
+        orgId,
+        userId: profile.id as string,
+        outputType: 'variance_commentary',
+        content: explanation,
+        modelTier: 'haiku',
+        modelId: 'claude-haiku-4-20250414',
+        dataSources: [{ type: 'variance_data', reference: `${variances.length} variance items` }],
+        tokensUsed: result.tokensUsed,
+        cached: false,
+      });
     } catch {
       // Fallback if LLM call fails
       const topItem = variances[0];

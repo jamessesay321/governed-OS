@@ -1,10 +1,11 @@
-import { callLLM } from './llm';
+import { callLLMWithUsage } from './llm';
 import { buildFinancialContext } from './financial-context';
 import type { FinancialContext } from './financial-context';
 import { validateProposedChanges, detectConflicts } from './validate-proposal';
 import type { ValidationWarning } from './validate-proposal';
 import { llmInterpretationSchema } from '@/lib/schemas';
 import type { LLMInterpretation } from '@/types';
+import { governedOutput } from '@/lib/governance/checkpoint';
 
 export type InterpretInput = {
   orgId: string;
@@ -139,12 +140,15 @@ export async function interpretScenarioRequest(
     input.currentAssumptionSetId
   );
 
-  // Build prompt and call LLM — use opus for goalseek (more complex reasoning)
+  // Build prompt and call LLM — use sonnet for what-if, opus for goalseek (more complex reasoning)
   const systemPrompt = buildSystemPrompt(financialContext, input.mode);
-  const rawResponse = await callLLM({
+  const modelTier = input.mode === 'goalseek' ? 'opus' as const : 'sonnet' as const;
+  const llmResult = await callLLMWithUsage({
     systemPrompt,
     userMessage: input.naturalLanguageInput,
+    model: modelTier,
   });
+  const rawResponse = llmResult.text;
 
   // Parse and validate LLM output
   const jsonStr = extractJSON(rawResponse);
@@ -164,6 +168,21 @@ export async function interpretScenarioRequest(
 
   // Confidence threshold
   const needsClarification = interpretation.confidence < 0.7;
+
+  // Governance checkpoint — audit trail for scenario interpretation
+  await governedOutput({
+    orgId: input.orgId,
+    outputType: 'scenario_interpretation',
+    content: JSON.stringify(interpretation),
+    modelTier,
+    modelId: modelTier === 'opus' ? 'claude-opus-4-20250514' : 'claude-sonnet-4-20250514',
+    dataSources: [
+      { type: 'financial_context', reference: `${input.basePeriodStart} to ${input.basePeriodEnd}` },
+      { type: 'scenario_mode', reference: input.mode },
+    ],
+    tokensUsed: llmResult.inputTokens + llmResult.outputTokens,
+    cached: false,
+  });
 
   return {
     interpretation,

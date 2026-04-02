@@ -148,7 +148,7 @@ export const BUILDER_TEMPLATES: ReportTemplate[] = [
             'ebitda',
             'net_profit',
             'cash_balance',
-            'arr',
+            'revenue_growth',
             'burn_rate',
             'runway_months',
           ],

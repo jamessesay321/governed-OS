@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Scenario, ModelSnapshot, AssumptionValue, UnitEconomicsSnapshot, AICommentary, Role, AssumptionSet } from '@/types';
@@ -43,6 +43,8 @@ export function ScenarioDetailClient({
   const [running, setRunning] = useState(false);
   const [duplicating, setDuplicating] = useState(false);
   const [chatOpen, setChatOpen] = useState(false);
+  const [showDuplicateDialog, setShowDuplicateDialog] = useState(false);
+  const [duplicateName, setDuplicateName] = useState('');
 
   const canRun = hasMinRole(role as Role, 'advisor') && scenario.status !== 'locked';
   const canLock = hasMinRole(role as Role, 'admin') && scenario.status !== 'locked';
@@ -68,14 +70,14 @@ export function ScenarioDetailClient({
   }
 
   async function handleDuplicate() {
-    const name = prompt('Name for the duplicate scenario:');
-    if (!name) return;
+    if (!duplicateName.trim()) return;
     setDuplicating(true);
+    setShowDuplicateDialog(false);
     try {
       const res = await fetch(`/api/scenarios/${scenario.id}/duplicate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name: duplicateName.trim() }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -83,6 +85,7 @@ export function ScenarioDetailClient({
       }
     } finally {
       setDuplicating(false);
+      setDuplicateName('');
     }
   }
 
@@ -133,7 +136,7 @@ export function ScenarioDetailClient({
           )}
           {canDuplicate && (
             <button
-              onClick={handleDuplicate}
+              onClick={() => { setDuplicateName(`${scenario.name} (copy)`); setShowDuplicateDialog(true); }}
               disabled={duplicating}
               className="rounded border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50"
             >
@@ -169,17 +172,17 @@ export function ScenarioDetailClient({
               <>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Revenue (Latest)</p>
-                  <p className="text-2xl font-bold">${last.revenue.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">£{last.revenue.toLocaleString()}</p>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Net Profit</p>
                   <p className={`text-2xl font-bold ${last.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    ${last.net_profit.toLocaleString()}
+                    £{last.net_profit.toLocaleString()}
                   </p>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Closing Cash</p>
-                  <p className="text-2xl font-bold">${last.closing_cash.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">£{last.closing_cash.toLocaleString()}</p>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">
@@ -267,6 +270,39 @@ export function ScenarioDetailClient({
           </div>
         )}
       </div>
+
+      {/* Duplicate Scenario Dialog */}
+      {showDuplicateDialog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowDuplicateDialog(false)}>
+          <div className="w-full max-w-md rounded-lg bg-background p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold mb-4">Duplicate Scenario</h3>
+            <label className="block text-sm text-muted-foreground mb-1">Name for the duplicate</label>
+            <input
+              type="text"
+              value={duplicateName}
+              onChange={(e) => setDuplicateName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') handleDuplicate(); }}
+              className="w-full rounded border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+              autoFocus
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setShowDuplicateDialog(false)}
+                className="rounded border px-4 py-2 text-sm hover:bg-muted"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDuplicate}
+                disabled={!duplicateName.trim()}
+                className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                Duplicate
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

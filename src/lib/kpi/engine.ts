@@ -15,6 +15,8 @@ export type CalculatedKPI = {
   key: string;
   label: string;
   description: string;
+  /** One-liner a non-finance business owner can immediately understand */
+  plainEnglish: string;
   value: number | null;
   formatted_value: string;
   format: KPIFormat;
@@ -193,6 +195,7 @@ export async function calculateKPIs(
       key: def.key,
       label: def.label,
       description: def.description,
+      plainEnglish: def.plainEnglish,
       value: currentValue,
       formatted_value: formatKPIValue(currentValue, def.format),
       format: def.format,

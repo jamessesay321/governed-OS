@@ -7,38 +7,11 @@ import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
 import { logAudit } from '@/lib/audit/log';
 import type { ChartOfAccount } from '@/types';
 import { z } from 'zod';
-
-/**
- * Standard categories for account mapping.
- * These align with the KPI engine's expectations and P&L structure.
- */
-const STANDARD_CATEGORIES = [
-  'revenue',
-  'cost_of_sales',
-  'employee_costs',
-  'rent_and_occupancy',
-  'marketing_and_advertising',
-  'technology_and_software',
-  'professional_fees',
-  'travel_and_entertainment',
-  'depreciation_and_amortisation',
-  'interest_and_finance',
-  'insurance',
-  'utilities',
-  'office_and_admin',
-  'other_income',
-  'other_expense',
-  'tax',
-  'bank_and_cash',
-  'accounts_receivable',
-  'accounts_payable',
-  'fixed_assets',
-  'equity',
-  'other_current_asset',
-  'other_current_liability',
-  'other_non_current_asset',
-  'other_non_current_liability',
-] as const;
+import {
+  STANDARD_CATEGORIES,
+  classToDefaultCategory,
+  getTaxonomyPromptContext,
+} from '@/lib/financial/taxonomy';
 
 const confirmSchema = z.object({
   mappings: z.array(
@@ -161,9 +134,22 @@ export async function POST(
 
     const untypedDb = await createUntypedServiceClient();
 
-    // Upsert each mapping (table not yet in generated types)
+    // Fetch existing mappings for history tracking
+    const { data: existingMappings } = await untypedDb
+      .from('account_mappings')
+      .select('account_id, standard_category')
+      .eq('org_id', orgId);
+
+    const previousCategoryMap = new Map<string, string>();
+    for (const m of (existingMappings ?? []) as { account_id: string; standard_category: string }[]) {
+      previousCategoryMap.set(m.account_id, m.standard_category);
+    }
+
+    // Upsert each mapping
     const results = [];
     for (const mapping of parsed.data.mappings) {
+      const previousCategory = previousCategoryMap.get(mapping.account_id) ?? null;
+
       const { data, error } = await untypedDb
         .from('account_mappings')
         .upsert(
@@ -184,6 +170,17 @@ export async function POST(
         console.error('[ACCOUNT_MAP] Upsert error:', error);
       } else {
         results.push(data);
+        // Log to immutable mapping history
+        await untypedDb.from('account_mapping_history').insert({
+          org_id: orgId,
+          account_id: mapping.account_id,
+          previous_category: previousCategory,
+          new_category: mapping.standard_category,
+          changed_by: user.id,
+          change_source: 'manual',
+          confidence: 1.0,
+          reasoning: 'User confirmed/overrode mapping',
+        });
       }
     }
 
@@ -340,21 +337,19 @@ async function generateMappingSuggestions(
     reasoning: string;
   }>
 > {
-  const systemPrompt = `You are the Grove account mapping engine. Your job is to map Xero chart of accounts to standard financial categories.
+  const taxonomyContext = getTaxonomyPromptContext();
 
-Standard categories:
-${STANDARD_CATEGORIES.join(', ')}
+  const systemPrompt = `You are the Grove account mapping engine. Map Xero chart of accounts entries to standard financial categories.
+
+${taxonomyContext}
 
 Rules:
-- Map each account to exactly ONE standard category
+- Map each account to exactly ONE standard category key (e.g. "revenue", "employee_costs")
 - Use the account code, name, type, and class to determine the best match
 - Assign a confidence score between 0 and 1 (1 = certain, 0.5 = uncertain)
 - If confidence < 0.5, still pick the best match but note why in reasoning
 - UK accounting conventions apply
-- Revenue accounts (class REVENUE) → revenue or other_income
-- Direct cost accounts (class DIRECTCOSTS) → cost_of_sales
-- Expense accounts: map to the most specific category available
-- Balance sheet accounts: map to the appropriate asset/liability/equity category
+- Provide brief reasoning for each mapping
 
 Respond with ONLY valid JSON array. No markdown, no explanation outside JSON.`;
 
@@ -378,6 +373,8 @@ Output JSON schema:
     userMessage,
     orgId,
     temperature: 0.1,
+    model: 'haiku',
+    maxTokens: 1536,
   });
   const responseText = llmResult.response;
   await trackTokenUsage(orgId, llmResult.tokensUsed, 'accounts-map');
@@ -407,34 +404,13 @@ Output JSON schema:
       reasoning: item.reasoning || 'No reasoning provided',
     }));
   } catch {
-    // Fallback: map by class heuristic
+    // Fallback: map by class heuristic using unified taxonomy
     return accounts.map((a) => ({
       code: a.code,
       name: a.name,
-      category: classToCategory(a.class),
+      category: classToDefaultCategory(a.class),
       confidence: 0.3,
       reasoning: 'AI mapping failed, using class-based heuristic',
     }));
-  }
-}
-
-/** Fallback heuristic mapping from Xero account class to standard category */
-function classToCategory(accountClass: string): string {
-  switch (accountClass.toUpperCase()) {
-    case 'REVENUE':
-      return 'revenue';
-    case 'DIRECTCOSTS':
-      return 'cost_of_sales';
-    case 'EXPENSE':
-    case 'OVERHEADS':
-      return 'other_expense';
-    case 'ASSET':
-      return 'other_current_asset';
-    case 'LIABILITY':
-      return 'other_current_liability';
-    case 'EQUITY':
-      return 'equity';
-    default:
-      return 'other_expense';
   }
 }

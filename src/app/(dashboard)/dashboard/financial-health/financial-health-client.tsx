@@ -17,6 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/components/providers/currency-context';
 import { ReportControls, getDefaultReportState, type ReportControlsState } from '@/components/financial/report-controls';
+import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -84,8 +85,9 @@ export default function FinancialHealthClient({
     [burnRates]
   );
 
+  const { yearEndMonth } = useAccountingConfig();
   const [controls, setControls] = useState<ReportControlsState>(() =>
-    getDefaultReportState(availablePeriods)
+    getDefaultReportState(availablePeriods, yearEndMonth)
   );
 
   const filteredBurnRates = useMemo(

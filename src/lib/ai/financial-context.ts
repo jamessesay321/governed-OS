@@ -1,7 +1,8 @@
-import { createServiceClient } from '@/lib/supabase/server';
-import { buildPnL } from '@/lib/financial/aggregate';
+import { createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
+import { buildPnL, buildSemanticPnL } from '@/lib/financial/aggregate';
 import { roundCurrency } from '@/lib/financial/normalise';
-import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { CATEGORY_META, type StandardCategory } from '@/lib/financial/taxonomy';
+import type { NormalisedFinancial, ChartOfAccount, AccountMapping } from '@/types';
 
 export type PeriodSummary = {
   period: string;
@@ -18,6 +19,13 @@ export type TopAccount = {
   amount: number;
 };
 
+export type CategoryBreakdown = {
+  category: string;
+  label: string;
+  amount: number;
+  section: string;
+};
+
 export type FinancialContext = {
   periodSummaries: PeriodSummary[];
   avgMonthlyRevenue: number;
@@ -27,6 +35,10 @@ export type FinancialContext = {
   topRevenueAccounts: TopAccount[];
   topExpenseAccounts: TopAccount[];
   currentAssumptions: { key: string; label: string; value: number; category: string }[];
+  /** Semantic category breakdown for the latest period (when mappings exist) */
+  categoryBreakdown?: CategoryBreakdown[];
+  /** 0-1 coverage of accounts with semantic mappings */
+  mappingCoverage?: number;
 };
 
 /**
@@ -40,27 +52,32 @@ export async function buildFinancialContext(
   currentAssumptionSetId?: string
 ): Promise<FinancialContext> {
   const supabase = await createServiceClient();
+  const untypedDb = await createUntypedServiceClient();
 
-  // Fetch normalised financials for the period range
-  const { data: financials, error: finError } = await supabase
-    .from('normalised_financials')
-    .select('*')
-    .eq('org_id', orgId)
-    .gte('period', basePeriodStart)
-    .lte('period', basePeriodEnd);
+  // Fetch normalised financials, accounts, and mappings in parallel
+  const [financialsResult, accountsResult, mappingsResult] = await Promise.all([
+    supabase
+      .from('normalised_financials')
+      .select('*')
+      .eq('org_id', orgId)
+      .gte('period', basePeriodStart)
+      .lte('period', basePeriodEnd),
+    supabase
+      .from('chart_of_accounts')
+      .select('*')
+      .eq('org_id', orgId),
+    untypedDb
+      .from('account_mappings')
+      .select('*')
+      .eq('org_id', orgId),
+  ]);
 
-  if (finError) throw new Error(`Failed to fetch financials: ${finError.message}`);
+  if (financialsResult.error) throw new Error(`Failed to fetch financials: ${financialsResult.error.message}`);
+  if (accountsResult.error) throw new Error(`Failed to fetch accounts: ${accountsResult.error.message}`);
 
-  // Fetch chart of accounts
-  const { data: accounts, error: accError } = await supabase
-    .from('chart_of_accounts')
-    .select('*')
-    .eq('org_id', orgId);
-
-  if (accError) throw new Error(`Failed to fetch accounts: ${accError.message}`);
-
-  const fins = (financials ?? []) as NormalisedFinancial[];
-  const accs = (accounts ?? []) as ChartOfAccount[];
+  const fins = (financialsResult.data ?? []) as NormalisedFinancial[];
+  const accs = (accountsResult.data ?? []) as ChartOfAccount[];
+  const mappings = (mappingsResult.data ?? []) as AccountMapping[];
 
   // Get unique periods sorted ascending
   const periods = [...new Set(fins.map((f) => f.period))].sort();
@@ -164,6 +181,41 @@ export async function buildFinancialContext(
     }
   }
 
+  // Build semantic category breakdown for latest period if mappings exist
+  let categoryBreakdown: CategoryBreakdown[] | undefined;
+  let mappingCoverage: number | undefined;
+
+  if (mappings.length > 0 && periods.length > 0) {
+    const latestPeriod = periods[periods.length - 1];
+    const semanticPnL = buildSemanticPnL(fins, accs, mappings, latestPeriod);
+    mappingCoverage = semanticPnL.mappingCoverage;
+
+    // Aggregate by standard category
+    const catTotals = new Map<string, { amount: number; section: string }>();
+    for (const section of semanticPnL.sections) {
+      for (const row of section.rows) {
+        const existing = catTotals.get(row.standardCategory);
+        if (existing) {
+          existing.amount += row.amount;
+        } else {
+          catTotals.set(row.standardCategory, {
+            amount: row.amount,
+            section: section.label,
+          });
+        }
+      }
+    }
+
+    categoryBreakdown = [...catTotals.entries()]
+      .map(([cat, data]) => ({
+        category: cat,
+        label: CATEGORY_META[cat as StandardCategory]?.label ?? cat,
+        amount: roundCurrency(data.amount),
+        section: data.section,
+      }))
+      .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  }
+
   return {
     periodSummaries,
     avgMonthlyRevenue,
@@ -173,5 +225,7 @@ export async function buildFinancialContext(
     topRevenueAccounts,
     topExpenseAccounts,
     currentAssumptions,
+    categoryBreakdown,
+    mappingCoverage,
   };
 }

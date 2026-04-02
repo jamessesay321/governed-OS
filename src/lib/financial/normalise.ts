@@ -11,8 +11,16 @@ interface LineItem {
  * Normalise raw transactions into monthly aggregates by account.
  * This is a DETERMINISTIC process — pure data transformation.
  *
+ * IMPORTANT: Only invoices (ACCREC) and bills (ACCPAY) are used for P&L
+ * normalisation. Bank transactions are EXCLUDED because they duplicate
+ * revenue/expense recognition already captured by invoices and bills.
+ * In Xero's double-entry system:
+ *   - Invoice line items: Debit Receivable / Credit Revenue (revenue recognition)
+ *   - Bank receipt line items: Debit Bank / Credit Revenue (cash receipt)
+ * Including both would double-count every revenue and expense line.
+ *
  * Steps:
- * 1. Fetch all raw transactions for the org
+ * 1. Fetch invoices and bills for the org (exclude bank_transaction type)
  * 2. Group by (period, account)
  * 3. Aggregate amounts and counts
  * 4. Upsert into normalised_financials
@@ -20,11 +28,13 @@ interface LineItem {
 export async function normaliseTransactions(orgId: string): Promise<number> {
   const supabase = await createServiceClient();
 
-  // Fetch raw transactions
+  // Fetch only invoices and bills — NOT bank transactions
+  // Bank transactions duplicate P&L entries from invoices/bills
   const { data: transactions, error: txError } = await supabase
     .from('raw_transactions')
     .select('*')
-    .eq('org_id', orgId);
+    .eq('org_id', orgId)
+    .in('type', ['invoice', 'bill']);
 
   if (txError || !transactions) {
     throw new Error(`Failed to fetch transactions: ${txError?.message}`);
@@ -53,6 +63,21 @@ export async function normaliseTransactions(orgId: string): Promise<number> {
   }
 
   console.log(`[NORMALISE] ${accountByCode.size} account codes mapped (excluding seed)`);
+
+  // Clear existing normalised data for this org before rebuilding.
+  // This ensures stale records (e.g. from previously-included bank transactions)
+  // are removed. The upsert below will recreate all valid aggregates.
+  const { error: clearError } = await supabase
+    .from('normalised_financials')
+    .delete()
+    .eq('org_id', orgId)
+    .eq('source', 'xero');
+
+  if (clearError) {
+    console.warn(`[NORMALISE] Failed to clear existing data: ${clearError.message}`);
+  } else {
+    console.log(`[NORMALISE] Cleared existing normalised data for rebuild`);
+  }
 
   // Aggregate: key = `${period}:${accountId}` → { amount, count }
   const aggregates = new Map<

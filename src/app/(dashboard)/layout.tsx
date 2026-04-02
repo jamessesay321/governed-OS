@@ -6,6 +6,8 @@ import { Header, MobileQuickActions } from '@/components/layout/header';
 import { DemoBanner } from '@/components/demo/demo-banner';
 import { UserProvider } from '@/components/providers/user-context';
 import { CurrencyProvider } from '@/components/providers/currency-context';
+import { AccountingConfigProvider } from '@/components/providers/accounting-config-context';
+import { DrillDownProviderWrapper } from '@/components/providers/drill-down-provider-wrapper';
 // Ask Grove functionality is merged into the CMD+K search bar in the Header
 
 export default async function DashboardLayout({
@@ -29,9 +31,37 @@ export default async function DashboardLayout({
     // Column doesn't exist yet, not in demo mode
   }
 
+  // Fetch org accounting config (year-end, currency) for FY-aware UI
+  let yearEndMonth = 12;
+  let yearEndDay = 31;
+  let baseCurrency = 'GBP';
+  let isAccountingConfigured = false;
+  try {
+    const supabase = await createClient();
+    const { data: config } = await supabase
+      .from('org_accounting_config')
+      .select('financial_year_end_month, financial_year_end_day, base_currency')
+      .eq('org_id', orgId)
+      .single();
+    if (config) {
+      yearEndMonth = config.financial_year_end_month;
+      yearEndDay = config.financial_year_end_day;
+      baseCurrency = config.base_currency || 'GBP';
+      isAccountingConfigured = true;
+    }
+  } catch {
+    // Table may not exist yet pre-migration, use calendar year defaults
+  }
+
   return (
     <UserProvider value={{ userId, orgId, role, displayName, orgName }}>
-      <CurrencyProvider>
+      <AccountingConfigProvider
+        yearEndMonth={yearEndMonth}
+        yearEndDay={yearEndDay}
+        baseCurrency={baseCurrency}
+        isConfigured={isAccountingConfigured}
+      >
+      <CurrencyProvider initialCurrency={baseCurrency}>
         <div className="flex h-screen">
           {/* Desktop sidebar - hidden on mobile */}
           <div className="hidden md:block">
@@ -52,11 +82,14 @@ export default async function DashboardLayout({
                 />
               </div>
             </div>
-            <main className="flex-1 overflow-y-auto p-6">{children}</main>
+            <DrillDownProviderWrapper orgId={orgId}>
+              <main className="flex-1 overflow-y-auto p-6">{children}</main>
+            </DrillDownProviderWrapper>
           </div>
           <MobileQuickActions />
         </div>
       </CurrencyProvider>
+      </AccountingConfigProvider>
     </UserProvider>
   );
 }

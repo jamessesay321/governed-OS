@@ -12,8 +12,14 @@ interface CurrencyContextValue {
 
 const CurrencyContext = createContext<CurrencyContextValue | null>(null);
 
-export function CurrencyProvider({ children }: { children: React.ReactNode }) {
-  const [currencyCode, setCurrencyCodeState] = useState('GBP');
+export function CurrencyProvider({
+  children,
+  initialCurrency = 'GBP',
+}: {
+  children: React.ReactNode;
+  initialCurrency?: string;
+}) {
+  const [currencyCode, setCurrencyCodeState] = useState(initialCurrency);
 
   const currency = useMemo(() => getCurrencyConfig(currencyCode), [currencyCode]);
 

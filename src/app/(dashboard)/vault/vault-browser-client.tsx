@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Search, Filter, Archive, Clock, Shield, ChevronRight,
   FileBarChart, Brain, AlertTriangle, MessageSquare, ClipboardList,
-  TrendingUp, BookOpen,
+  TrendingUp, BookOpen, Upload, Download, Paperclip, X,
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ai-reasoning';
 
@@ -53,6 +53,7 @@ const TYPE_LABELS: Record<string, string> = {
   playbook_assessment: 'Playbook Assessment',
   custom_report: 'Custom Report',
   ai_analysis: 'AI Analysis',
+  file_upload: 'File Upload',
 };
 
 const TYPE_ICONS: Record<string, React.ElementType> = {
@@ -66,6 +67,7 @@ const TYPE_ICONS: Record<string, React.ElementType> = {
   playbook_assessment: ClipboardList,
   custom_report: FileText,
   ai_analysis: Brain,
+  file_upload: Paperclip,
 };
 
 const STATUS_COLOURS: Record<string, string> = {
@@ -95,6 +97,10 @@ export function VaultBrowserClient({
   const [versions, setVersions] = useState<VaultVersion[]>([]);
   const [showVersions, setShowVersions] = useState(false);
   const [archiveConfirm, setArchiveConfirm] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [downloading, setDownloading] = useState(false);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -146,6 +152,56 @@ export function VaultBrowserClient({
     }
   };
 
+  const handleUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setUploadError('');
+    setUploading(true);
+
+    try {
+      const form = e.currentTarget;
+      const formData = new FormData(form);
+
+      const res = await fetch(`/api/vault/${orgId}/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setUploadError(data.error || 'Upload failed');
+        return;
+      }
+
+      setShowUpload(false);
+      form.reset();
+      fetchItems();
+    } catch {
+      setUploadError('Upload failed. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDownload = async (itemId: string) => {
+    setDownloading(true);
+    try {
+      const res = await fetch(`/api/vault/${orgId}/${itemId}/download`);
+      if (!res.ok) return;
+      const data = await res.json();
+      window.open(data.url, '_blank');
+    } catch {
+      console.error('Download failed');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-GB', {
       day: 'numeric',
@@ -166,9 +222,20 @@ export function VaultBrowserClient({
             Every document, report, and AI output, stored with full provenance chain.
           </p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Shield className="h-4 w-4" />
-          <span>{total} items</span>
+        <div className="flex items-center gap-3">
+          {(role === 'advisor' || role === 'admin' || role === 'owner') && (
+            <button
+              onClick={() => { setShowUpload(true); setUploadError(''); }}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors"
+            >
+              <Upload className="h-4 w-4" />
+              Upload File
+            </button>
+          )}
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Shield className="h-4 w-4" />
+            <span>{total} items</span>
+          </div>
         </div>
       </div>
 
@@ -319,8 +386,30 @@ export function VaultBrowserClient({
                   </div>
                 </div>
 
+                {/* File info for uploads */}
+                {selectedItem.item_type === 'file_upload' && (
+                  <div className="border-t pt-3 space-y-2">
+                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                      File Details
+                    </h4>
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <p>Click "Download" below to access the original file.</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions */}
-                <div className="border-t pt-3 flex gap-2">
+                <div className="border-t pt-3 flex flex-wrap gap-2">
+                  {selectedItem.item_type === 'file_upload' && (
+                    <button
+                      onClick={() => handleDownload(selectedItem.id)}
+                      disabled={downloading}
+                      className="flex items-center gap-1.5 rounded-lg border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 transition-colors disabled:opacity-50"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      {downloading ? 'Generating link...' : 'Download'}
+                    </button>
+                  )}
                   <button
                     onClick={() => fetchVersions(selectedItem.id)}
                     className="flex items-center gap-1.5 rounded-lg border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
@@ -370,6 +459,117 @@ export function VaultBrowserClient({
           )}
         </div>
       </div>
+
+      {/* Upload Modal */}
+      {showUpload && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Upload File</h3>
+              <button
+                onClick={() => setShowUpload(false)}
+                className="rounded-lg p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpload} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">File</label>
+                <input
+                  type="file"
+                  name="file"
+                  required
+                  accept=".pdf,.xlsx,.xls,.docx,.doc,.pptx,.ppt,.csv,.txt,.png,.jpg,.jpeg,.webp"
+                  className="w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-blue-700 hover:file:bg-blue-100"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  PDF, Excel, Word, PowerPoint, CSV, text, or images. Max 50 MB.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title (optional)</label>
+                <input
+                  type="text"
+                  name="title"
+                  maxLength={200}
+                  placeholder="Defaults to filename"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (optional)</label>
+                <textarea
+                  name="description"
+                  maxLength={1000}
+                  rows={2}
+                  placeholder="Brief description of this file"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Tags (optional)</label>
+                <input
+                  type="text"
+                  name="tags"
+                  placeholder="Comma-separated, e.g. board, Q1, financials"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Visibility</label>
+                <select
+                  name="visibility"
+                  defaultValue="org"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="org">Visible to all members</option>
+                  <option value="owner_only">Only me</option>
+                  <option value="advisor_only">Advisors only</option>
+                </select>
+              </div>
+
+              {uploadError && (
+                <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-sm text-red-700">
+                  {uploadError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowUpload(false)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={uploading}
+                  className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {uploading ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Archive confirmation dialog */}
       <ConfirmDialog

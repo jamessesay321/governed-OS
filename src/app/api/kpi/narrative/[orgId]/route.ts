@@ -4,6 +4,8 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { callLLMCached } from '@/lib/ai/cache';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
 import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
+import { governedOutput, kpiSnapshotSource } from '@/lib/governance/checkpoint';
+import { getCompanyContextPrefix } from '@/lib/skills/company-skill';
 import { z } from 'zod';
 
 const querySchema = z.object({
@@ -86,11 +88,14 @@ export async function GET(
 
     const org = orgRaw as unknown as { name: string; business_scan?: Record<string, unknown> } | null;
 
-    const businessContext = org?.business_scan
-      ? `Business: ${org.business_scan.company_name || org.name || 'Unknown'}, Industry: ${org.business_scan.industry || 'Unknown'}`
-      : `Business: ${org?.name || 'Unknown'}`;
+    // Inject rich business context from Company Skill
+    const companyContext = await getCompanyContextPrefix(orgId).catch(() => '');
+    const businessContext = companyContext
+      || (org?.business_scan
+        ? `Business: ${org.business_scan.company_name || org.name || 'Unknown'}, Industry: ${org.business_scan.industry || 'Unknown'}`
+        : `Business: ${org?.name || 'Unknown'}`);
 
-    const systemPrompt = `You are the Grove KPI intelligence engine. Generate a concise KPI performance narrative for a UK-based business owner.
+    const systemPrompt = `${companyContext ? companyContext + '\n\n' : ''}You are the Grove KPI intelligence engine. Generate a concise KPI performance narrative for the business owner.
 
 Rules:
 - Lead with the most actionable KPI insight
@@ -169,11 +174,28 @@ ${previousKPIs.length > 0 ? `Previous period (${previousPeriod}) KPIs:\n${JSON.s
       };
     }
 
+    // Governance checkpoint — audit trail for KPI narratives
+    const governed = await governedOutput({
+      orgId,
+      userId: profile.id as string,
+      outputType: 'kpi_insight',
+      content: result.narrative,
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: [
+        kpiSnapshotSource(currentPeriod, currentKPIs.length),
+        ...(previousPeriod ? [kpiSnapshotSource(previousPeriod, previousKPIs.length)] : []),
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: false,
+    });
+
     return NextResponse.json({
       narrative: result.narrative,
       reasoning: result.reasoning,
       confidence: result.confidence,
       period: currentPeriod,
+      governanceId: governed.id,
     });
   } catch (err) {
     console.error('[KPI_NARRATIVE] Error:', err);

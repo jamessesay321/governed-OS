@@ -10,6 +10,8 @@ export type CalculatedKPI = {
   key: string;
   label: string;
   description: string;
+  /** One-liner a non-finance business owner can immediately understand */
+  plainEnglish: string;
   value: number | null;
   formatted_value: string;
   format: KPIFormat;

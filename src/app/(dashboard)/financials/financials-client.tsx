@@ -14,6 +14,7 @@ import {
   getDefaultReportState,
   type ReportControlsState,
 } from '@/components/financial/report-controls';
+import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 
 type PeriodSummary = {
   period: string;
@@ -110,8 +111,9 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
     () => periods.map((p) => p.period).sort(),
     [periods]
   );
+  const { yearEndMonth } = useAccountingConfig();
   const [controls, setControls] = useState<ReportControlsState>(() =>
-    getDefaultReportState(availablePeriods)
+    getDefaultReportState(availablePeriods, yearEndMonth)
   );
 
   // Filter periods by selected periods
