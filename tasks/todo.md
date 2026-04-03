@@ -115,6 +115,85 @@ All audit files written to `docs/audits/`:
 - [ ] Investigate interest charges (£222k in 2025): verify classification as EXPENSE
 - [ ] Add financial year reference to dashboard period selector (currently just "All 12 months")
 
+## UX Feedback Build (April 2026) — See docs/audits/16-ux-feedback-april-2026.md
+
+### P0: Number Formatting
+- [ ] Create `src/lib/formatting/currency.ts` (formatCurrency, formatPercent, formatNumber)
+- [ ] Respect org base currency from Xero config
+- [ ] Audit and replace all raw number displays platform-wide
+
+### P1: Global Period Selector + Comparison Periods
+- [ ] Upgrade period-selector.tsx to global context provider in header
+- [ ] All pages respond to global period selection (monthly/quarterly/annual)
+- [ ] Add comparison periods: vs prior period + vs same period last year
+- [ ] Display FY dates persistently
+
+### P1: Universal Drill-Down (to Xero transaction level)
+- [ ] Build `DrillableNumber` shared component
+- [ ] Build `DrillDownPanel` 3-level slide-out (account → monthly → transactions)
+- [ ] Wire to all financial numbers across dashboard, KPIs, charts, statements
+- [ ] Add hover tooltip: value + variance + % of total + AI explanation (live, Haiku)
+
+### P2: KPI/Variance Wiring
+- [ ] Wire KPI card click handlers → KPI detail page
+- [ ] Wire variance click → drill-down panel showing account drivers
+
+### P2: Balance Sheet + Cash Flow Detail Parity
+- [ ] BS: expandable sections, account-level data, period comparison columns
+- [ ] CF: operating/investing/financing breakdown with expandable items
+
+### P2: Executive Summary (replace Financial Summary)
+- [ ] Rename page → "Executive Summary"
+- [ ] AI narrative lead (3-4 sentences, founder-tone)
+- [ ] Visual P&L waterfall + 4-5 KPI bullet graphs
+- [ ] Correct terminology + hover tooltip definitions
+- [ ] Comparison context (vs last month + vs same month last year)
+
+### P2: Challenge Panel + Review Queue
+- [ ] Create `number_challenges` table
+- [ ] Build per-page Challenge button (flag icon in header)
+- [ ] Build slide-out Challenge Panel
+- [ ] Build Review Queue page at `/dashboard/review-queue`
+- [ ] Send consolidated message to accountant/developer
+
+### P2: Cross-Page In-Page Navigation
+- [ ] Build `InPageLink` component (smooth scroll to section)
+- [ ] Wire cross-references throughout financials pages
+
+### P3: Widget Expansion (19 widgets + 4 templates)
+- [ ] Build 14 additional widget components
+- [ ] Create `dashboard_widget_configs` table
+- [ ] Build visual template selection UI (preview cards, pill tabs)
+- [ ] Template flow: select starting point → customise → save → switch/delete
+
+### P3: KPI Alerts Visual Upgrade
+- [ ] Add icons, sparklines, bullet graphs to alert rules
+- [ ] Color-coded severity badges (info/warning/critical)
+- [ ] AI-generated explanation cards for triggered alerts
+
+### P3: Graph Builder Fixes
+- [ ] Fix AI → pie chart type mapping
+- [ ] Apply formatCurrency to all chart tooltips and labels
+- [ ] Add hover drill-down to chart data points
+
+### P3: Platform-Wide Visual Character (apply data-visualization-design skill)
+- [ ] Audit all pages for text-heavy sections
+- [ ] Apply Tufte/Few/Knaflic principles: sparklines, bullet graphs, one-accent-color
+- [ ] Replace any gauges with bullet graphs
+- [ ] Ensure redundant coding (color + icon + label) on all indicators
+
+### P4: Universal Command Bar (CMD+K)
+- [ ] Build command palette component
+- [ ] NL → Claude API → data query → chart/table rendering
+- [ ] Available from any page
+- [ ] Save results as permanent widgets
+
+### P4: Key Actions Daily Briefing
+- [ ] Build daily briefing page at `/dashboard/key-actions`
+- [ ] Sections: Revenue, Cash, Costs, Risk
+- [ ] Every insight links back to source data/graph
+- [ ] Cache briefing in `daily_briefing_cache` table
+
 ## Infrastructure & Technical Debt
 
 - [ ] Run migration 023 on Supabase (account_mapping_history + tracking_category_mappings)
