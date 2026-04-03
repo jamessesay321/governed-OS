@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { formatCurrency } from '@/lib/formatting/currency';
 import type { PnLSummary } from '@/lib/financial/aggregate';
 
 interface WaterfallChartProps {
@@ -29,15 +30,6 @@ interface WaterfallBar {
   type: 'positive' | 'negative' | 'total';
   /** Which P&L section class this bar maps to (for drill-down) */
   sectionClass?: string;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function buildWaterfallData(pnl: PnLSummary): WaterfallBar[] {

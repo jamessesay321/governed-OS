@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { formatCurrencyCompact, chartTooltipFormatter } from '@/lib/formatting/currency';
 import {
   ResponsiveContainer,
   LineChart,
@@ -58,13 +59,11 @@ const DEFAULT_ASSUMPTIONS: AssumptionField[] = [
 // ---------------------------------------------------------------------------
 
 function tooltipFormatter(value: number | undefined): string {
-  return formatCurrency(value ?? 0);
+  return chartTooltipFormatter()(value ?? 0);
 }
 
 function formatCurrency(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
-  return value.toFixed(0);
+  return formatCurrencyCompact(value);
 }
 
 function buildChartData(forecast: ForecastResult, scenario?: Scenario | null) {

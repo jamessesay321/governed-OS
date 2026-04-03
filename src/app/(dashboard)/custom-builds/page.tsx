@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { formatPence } from '@/lib/formatting/currency';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -73,9 +74,7 @@ const TEMPLATES: ProjectTemplate[] = [
   },
 ];
 
-function formatPence(pence: number): string {
-  return `\u00a3${(pence / 100).toLocaleString()}`;
-}
+// formatPence imported from @/lib/formatting/currency
 
 // ── Component ────────────────────────────────────────────────────
 

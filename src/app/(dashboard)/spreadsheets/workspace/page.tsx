@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { formatCurrency, formatPercent } from '@/lib/formatting/currency'
 import { Button } from '@/components/ui/button'
 import {
   Bold,
@@ -143,11 +144,11 @@ function formatDisplayValue(value: string, format?: CellFormat): string {
   if (isNaN(num)) return value
   switch (format.numberFormat) {
     case 'currency':
-      return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+      return formatCurrency(num)
     case 'percent':
-      return `${(num * 100).toFixed(1)}%`
+      return formatPercent(num, true)
     case 'number':
-      return num.toLocaleString('en-US', { maximumFractionDigits: 4 })
+      return num.toLocaleString('en-GB', { maximumFractionDigits: 4 })
     default:
       return value
   }

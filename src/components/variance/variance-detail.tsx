@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatPence } from '@/lib/formatting/currency';
 import {
   ResponsiveContainer,
   BarChart,
@@ -21,15 +22,7 @@ interface VarianceDetailProps {
   onClose?: () => void;
 }
 
-function formatPence(pence: number): string {
-  const pounds = pence / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(pounds);
-}
+// formatPence imported from @/lib/formatting/currency
 
 function formatCategory(category: string): string {
   return category

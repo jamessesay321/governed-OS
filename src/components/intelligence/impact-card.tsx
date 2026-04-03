@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AIReasoning } from '@/components/ui/ai-reasoning';
+import { formatPence } from '@/lib/formatting/currency';
 import type { IntelligenceImpact } from '@/types';
 
 interface ImpactCardProps {
@@ -18,14 +19,8 @@ const impactTypeStyles: Record<string, { label: string; variant: 'default' | 'de
   mixed: { label: 'Mixed Impact', variant: 'outline' },
 };
 
-function formatPence(pence: number): string {
-  const pounds = Math.abs(pence) / 100;
-  const formatted = new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(pounds);
+function formatPenceWithSign(pence: number): string {
+  const formatted = formatPence(Math.abs(pence));
   return pence < 0 ? `-${formatted}` : `+${formatted}`;
 }
 
@@ -49,7 +44,7 @@ export function ImpactCard({ impact, onModel }: ImpactCardProps) {
             </span>
           </div>
           <span className="text-lg font-bold">
-            {formatPence(impact.estimated_impact_pence)}
+            {formatPenceWithSign(impact.estimated_impact_pence)}
             <span className="text-xs font-normal text-muted-foreground">/year</span>
           </span>
         </div>

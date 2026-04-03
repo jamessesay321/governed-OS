@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { chartAxisFormatter } from '@/lib/formatting/currency';
 import {
   DollarSign,
   Eye,
@@ -256,7 +257,7 @@ export default function PaidAdsPage() {
                 <BarChart data={weeklySpendData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="week" className="text-xs" tick={{ fontSize: 12 }} />
-                  <YAxis className="text-xs" tick={{ fontSize: 12 }} tickFormatter={(v) => `$${v}`} />
+                  <YAxis className="text-xs" tick={{ fontSize: 12 }} tickFormatter={chartAxisFormatter()} />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',

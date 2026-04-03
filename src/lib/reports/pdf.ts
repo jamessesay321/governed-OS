@@ -1,5 +1,6 @@
 import type { Report, ReportSection } from '@/types/reports';
 import { getThemeById, generateThemeCSS, type ReportTheme } from './themes';
+import { formatCurrency, formatNumber } from '@/lib/formatting/currency';
 
 /**
  * Generate print-friendly HTML for a report.
@@ -255,20 +256,7 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+// formatCurrency and formatNumber imported from @/lib/formatting/currency
 
 const PRINT_STYLES = `
   /* Reset & Base */

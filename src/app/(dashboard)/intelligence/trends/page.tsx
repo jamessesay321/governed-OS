@@ -2,6 +2,7 @@ import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { formatCurrencyCompact } from '@/lib/formatting/currency';
 import { TrendsClient } from './trends-client';
 
 export interface TrendItem {
@@ -11,10 +12,7 @@ export interface TrendItem {
 }
 
 function formatCurrency(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `${amount < 0 ? '-' : ''}${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${amount < 0 ? '-' : ''}${(abs / 1_000).toFixed(1)}K`;
-  return amount.toFixed(0);
+  return formatCurrencyCompact(amount);
 }
 
 function computeDirection(values: number[]): 'up' | 'down' | 'flat' {

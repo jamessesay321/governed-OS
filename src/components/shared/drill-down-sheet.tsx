@@ -39,6 +39,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { PnLRow, PnLSection } from '@/lib/financial/aggregate';
+import { formatCurrency } from '@/lib/formatting/currency';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -195,14 +196,7 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
+// formatCurrency imported from @/lib/formatting/currency at top of file
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString('en-GB', {

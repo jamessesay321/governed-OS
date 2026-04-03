@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { AIReasoning } from '@/components/ui/ai-reasoning';
+import { formatCurrency, formatNumber } from '@/lib/formatting/currency';
 import type { ReportSection } from '@/types/reports';
 
 interface ReportSectionProps {
@@ -323,15 +324,4 @@ function EmptyState({ message }: { message: string }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{message}</p>;
 }
 
-function formatNumber(value: number): string {
-  return new Intl.NumberFormat('en-GB', { maximumFractionDigits: 2 }).format(value);
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+// formatCurrency and formatNumber imported from @/lib/formatting/currency

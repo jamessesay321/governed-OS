@@ -13,10 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/components/providers/user-context';
-
-function formatPence(pence: number): string {
-  return `\u00a3${(pence / 100).toLocaleString()}`;
-}
+import { formatPence } from '@/lib/formatting/currency';
 
 /* ------------------------------------------------------------------ */
 /*  Toggle Switch                                                      */

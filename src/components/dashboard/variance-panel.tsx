@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Sparkles, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { formatCurrency } from '@/lib/formatting/currency';
 import type { PnLSummary } from '@/lib/financial/aggregate';
 
 interface VariancePanelProps {
@@ -21,15 +22,6 @@ interface VarianceRow {
   variance: number;
   variancePercent: number;
   isFavourable: boolean;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function buildVarianceRows(current: PnLSummary, previous: PnLSummary): VarianceRow[] {

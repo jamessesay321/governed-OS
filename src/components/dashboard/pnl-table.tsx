@@ -10,20 +10,12 @@ import {
 } from '@/components/ui/table';
 import { ChevronRight } from 'lucide-react';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
+import { formatCurrency } from '@/lib/formatting/currency';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 
 interface PnLTableProps {
   pnl: PnLSummary;
   onSectionClick?: (section: PnLSection) => void;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 export function PnLTable({ pnl, onSectionClick }: PnLTableProps) {

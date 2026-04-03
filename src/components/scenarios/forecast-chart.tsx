@@ -1,6 +1,7 @@
 'use client';
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { chartAxisFormatter, chartTooltipFormatter } from '@/lib/formatting/currency';
 import type { ModelSnapshot } from '@/types';
 
 type Props = {
@@ -22,8 +23,8 @@ export function ForecastChart({ snapshots }: Props) {
         <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
           <XAxis dataKey="period" className="text-xs" />
-          <YAxis className="text-xs" tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-          <Tooltip formatter={(value) => `$${Number(value).toLocaleString()}`} />
+          <YAxis className="text-xs" tickFormatter={chartAxisFormatter()} />
+          <Tooltip formatter={(value) => chartTooltipFormatter()(Number(value))} />
           <Legend />
           <Line type="monotone" dataKey="Revenue" stroke="hsl(var(--chart-1))" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="Cost of Sales" stroke="hsl(var(--chart-2))" strokeWidth={2} dot={false} />

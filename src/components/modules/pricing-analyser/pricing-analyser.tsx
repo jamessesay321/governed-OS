@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { formatCurrency } from '@/lib/formatting/currency';
 import {
   BarChart,
   Bar,
@@ -319,10 +320,4 @@ function ImpactCard({
   );
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+// formatCurrency imported from @/lib/formatting/currency

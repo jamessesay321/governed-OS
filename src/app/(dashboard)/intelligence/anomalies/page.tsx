@@ -2,6 +2,7 @@ import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { getAvailablePeriods } from '@/lib/financial/aggregate';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { formatCurrencyCompact } from '@/lib/formatting/currency';
 import { AnomaliesClient } from './anomalies-client';
 
 export interface Anomaly {
@@ -119,9 +120,5 @@ export default async function AnomaliesPage() {
 }
 
 function formatAmount(amount: number): string {
-  const abs = Math.abs(amount);
-  const sign = amount < 0 ? '-' : '';
-  if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}M`;
-  if (abs >= 1_000) return `${sign}${(abs / 1_000).toFixed(1)}K`;
-  return `${sign}${abs.toFixed(0)}`;
+  return formatCurrencyCompact(amount);
 }

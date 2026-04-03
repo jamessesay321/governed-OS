@@ -61,11 +61,7 @@ const typeIcons: Record<string, React.ReactNode> = {
   ),
 };
 
-function formatBalance(balance: number, currency: string): string {
-  const abs = Math.abs(balance);
-  const formatted = `${currency}${(abs / 100).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`;
-  return balance < 0 ? `-${formatted}` : formatted;
-}
+import { formatBalance } from '@/lib/formatting/currency';
 
 export function ConnectedAccountsWidget() {
   const totalBalance = MOCK_ACCOUNTS.reduce((sum, acc) => sum + acc.balance, 0);
@@ -101,7 +97,7 @@ export function ConnectedAccountsWidget() {
                 'text-sm font-semibold tabular-nums',
                 account.balance < 0 ? 'text-red-600' : 'text-foreground',
               )}>
-                {formatBalance(account.balance, account.currency)}
+                {formatBalance(account.balance)}
               </p>
             </div>
           </button>
@@ -113,7 +109,7 @@ export function ConnectedAccountsWidget() {
             'text-sm font-bold tabular-nums',
             totalBalance < 0 ? 'text-red-600' : 'text-foreground',
           )}>
-            {formatBalance(totalBalance, '£')}
+            {formatBalance(totalBalance)}
           </span>
         </div>
       </CardContent>

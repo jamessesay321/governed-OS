@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { formatCurrency, formatCurrencyCompact } from '@/lib/formatting/currency';
 import {
   AreaChart,
   Area,
@@ -262,16 +263,8 @@ function KPICard({
   );
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    maximumFractionDigits: 0,
-  }).format(value);
-}
+// formatCurrency imported from @/lib/formatting/currency
 
 function formatCompact(value: number): string {
-  if (Math.abs(value) >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1000) return `${(value / 1000).toFixed(0)}K`;
-  return value.toString();
+  return formatCurrencyCompact(value);
 }

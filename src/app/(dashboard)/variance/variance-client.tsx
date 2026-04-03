@@ -8,6 +8,7 @@ import { VarianceTable } from '@/components/variance/variance-table';
 import { VarianceDetail } from '@/components/variance/variance-detail';
 import { AIExplanationCard } from '@/components/variance/ai-explanation';
 import { VisualiseButton } from '@/components/ui/visualise-button';
+import { formatPence } from '@/lib/formatting/currency';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -32,15 +33,7 @@ function hasMinRole(userRole: Role, minRole: Role): boolean {
   return ROLE_HIERARCHY[userRole] >= ROLE_HIERARCHY[minRole];
 }
 
-function formatPence(pence: number): string {
-  const pounds = pence / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(pounds);
-}
+// formatPence imported from @/lib/formatting/currency
 
 export function VarianceClient({
   orgId,

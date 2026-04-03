@@ -12,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { formatCurrency } from '@/lib/formatting/currency';
 import type { PnLRow, PnLSection } from '@/lib/financial/aggregate';
 
 interface DrillDownPanelProps {
@@ -19,15 +20,6 @@ interface DrillDownPanelProps {
   period: string;
   orgId: string;
   onClose: () => void;
-}
-
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 }
 
 interface Transaction {

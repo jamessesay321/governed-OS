@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { SourceBadge } from '@/components/data-primitives';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { formatCurrency, formatPercent } from '@/lib/formatting/currency';
 
 type BenchmarkStatus = 'green' | 'amber' | 'red' | 'none';
 
@@ -35,17 +36,8 @@ interface KPICardsProps {
   onCardClick?: (metric: string) => void;
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function formatPercentage(value: number): string {
-  return `${value.toFixed(1)}%`;
+  return formatPercent(value);
 }
 
 function getVariance(current: number, previous: number | undefined): {

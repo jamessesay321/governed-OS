@@ -8,6 +8,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { formatPence } from '@/lib/formatting/currency';
 import { Badge } from '@/components/ui/badge';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 
@@ -16,15 +17,7 @@ interface VarianceTableProps {
   onSelectLine?: (line: VarianceLine) => void;
 }
 
-function formatPence(pence: number): string {
-  const pounds = pence / 100;
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(pounds);
-}
+// formatPence imported from @/lib/formatting/currency
 
 function formatCategory(category: string): string {
   return category

@@ -12,10 +12,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-
-function formatPence(pence: number): string {
-  return `\u00a3${(pence / 100).toLocaleString()}`;
-}
+import { formatPence } from '@/lib/formatting/currency';
 
 export function ProposalWidget({ className }: { className?: string }) {
   const proposal = useMemo(() => getMockProposal(), []);
