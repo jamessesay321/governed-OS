@@ -719,7 +719,8 @@ export async function runPostSyncReconciliation(
   }
 
   // Get the 3 most recent periods
-  const periods = getAvailablePeriods(financials as NormalisedFinancial[]).slice(0, 3);
+  // Check only the most recent period during sync (saves Xero API calls, stays within 60s)
+  const periods = getAvailablePeriods(financials as NormalisedFinancial[]).slice(0, 1);
   if (periods.length === 0) return [];
 
   // Look up industry for benchmarks

@@ -292,7 +292,8 @@ async function syncBalanceSheetData(
   let totalUpserted = 0;
 
   // Fetch Trial Balance for each period (latest periods first, cap at 6 to stay within rate limits)
-  const periodsToFetch = periods.slice(0, 6);
+  // Fetch only 3 most recent periods to stay within Vercel's 60s function limit
+  const periodsToFetch = periods.slice(0, 3);
 
   for (const period of periodsToFetch) {
     try {
@@ -436,23 +437,14 @@ export async function runFullSync(
     totalSynced += accountsSynced;
     console.log(`[XERO SYNC] Chart of accounts: ${accountsSynced} synced`);
 
-    console.log('[XERO SYNC] Syncing invoices (AUTHORISED + PAID only)...');
-    const invoicesSynced = await syncInvoices(
-      orgId,
-      tokens.accessToken,
-      tokens.tenantId
-    );
-    totalSynced += invoicesSynced;
-    console.log(`[XERO SYNC] Invoices: ${invoicesSynced} synced`);
-
-    console.log('[XERO SYNC] Syncing bank transactions (AUTHORISED only)...');
-    const bankTxSynced = await syncBankTransactions(
-      orgId,
-      tokens.accessToken,
-      tokens.tenantId
-    );
-    totalSynced += bankTxSynced;
-    console.log(`[XERO SYNC] Bank transactions: ${bankTxSynced} synced`);
+    // Sync invoices + bank transactions in parallel (independent of each other)
+    console.log('[XERO SYNC] Syncing invoices + bank transactions in parallel...');
+    const [invoicesSynced, bankTxSynced] = await Promise.all([
+      syncInvoices(orgId, tokens.accessToken, tokens.tenantId),
+      syncBankTransactions(orgId, tokens.accessToken, tokens.tenantId),
+    ]);
+    totalSynced += invoicesSynced + bankTxSynced;
+    console.log(`[XERO SYNC] Invoices: ${invoicesSynced}, Bank tx: ${bankTxSynced}`);
 
     // Run normalisation
     console.log('[XERO SYNC] Running normalisation...');
@@ -497,88 +489,70 @@ export async function runFullSync(
       metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, bsSynced, totalSynced },
     });
 
-    // Refresh org accounting config (year-end, currency, VAT scheme)
-    try {
-      console.log('[XERO SYNC] Refreshing org accounting config...');
-      await pullOrgAccountingConfig(orgId, tokens.accessToken, tokens.tenantId);
-    } catch (configErr) {
-      console.warn('[XERO SYNC] Org config refresh failed (non-blocking):', configErr instanceof Error ? configErr.message : String(configErr));
-    }
+    // Run all non-blocking post-sync steps IN PARALLEL to stay within Vercel 60s limit
+    console.log('[XERO SYNC] Running post-sync steps in parallel...');
+    await Promise.allSettled([
+      // Org config refresh
+      pullOrgAccountingConfig(orgId, tokens.accessToken, tokens.tenantId)
+        .then(() => console.log('[XERO SYNC] Org config refreshed'))
+        .catch((e) => console.warn('[XERO SYNC] Org config failed:', e instanceof Error ? e.message : String(e))),
 
-    // Run data health checks for recent periods
-    try {
-      console.log('[XERO SYNC] Running data health checks...');
-      const healthReports = await runDataHealthForRecentPeriods(orgId, 3);
-      console.log(`[XERO SYNC] Data health: ${healthReports.map((r) => `${r.period}=${r.overall_score}`).join(', ')}`);
-    } catch (healthErr) {
-      console.warn('[XERO SYNC] Data health checks failed (non-blocking):', healthErr instanceof Error ? healthErr.message : String(healthErr));
-    }
+      // Data health checks (reduced to 1 period for speed)
+      runDataHealthForRecentPeriods(orgId, 1)
+        .then((r) => console.log(`[XERO SYNC] Data health: ${r.map((h) => `${h.period}=${h.overall_score}`).join(', ')}`))
+        .catch((e) => console.warn('[XERO SYNC] Data health failed:', e instanceof Error ? e.message : String(e))),
 
-    // Pull tracking categories (Xero dimensions like Department, Location)
-    try {
-      console.log('[XERO SYNC] Pulling tracking categories...');
-      const { pullTrackingCategories } = await import('./tracking-categories');
-      const tcCount = await pullTrackingCategories(orgId, tokens.accessToken, tokens.tenantId);
-      console.log(`[XERO SYNC] Tracking categories: ${tcCount} mapped`);
-    } catch (tcErr) {
-      console.warn('[XERO SYNC] Tracking categories pull failed (non-blocking):', tcErr instanceof Error ? tcErr.message : String(tcErr));
-    }
+      // Tracking categories
+      import('./tracking-categories')
+        .then(({ pullTrackingCategories }) => pullTrackingCategories(orgId, tokens.accessToken, tokens.tenantId))
+        .then((tc) => console.log(`[XERO SYNC] Tracking categories: ${tc} mapped`))
+        .catch((e) => console.warn('[XERO SYNC] Tracking categories failed:', e instanceof Error ? e.message : String(e))),
 
-    // Auto-map accounts after sync
-    try {
-      const { autoMapAccounts } = await import('@/lib/staging/account-mapper');
-      // Fetch synced accounts for mapping
-      const { data: syncedAccounts } = await supabase
-        .from('chart_of_accounts')
-        .select('code, name, type, class')
-        .eq('org_id', orgId);
-      const accountInputs = (syncedAccounts ?? []).map((a) => ({
-        code: a.code as string,
-        name: a.name as string,
-        type: (a.type as string) ?? undefined,
-        class: (a.class as string) ?? undefined,
-      }));
-      if (accountInputs.length > 0) {
-        await autoMapAccounts(orgId, accountInputs);
-      }
-    } catch (mapError) {
-      console.error('[xero/sync] Account mapping failed (non-blocking):', mapError);
-    }
+      // Account mapping
+      (async () => {
+        const { autoMapAccounts } = await import('@/lib/staging/account-mapper');
+        const { data: syncedAccounts } = await supabase
+          .from('chart_of_accounts')
+          .select('code, name, type, class')
+          .eq('org_id', orgId);
+        const accountInputs = (syncedAccounts ?? []).map((a) => ({
+          code: a.code as string,
+          name: a.name as string,
+          type: (a.type as string) ?? undefined,
+          class: (a.class as string) ?? undefined,
+        }));
+        if (accountInputs.length > 0) await autoMapAccounts(orgId, accountInputs);
+        console.log('[XERO SYNC] Account mapping done');
+      })().catch((e) => console.warn('[XERO SYNC] Account mapping failed:', e)),
 
-    // Create post-sync checkpoint
-    try {
-      const { createCheckpoint } = await import('@/lib/staging/checkpoints');
-      await createCheckpoint(orgId, 'post_sync', {
-        syncedAt: new Date().toISOString(),
-        accountsCount: accountsSynced,
-        transactionsCount: invoicesSynced + bankTxSynced,
-        normalisedCount: normalised,
-      });
-    } catch (cpError) {
-      console.error('[xero/sync] Checkpoint creation failed (non-blocking):', cpError);
-    }
+      // Checkpoint
+      import('@/lib/staging/checkpoints')
+        .then(({ createCheckpoint }) => createCheckpoint(orgId, 'post_sync', {
+          syncedAt: new Date().toISOString(),
+          accountsCount: accountsSynced,
+          transactionsCount: invoicesSynced + bankTxSynced,
+          normalisedCount: normalised,
+        }))
+        .catch((e) => console.warn('[XERO SYNC] Checkpoint failed:', e)),
 
-    // Run post-sync reconciliation (non-blocking)
-    try {
-      console.log('[XERO SYNC] Running post-sync reconciliation...');
-      const { runPostSyncReconciliation } = await import('@/lib/financial/post-sync-reconciliation');
-      const reconReports = await runPostSyncReconciliation(orgId, tokens.accessToken, tokens.tenantId);
-      const criticalCount = reconReports.filter((r) => r.hasCritical).length;
-      console.log(`[XERO SYNC] Reconciliation: ${reconReports.length} periods checked, ${criticalCount} critical`);
-
-      if (criticalCount > 0) {
-        await createNotification({
-          userId,
-          orgId,
-          type: 'system',
-          title: 'Data discrepancies found',
-          body: `Post-sync reconciliation found critical discrepancies in ${criticalCount} period(s). Platform figures may not match your accounting records. Review immediately.`,
-          actionUrl: '/integrations/health',
-        }).catch(() => {});
-      }
-    } catch (reconErr) {
-      console.warn('[XERO SYNC] Reconciliation failed (non-blocking):', reconErr instanceof Error ? reconErr.message : String(reconErr));
-    }
+      // Reconciliation (most important post-sync step)
+      (async () => {
+        const { runPostSyncReconciliation } = await import('@/lib/financial/post-sync-reconciliation');
+        const reconReports = await runPostSyncReconciliation(orgId, tokens.accessToken, tokens.tenantId);
+        const criticalCount = reconReports.filter((r) => r.hasCritical).length;
+        console.log(`[XERO SYNC] Reconciliation: ${reconReports.length} periods, ${criticalCount} critical`);
+        if (criticalCount > 0) {
+          await createNotification({
+            userId,
+            orgId,
+            type: 'system',
+            title: 'Data discrepancies found',
+            body: `Post-sync reconciliation found critical discrepancies in ${criticalCount} period(s). Platform figures may not match your accounting records. Review immediately.`,
+            actionUrl: '/integrations/health',
+          }).catch(() => {});
+        }
+      })().catch((e) => console.warn('[XERO SYNC] Reconciliation failed:', e instanceof Error ? e.message : String(e))),
+    ]);
 
     console.log(`[XERO SYNC] === Complete: ${totalSynced} total records, ${normalised} normalised ===`);
 
