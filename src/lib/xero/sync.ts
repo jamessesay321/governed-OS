@@ -140,7 +140,7 @@ async function syncChartOfAccounts(
  */
 function getSyncDateTimeFilter(): string {
   const d = new Date();
-  d.setMonth(d.getMonth() - 25);
+  d.setMonth(d.getMonth() - 13); // 1 financial year + current month
   d.setDate(1); // Start of month
   return `DateTime(${d.getFullYear()},${d.getMonth() + 1},1)`;
 }
@@ -455,14 +455,18 @@ export async function runFullSync(
     totalSynced += accountsSynced;
     console.log(`[XERO SYNC] Chart of accounts: ${accountsSynced} synced`);
 
-    // Sync invoices + bank transactions in parallel (independent of each other)
-    console.log('[XERO SYNC] Syncing invoices + bank transactions in parallel...');
-    const [invoicesSynced, bankTxSynced] = await Promise.all([
-      syncInvoices(orgId, tokens.accessToken, tokens.tenantId),
-      syncBankTransactions(orgId, tokens.accessToken, tokens.tenantId),
-    ]);
-    totalSynced += invoicesSynced + bankTxSynced;
-    console.log(`[XERO SYNC] Invoices: ${invoicesSynced}, Bank tx: ${bankTxSynced}`);
+    // Sync invoices then bank transactions SEQUENTIALLY
+    // Running in parallel burns through Xero's 60-call/min rate limit 2x faster,
+    // causing 43s pauses that push the total past Vercel's 5-min limit.
+    console.log('[XERO SYNC] Syncing invoices...');
+    const invoicesSynced = await syncInvoices(orgId, tokens.accessToken, tokens.tenantId);
+    totalSynced += invoicesSynced;
+    console.log(`[XERO SYNC] Invoices: ${invoicesSynced} synced`);
+
+    console.log('[XERO SYNC] Syncing bank transactions...');
+    const bankTxSynced = await syncBankTransactions(orgId, tokens.accessToken, tokens.tenantId);
+    totalSynced += bankTxSynced;
+    console.log(`[XERO SYNC] Bank tx: ${bankTxSynced} synced`);
 
     // Run normalisation
     console.log('[XERO SYNC] Running normalisation...');
@@ -470,22 +474,9 @@ export async function runFullSync(
     const normalised = await normaliseTransactions(orgId);
     console.log(`[XERO SYNC] Normalised: ${normalised} period-account records`);
 
-    // Sync balance sheet data from Xero Trial Balance reports (non-blocking)
-    let bsSynced = 0;
-    try {
-      console.log('[XERO SYNC] Syncing balance sheet data from Trial Balance...');
-      bsSynced = await syncBalanceSheetData(
-        orgId,
-        tokens.accessToken,
-        tokens.tenantId
-      );
-      totalSynced += bsSynced;
-      console.log(`[XERO SYNC] Balance sheet: ${bsSynced} account-period records synced`);
-    } catch (bsErr) {
-      // Balance sheet sync is non-blocking — P&L data should still be available
-      const bsMsg = bsErr instanceof Error ? bsErr.message : String(bsErr);
-      console.warn(`[XERO SYNC] Balance sheet sync failed (non-blocking): ${bsMsg}`);
-    }
+    // Balance sheet data is fetched on-demand when visiting the BS/Cash Flow pages
+    // via ensureBalanceSheetData(). Skipped during sync to stay within 5-min limit.
+    const bsSynced = 0;
 
     // Update sync log
     await supabase
