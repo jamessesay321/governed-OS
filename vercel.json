@@ -6,6 +6,18 @@
     }
   ],
   "functions": {
+    "src/app/api/xero/sync/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/cron/xero-sync/route.ts": {
+      "maxDuration": 60,
+      "memory": 1024
+    },
+    "src/app/api/reconciliation/[orgId]/route.ts": {
+      "maxDuration": 60,
+      "memory": 512
+    },
     "src/app/api/reports/[orgId]/[reportId]/pdf/route.ts": {
       "maxDuration": 60,
       "memory": 1024
