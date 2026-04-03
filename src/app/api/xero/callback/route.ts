@@ -3,14 +3,14 @@ import { requireRole } from '@/lib/supabase/roles';
 import { storeTokens } from '@/lib/xero/tokens';
 import { logAudit } from '@/lib/audit/log';
 import { xeroCallbackQuerySchema } from '@/lib/schemas';
-import { runFullSync } from '@/lib/xero/sync';
 import { pullOrgAccountingConfig } from '@/lib/xero/org-config';
 import { createServiceClient } from '@/lib/supabase/server';
 
 /**
  * GET /api/xero/callback
  * Handles Xero OAuth callback, exchanges code for tokens,
- * then auto-triggers a full sync (1-click flow).
+ * stores connection, and redirects. Sync is NOT triggered here —
+ * the user clicks "Sync Now" on the Xero page to avoid callback timeout.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -142,19 +142,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Auto-trigger first sync immediately after connection (1-click flow)
-    const syncResult = await runFullSync(profile.org_id, user.id);
-
-    const params = new URLSearchParams({
-      success: 'true',
-      tenant: tenantName,
-      synced: String(syncResult.recordsSynced),
-    });
-
-    if (!syncResult.success) {
-      params.set('sync_warning', syncResult.error || 'Sync completed with issues');
-    }
-
     // Check if user is still in onboarding — redirect accordingly
     let isOnboarding = false;
     try {
@@ -176,6 +163,14 @@ export async function GET(request: NextRequest) {
         new URL(`/welcome/connect?success=true&tenant=${encodeURIComponent(tenantName)}`, request.url)
       );
     }
+
+    // Redirect to Xero page — user clicks "Sync Now" to trigger sync
+    // (Sync is NOT run inline here to avoid callback timeout on large accounts)
+    const params = new URLSearchParams({
+      success: 'true',
+      tenant: tenantName,
+      sync_pending: 'true',
+    });
 
     return NextResponse.redirect(new URL(`/xero?${params.toString()}`, request.url));
   } catch (err) {
