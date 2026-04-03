@@ -160,11 +160,12 @@ async function syncInvoices(
   let synced = 0;
   let page = 1;
   const dateFilter = getSyncDateTimeFilter();
+  const whereClause = encodeURIComponent(`Date>=${dateFilter}`);
   console.log(`[XERO SYNC] Filtering invoices to Date >= ${dateFilter}`);
 
   while (true) {
     const data = await xeroGet(
-      `Invoices?Statuses=AUTHORISED,PAID&where=Date>=${dateFilter}&page=${page}`,
+      `Invoices?Statuses=AUTHORISED,PAID&where=${whereClause}&page=${page}`,
       accessToken,
       tenantId
     );
@@ -221,11 +222,12 @@ async function syncBankTransactions(
   let synced = 0;
   let page = 1;
   const dateFilter = getSyncDateTimeFilter();
+  const whereClause = encodeURIComponent(`Status=="AUTHORISED"&&Date>=${dateFilter}`);
   console.log(`[XERO SYNC] Filtering bank transactions to Date >= ${dateFilter}`);
 
   while (true) {
     const data = await xeroGet(
-      `BankTransactions?where=Status=="AUTHORISED"&&Date>=${dateFilter}&page=${page}`,
+      `BankTransactions?where=${whereClause}&page=${page}`,
       accessToken,
       tenantId
     );
