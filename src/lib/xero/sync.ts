@@ -133,9 +133,23 @@ async function syncChartOfAccounts(
 }
 
 /**
+ * Get the Xero DateTime filter for API where clauses.
+ * Returns "DateTime(YYYY,M,1)" for 25 months ago (2 full financial years + buffer).
+ * This prevents fetching the entire transaction history for large accounts
+ * and keeps the sync within Vercel's 5-min function limit.
+ */
+function getSyncDateTimeFilter(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 25);
+  d.setDate(1); // Start of month
+  return `DateTime(${d.getFullYear()},${d.getMonth() + 1},1)`;
+}
+
+/**
  * Sync invoices (both sales and bills) from Xero.
  * Paginates through all pages (100 per page).
  * Filters to AUTHORISED + PAID only (DRAFT/VOIDED/DELETED excluded).
+ * Only fetches last 25 months to stay within Vercel's 5-min function limit.
  */
 async function syncInvoices(
   orgId: string,
@@ -145,10 +159,12 @@ async function syncInvoices(
   const supabase = await createServiceClient();
   let synced = 0;
   let page = 1;
+  const dateFilter = getSyncDateTimeFilter();
+  console.log(`[XERO SYNC] Filtering invoices to Date >= ${dateFilter}`);
 
   while (true) {
     const data = await xeroGet(
-      `Invoices?Statuses=AUTHORISED,PAID&page=${page}`,
+      `Invoices?Statuses=AUTHORISED,PAID&where=Date>=${dateFilter}&page=${page}`,
       accessToken,
       tenantId
     );
@@ -204,10 +220,12 @@ async function syncBankTransactions(
   const supabase = await createServiceClient();
   let synced = 0;
   let page = 1;
+  const dateFilter = getSyncDateTimeFilter();
+  console.log(`[XERO SYNC] Filtering bank transactions to Date >= ${dateFilter}`);
 
   while (true) {
     const data = await xeroGet(
-      `BankTransactions?where=Status=="AUTHORISED"&page=${page}`,
+      `BankTransactions?where=Status=="AUTHORISED"&&Date>=${dateFilter}&page=${page}`,
       accessToken,
       tenantId
     );
