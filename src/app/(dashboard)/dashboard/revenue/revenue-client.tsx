@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import {
   LineChart, Line, PieChart, Pie, Cell,
@@ -11,6 +11,7 @@ import { useCurrency } from '@/components/providers/currency-context';
 import { ReportControls, getDefaultReportState } from '@/components/financial/report-controls';
 import type { ReportControlsState } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -50,7 +51,22 @@ export default function RevenueClient({
 
   const availablePeriods = useMemo(() => periods.map((p) => p.period), [periods]);
   const { yearEndMonth } = useAccountingConfig();
+  const globalPeriod = useGlobalPeriodContext();
   const [controls, setControls] = useState<ReportControlsState>(() => getDefaultReportState(availablePeriods, yearEndMonth));
+
+  // Sync from global period selector when it changes
+  const prevGlobalPeriodRef = useRef(globalPeriod.period);
+  useEffect(() => {
+    if (globalPeriod.period && globalPeriod.period !== prevGlobalPeriodRef.current) {
+      prevGlobalPeriodRef.current = globalPeriod.period;
+      setControls((prev) => ({
+        ...prev,
+        selectedPeriods: globalPeriod.selectedPeriods.filter((p) =>
+          availablePeriods.includes(p)
+        ),
+      }));
+    }
+  }, [globalPeriod.period, globalPeriod.selectedPeriods, availablePeriods]);
 
   const filteredPeriods = useMemo(
     () => periods.filter((p) => controls.selectedPeriods.includes(p.period)),

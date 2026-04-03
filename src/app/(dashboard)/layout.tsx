@@ -8,6 +8,8 @@ import { UserProvider } from '@/components/providers/user-context';
 import { CurrencyProvider } from '@/components/providers/currency-context';
 import { AccountingConfigProvider } from '@/components/providers/accounting-config-context';
 import { DrillDownProviderWrapper } from '@/components/providers/drill-down-provider-wrapper';
+import { GlobalPeriodProvider } from '@/components/providers/global-period-provider';
+import { GlobalPeriodSelector } from '@/components/layout/global-period-selector';
 // Ask Grove functionality is merged into the CMD+K search bar in the Header
 
 export default async function DashboardLayout({
@@ -29,6 +31,22 @@ export default async function DashboardLayout({
     isDemoMode = (org as any)?.onboarding_mode === 'demo';
   } catch {
     // Column doesn't exist yet, not in demo mode
+  }
+
+  // Fetch available periods (lightweight: just distinct period values)
+  let availablePeriods: string[] = [];
+  try {
+    const supabase = await createClient();
+    const { data: periodRows } = await supabase
+      .from('normalised_financials')
+      .select('period')
+      .eq('org_id', orgId);
+    if (periodRows) {
+      const unique = new Set(periodRows.map((r: { period: string }) => r.period));
+      availablePeriods = Array.from(unique).sort();
+    }
+  } catch {
+    // Table may not exist yet
   }
 
   // Fetch org accounting config (year-end, currency) for FY-aware UI
@@ -82,9 +100,12 @@ export default async function DashboardLayout({
                 />
               </div>
             </div>
-            <DrillDownProviderWrapper orgId={orgId}>
-              <main className="flex-1 overflow-y-auto p-6">{children}</main>
-            </DrillDownProviderWrapper>
+            <GlobalPeriodProvider availablePeriods={availablePeriods}>
+              <GlobalPeriodSelector />
+              <DrillDownProviderWrapper orgId={orgId}>
+                <main className="flex-1 overflow-y-auto p-6">{children}</main>
+              </DrillDownProviderWrapper>
+            </GlobalPeriodProvider>
           </div>
           <MobileQuickActions />
         </div>

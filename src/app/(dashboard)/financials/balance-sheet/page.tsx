@@ -26,7 +26,7 @@ export default async function BalanceSheetPage() {
   // Fetch normalised financials with account info
   const { data: financials } = await supabase
     .from('normalised_financials')
-    .select('*, chart_of_accounts!inner(code, name, type, class)')
+    .select('*, chart_of_accounts!inner(id, code, name, type, class)')
     .eq('org_id', orgId)
     .order('period', { ascending: false });
 
@@ -34,22 +34,26 @@ export default async function BalanceSheetPage() {
   const availablePeriods = [...new Set((financials ?? []).map((f) => f.period))].sort();
 
   // Group by ASSET, LIABILITY, EQUITY for a given period
-  type BSSection = { class: string; accounts: { name: string; amount: number }[]; total: number };
+  type BSSection = { class: string; accounts: { name: string; amount: number; accountId: string; code: string }[]; total: number };
 
   function buildBalanceSheet(data: typeof financials, period: string): BSSection[] {
     if (!data) return [];
     const periodData = data.filter((f) => f.period === period);
-    const groups = new Map<string, Map<string, number>>();
+    const groups = new Map<string, Map<string, { amount: number; accountId: string; code: string }>>();
 
     for (const fin of periodData) {
-      const account = fin.chart_of_accounts as { code: string; name: string; type: string; class: string };
+      const account = fin.chart_of_accounts as { id: string; code: string; name: string; type: string; class: string };
       const cls = account.class.toUpperCase();
       if (!['ASSET', 'LIABILITY', 'EQUITY'].includes(cls)) continue;
 
       if (!groups.has(cls)) groups.set(cls, new Map());
       const accMap = groups.get(cls)!;
-      const existing = accMap.get(account.name) ?? 0;
-      accMap.set(account.name, existing + Number(fin.amount));
+      const existing = accMap.get(account.name);
+      if (existing) {
+        existing.amount += Number(fin.amount);
+      } else {
+        accMap.set(account.name, { amount: Number(fin.amount), accountId: account.id, code: account.code });
+      }
     }
 
     const result: BSSection[] = [];
@@ -60,7 +64,7 @@ export default async function BalanceSheetPage() {
         continue;
       }
       const accounts = Array.from(accMap.entries())
-        .map(([name, amount]) => ({ name, amount }))
+        .map(([name, entry]) => ({ name, amount: entry.amount, accountId: entry.accountId, code: entry.code }))
         .sort((a, b) => a.name.localeCompare(b.name));
       const total = accounts.reduce((s, a) => s + a.amount, 0);
       result.push({ class: cls, accounts, total });

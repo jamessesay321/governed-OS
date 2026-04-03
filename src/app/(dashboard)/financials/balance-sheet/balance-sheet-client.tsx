@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
 import {
@@ -9,8 +9,10 @@ import {
   ReportControlsState,
 } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 
-type AccountEntry = { name: string; amount: number };
+type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
 
 type Props = {
@@ -35,9 +37,25 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
   const { format: formatCurrency } = useCurrency();
   const { yearEndMonth } = useAccountingConfig();
 
+  const globalPeriod = useGlobalPeriodContext();
+  const { openDrill } = useDrillDown();
   const [controls, setControls] = useState<ReportControlsState>(() =>
     getDefaultReportState(availablePeriods, yearEndMonth)
   );
+
+  // Sync from global period selector when it changes
+  const prevGlobalPeriodRef = useRef(globalPeriod.period);
+  useEffect(() => {
+    if (globalPeriod.period && globalPeriod.period !== prevGlobalPeriodRef.current) {
+      prevGlobalPeriodRef.current = globalPeriod.period;
+      setControls((prev) => ({
+        ...prev,
+        selectedPeriods: globalPeriod.selectedPeriods.filter((p) =>
+          availablePeriods.includes(p)
+        ),
+      }));
+    }
+  }, [globalPeriod.period, globalPeriod.selectedPeriods, availablePeriods]);
 
   // Derive current and prior periods from controls.selectedPeriods
   const { currentPeriod, priorPeriod, currentData, priorData } = useMemo(() => {
@@ -181,7 +199,22 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
                   const change = acc.amount - priorAmount;
                   const changePct = priorAmount !== 0 ? ((change / Math.abs(priorAmount)) * 100) : 0;
                   return (
-                    <tr key={`${section.class}-${acc.name}`} className="border-b hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={`${section.class}-${acc.name}`}
+                      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (currentPeriod && acc.accountId) {
+                          openDrill({
+                            type: 'account',
+                            accountId: acc.accountId,
+                            accountName: acc.name,
+                            accountCode: acc.code,
+                            amount: acc.amount,
+                            period: currentPeriod,
+                          });
+                        }
+                      }}
+                    >
                       <td className="px-4 py-2.5 pl-8 text-muted-foreground">{acc.name}</td>
                       <td className="text-right px-4 py-2.5 font-mono text-xs">{formatCurrency(acc.amount)}</td>
                       {priorPeriod && (

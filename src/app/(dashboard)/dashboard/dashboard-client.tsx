@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICards } from '@/components/dashboard/kpi-cards';
 import { PnLTable } from '@/components/dashboard/pnl-table';
-import { PeriodSelector } from '@/components/dashboard/period-selector';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { SyncStatus } from '@/components/dashboard/sync-status';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { WelcomeIllustration } from '@/components/ui/illustrations';
+import { formatCurrency } from '@/lib/formatting/currency';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -175,7 +176,7 @@ export function DashboardClient({
   recommendations,
   businessContext,
 }: DashboardClientProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
+  const { period: selectedPeriod } = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
   const [showVariance, setShowVariance] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -289,11 +290,7 @@ export function DashboardClient({
               <span className="hidden sm:inline">Customise</span>
             </Button>
           </Link>
-          <PeriodSelector
-            periods={periods}
-            selected={selectedPeriod}
-            onChange={setSelectedPeriod}
-          />
+          {/* Period selection now handled by global period selector in layout */}
         </div>
       </div>
 
@@ -362,6 +359,23 @@ export function DashboardClient({
           previousGrossProfit={previousPnl?.grossProfit}
           previousExpenses={previousPnl?.expenses}
           previousNetProfit={previousPnl?.netProfit}
+          onCardClick={(metric) => {
+            const value = metric === 'revenue' ? pnl.revenue
+              : metric === 'gross_margin' ? (pnl.revenue > 0 ? (pnl.grossProfit / pnl.revenue) * 100 : 0)
+              : metric === 'expenses' ? pnl.expenses
+              : pnl.netProfit;
+            const formatted = metric === 'gross_margin'
+              ? `${value.toFixed(1)}%`
+              : formatCurrency(value);
+            openDrill({
+              type: 'kpi',
+              kpiKey: metric,
+              label: metric.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
+              value,
+              formattedValue: formatted,
+              period: selectedPeriod,
+            });
+          }}
         />
       )}
 

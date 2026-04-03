@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
@@ -9,6 +9,7 @@ import { VarianceDetail } from '@/components/variance/variance-detail';
 import { AIExplanationCard } from '@/components/variance/ai-explanation';
 import { VisualiseButton } from '@/components/ui/visualise-button';
 import { formatPence } from '@/lib/formatting/currency';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -41,13 +42,24 @@ export function VarianceClient({
   defaultPeriod,
   role,
 }: VarianceClientProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
+  const { period: globalPeriod, compare: globalCompare } = useGlobalPeriodContext();
+  // Use global period as primary, fall back to prop for initial load
+  const [selectedPeriod, setSelectedPeriod] = useState(globalPeriod || defaultPeriod);
   const [compareMode, setCompareMode] = useState<CompareMode>('budget');
   const [report, setReport] = useState<VarianceReport | null>(null);
   const [selectedLine, setSelectedLine] = useState<VarianceLine | null>(null);
   const [loading, setLoading] = useState(false);
 
   const canViewDetails = hasMinRole(role as Role, 'viewer');
+
+  // Sync from global period selector when it changes
+  const prevGlobalPeriodRef = useRef(globalPeriod);
+  useEffect(() => {
+    if (globalPeriod && globalPeriod !== prevGlobalPeriodRef.current) {
+      prevGlobalPeriodRef.current = globalPeriod;
+      setSelectedPeriod(globalPeriod);
+    }
+  }, [globalPeriod]);
 
   const fetchVariance = useCallback(async (period: string, compare: CompareMode) => {
     setLoading(true);
@@ -118,29 +130,7 @@ export function VarianceClient({
               ))}
             </select>
           </div>
-          {/* Period selector */}
-          <div className="flex flex-col items-end gap-1">
-            <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              Period
-            </label>
-            <select
-              value={selectedPeriod}
-              onChange={(e) => {
-                setSelectedPeriod(e.target.value);
-                setSelectedLine(null);
-              }}
-              className="rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              {periods.map((p) => (
-                <option key={p} value={p}>
-                  {new Date(p).toLocaleDateString('en-GB', {
-                    month: 'long',
-                    year: 'numeric',
-                  })}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Period selection now handled by global period selector in layout */}
         </div>
       </div>
 

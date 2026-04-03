@@ -126,7 +126,19 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
     setTransactions([]);
     setTxAccount(null);
     setIsOpen(true);
-  }, []);
+
+    // Auto-fetch transactions for account drill-down
+    if (ctx.type === 'account') {
+      const periodFormatted = ctx.period.length === 7 ? ctx.period : ctx.period.slice(0, 7);
+      setLoadingTx(true);
+      setTxAccount({ name: ctx.accountName, code: ctx.accountCode, amount: ctx.amount });
+      fetch(`/api/transactions/${orgId}?accountId=${ctx.accountId}&period=${periodFormatted}`)
+        .then((res) => (res.ok ? res.json() : { transactions: [] }))
+        .then((data) => setTransactions(data.transactions ?? []))
+        .catch(() => setTransactions([]))
+        .finally(() => setLoadingTx(false));
+    }
+  }, [orgId]);
 
   const closeDrill = useCallback(() => {
     setIsOpen(false);
@@ -415,9 +427,22 @@ function ContextContent({
       );
 
     case 'account':
+      // Account transactions are auto-fetched by openDrill; rendered by the
+      // transaction table in DrillDownSheet (below the context content).
       return (
-        <div className="text-center py-8 text-sm text-muted-foreground">
-          Loading account details...
+        <div className="space-y-3">
+          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">{context.accountName}</p>
+              {context.accountCode && (
+                <p className="text-xs text-muted-foreground">Code: {context.accountCode}</p>
+              )}
+            </div>
+            <p className="text-lg font-bold">{formatCurrency(context.amount)}</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {formatPeriodLabel(context.period)} — Transactions loaded below
+          </p>
         </div>
       );
 

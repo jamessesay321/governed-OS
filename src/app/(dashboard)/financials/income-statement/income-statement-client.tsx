@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -52,9 +53,24 @@ export function IncomeStatementClient({ connected, periods }: Props) {
 
   const { yearEndMonth } = useAccountingConfig();
   const { openDrill } = useDrillDown();
+  const globalPeriod = useGlobalPeriodContext();
   const [controls, setControls] = useState<ReportControlsState>(() =>
     getDefaultReportState(availablePeriods, yearEndMonth)
   );
+
+  // Sync from global period selector when it changes
+  const prevGlobalPeriodRef = useRef(globalPeriod.period);
+  useEffect(() => {
+    if (globalPeriod.period && globalPeriod.period !== prevGlobalPeriodRef.current) {
+      prevGlobalPeriodRef.current = globalPeriod.period;
+      setControls((prev) => ({
+        ...prev,
+        selectedPeriods: globalPeriod.selectedPeriods.filter((p) =>
+          availablePeriods.includes(p)
+        ),
+      }));
+    }
+  }, [globalPeriod.period, globalPeriod.selectedPeriods, availablePeriods]);
 
   const filteredPeriods = useMemo(
     () => periods.filter((p) => controls.selectedPeriods.includes(p.period)),

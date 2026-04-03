@@ -117,21 +117,24 @@ All audit files written to `docs/audits/`:
 
 ## UX Feedback Build (April 2026) — See docs/audits/16-ux-feedback-april-2026.md
 
-### P0: Number Formatting
-- [ ] Create `src/lib/formatting/currency.ts` (formatCurrency, formatPercent, formatNumber)
-- [ ] Respect org base currency from Xero config
-- [ ] Audit and replace all raw number displays platform-wide
+### P0: Number Formatting ✅ COMPLETE
+- [x] Create `src/lib/formatting/currency.ts` (formatCurrency, formatPence, formatBalance, formatCurrencyCompact, formatPercent, formatNumber, chartAxisFormatter, chartTooltipFormatter)
+- [x] Respect org base currency from Xero config (via getCurrencyConfig)
+- [x] Audit and replace all raw number displays platform-wide (26 files, 22 local functions replaced, 2 USD→GBP fixes, 3 decimal fixes)
 
 ### P1: Global Period Selector + Comparison Periods
-- [ ] Upgrade period-selector.tsx to global context provider in header
-- [ ] All pages respond to global period selection (monthly/quarterly/annual)
-- [ ] Add comparison periods: vs prior period + vs same period last year
-- [ ] Display FY dates persistently
+- [x] Upgrade period-selector.tsx to global context provider in header
+- [x] All pages respond to global period selection (monthly/quarterly/annual)
+- [x] Add comparison periods: vs prior period + vs same period last year
+- [x] Display FY dates persistently
 
-### P1: Universal Drill-Down (to Xero transaction level)
+### P1: Universal Drill-Down Wiring
+- [x] Fix drill-down-sheet account case (auto-fetch transactions)
+- [x] Add accountId to balance sheet server data
+- [x] Wire KPI card clicks → drill-down sheet
+- [x] Wire balance sheet account rows → drill-down sheet
 - [ ] Build `DrillableNumber` shared component
-- [ ] Build `DrillDownPanel` 3-level slide-out (account → monthly → transactions)
-- [ ] Wire to all financial numbers across dashboard, KPIs, charts, statements
+- [ ] Wire to all remaining financial numbers (charts, cash flow)
 - [ ] Add hover tooltip: value + variance + % of total + AI explanation (live, Haiku)
 
 ### P2: KPI/Variance Wiring
