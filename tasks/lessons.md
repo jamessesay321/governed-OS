@@ -121,3 +121,41 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Fix:** Filter normalisation to `type IN ('invoice', 'bill')` only. Bank transactions are for cash flow analysis, not P&L. Also added a delete-before-rebuild step to clear stale double-counted data.
 
 **Preventative rule:** For ANY accounting integration (Xero, QBO, etc.), only use accrual-basis documents (invoices/bills) for P&L normalisation. Bank transactions are cash-basis and must be kept separate. Always verify platform numbers against the source system's own P&L report before shipping.
+
+## Lesson 11: Vercel App Router maxDuration must be exported from route files
+
+**Mistake:** Added `maxDuration` to `vercel.json` `functions` config, but Vercel App Router ignores this. Syncs continued to time out at the default limit.
+
+**Root cause:** Next.js App Router routes require `export const maxDuration = N` directly in the route.ts file. The `vercel.json` `functions` key only works for Pages Router API routes.
+
+**Preventative rule:** Always export `maxDuration` from the route file itself for App Router. Never rely on `vercel.json` functions config alone.
+
+## Lesson 12: Xero API where clause must be URL-encoded
+
+**Mistake:** Passed `where=Date>=DateTime(2025,3,1)` as a raw query parameter. Xero silently ignored the unencoded filter and returned ALL records (5000+ invoices).
+
+**Root cause:** Special characters like `>=`, `(`, `)`, `,` in the `where` parameter need URL encoding. Without it, Xero treats the parameter as malformed and ignores it.
+
+**Fix:** Use `encodeURIComponent()` on the where clause value before appending to the URL.
+
+**Preventative rule:** ALWAYS URL-encode query parameters that contain special characters, especially for third-party APIs. Test that filters actually reduce result count — if the number of pages doesn't decrease, the filter isn't working.
+
+## Lesson 13: Don't run full sync inline in OAuth callbacks
+
+**Mistake:** The Xero OAuth callback route ran `runFullSync()` inline before redirecting. For large accounts, this exceeded the function timeout, preventing Xero from connecting at all.
+
+**Root cause:** OAuth callbacks should be fast (token exchange + redirect). Running a 2-5 minute sync pipeline in the callback blocks the redirect and risks timeout.
+
+**Fix:** Callback saves tokens and redirects immediately. User triggers sync via "Sync Now" button on the dedicated sync route (with its own maxDuration).
+
+**Preventative rule:** OAuth callbacks must be lightweight: exchange tokens, store connection, redirect. Never run long-running operations inline. Use a separate route/endpoint for heavy work.
+
+## Lesson 14: Parallel API calls burn shared rate limits 2x faster
+
+**Mistake:** Ran invoice and bank transaction pagination in `Promise.all()`. Both streams made Xero API calls concurrently, hitting the 60-call/min rate limit in half the time, causing 43s pauses that pushed total time past 5 minutes.
+
+**Root cause:** Both streams share the same rate limit tracker but each adds calls independently. 2 parallel streams × 100 calls each = 200 calls, hitting the limit after just 27-28 pages.
+
+**Fix:** Run invoice and bank transaction fetching sequentially. Each finishes its pagination before the next starts, allowing better rate limit window sharing.
+
+**Preventative rule:** When calling a rate-limited API, run paginated fetches SEQUENTIALLY unless the rate limit budget is clearly sufficient for parallel execution. Always calculate: (pages needed × streams) vs (rate limit per window).
