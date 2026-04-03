@@ -1135,3 +1135,18 @@ export type DataHealthReport = {
   forecast_ready: boolean;
   created_at: string;
 };
+
+// === Reconciliation Reports ===
+export type ReconciliationSeverity = 'pass' | 'warn' | 'critical';
+
+export type ReconciliationReportRow = {
+  id: string;
+  org_id: string;
+  period: string;
+  checks: unknown; // JSONB — parsed as ReconciliationCheck[] from post-sync-reconciliation.ts
+  overall_status: ReconciliationSeverity;
+  overall_score: number;
+  has_critical: boolean;
+  recommendations: string[];
+  created_at: string;
+};

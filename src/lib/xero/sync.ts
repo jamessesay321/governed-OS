@@ -558,6 +558,28 @@ export async function runFullSync(
       console.error('[xero/sync] Checkpoint creation failed (non-blocking):', cpError);
     }
 
+    // Run post-sync reconciliation (non-blocking)
+    try {
+      console.log('[XERO SYNC] Running post-sync reconciliation...');
+      const { runPostSyncReconciliation } = await import('@/lib/financial/post-sync-reconciliation');
+      const reconReports = await runPostSyncReconciliation(orgId, tokens.accessToken, tokens.tenantId);
+      const criticalCount = reconReports.filter((r) => r.hasCritical).length;
+      console.log(`[XERO SYNC] Reconciliation: ${reconReports.length} periods checked, ${criticalCount} critical`);
+
+      if (criticalCount > 0) {
+        await createNotification({
+          userId,
+          orgId,
+          type: 'system',
+          title: 'Data discrepancies found',
+          body: `Post-sync reconciliation found critical discrepancies in ${criticalCount} period(s). Platform figures may not match your accounting records. Review immediately.`,
+          actionUrl: '/integrations/health',
+        }).catch(() => {});
+      }
+    } catch (reconErr) {
+      console.warn('[XERO SYNC] Reconciliation failed (non-blocking):', reconErr instanceof Error ? reconErr.message : String(reconErr));
+    }
+
     console.log(`[XERO SYNC] === Complete: ${totalSynced} total records, ${normalised} normalised ===`);
 
     // Push notification to user
