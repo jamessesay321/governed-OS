@@ -3,6 +3,9 @@ import { createUntypedServiceClient } from '@/lib/supabase/server';
 import { runFullSync } from '@/lib/xero/sync';
 import { logAudit } from '@/lib/audit/log';
 
+// Allow up to 300s for cron sync (Pro plan)
+export const maxDuration = 300;
+
 /**
  * GET /api/cron/xero-sync
  *

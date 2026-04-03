@@ -3,6 +3,9 @@ import { requireRole } from '@/lib/supabase/roles';
 import { createServiceClient } from '@/lib/supabase/server';
 import { z } from 'zod';
 
+// Allow up to 120s for on-demand reconciliation
+export const maxDuration = 120;
+
 const paramsSchema = z.object({
   orgId: z.string().uuid(),
 });

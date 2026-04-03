@@ -3,6 +3,9 @@ import { requireRole } from '@/lib/supabase/roles';
 import { runFullSync } from '@/lib/xero/sync';
 import { syncLimiter } from '@/lib/rate-limit';
 
+// Allow up to 300s for full Xero sync (Pro plan)
+export const maxDuration = 300;
+
 /**
  * POST /api/xero/sync
  * Triggers a full Xero data sync. Requires advisor+ role.
