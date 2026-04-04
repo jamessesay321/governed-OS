@@ -3,8 +3,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPISparkline } from './kpi-sparkline';
+import { DollarSign, Percent, TrendingUp, Receipt, PiggyBank, BarChart3, Wallet, Target } from 'lucide-react';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import type { KPISnapshot } from '@/types';
+
+const KPI_ICON_CONFIG: Record<string, { icon: React.ElementType; bg: string; text: string }> = {
+  revenue: { icon: DollarSign, bg: 'bg-blue-100 dark:bg-blue-950', text: 'text-blue-600' },
+  total_revenue: { icon: DollarSign, bg: 'bg-blue-100 dark:bg-blue-950', text: 'text-blue-600' },
+  gross_margin: { icon: Percent, bg: 'bg-emerald-100 dark:bg-emerald-950', text: 'text-emerald-600' },
+  net_margin: { icon: Percent, bg: 'bg-emerald-100 dark:bg-emerald-950', text: 'text-emerald-600' },
+  gross_profit: { icon: TrendingUp, bg: 'bg-emerald-100 dark:bg-emerald-950', text: 'text-emerald-600' },
+  expenses: { icon: Receipt, bg: 'bg-rose-100 dark:bg-rose-950', text: 'text-rose-600' },
+  operating_expenses: { icon: Receipt, bg: 'bg-rose-100 dark:bg-rose-950', text: 'text-rose-600' },
+  net_profit: { icon: PiggyBank, bg: 'bg-violet-100 dark:bg-violet-950', text: 'text-violet-600' },
+  operating_profit: { icon: PiggyBank, bg: 'bg-violet-100 dark:bg-violet-950', text: 'text-violet-600' },
+  current_ratio: { icon: Target, bg: 'bg-amber-100 dark:bg-amber-950', text: 'text-amber-600' },
+  quick_ratio: { icon: Target, bg: 'bg-amber-100 dark:bg-amber-950', text: 'text-amber-600' },
+  cash_position: { icon: Wallet, bg: 'bg-blue-100 dark:bg-blue-950', text: 'text-blue-600' },
+};
+
+const DEFAULT_ICON_CONFIG = { icon: BarChart3, bg: 'bg-slate-100 dark:bg-slate-900', text: 'text-slate-600' };
 
 interface KPIGridProps {
   kpis: CalculatedKPI[];
@@ -63,7 +81,17 @@ export function KPIGrid({ kpis, history, onSelect }: KPIGridProps) {
           >
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <div>
+                <div className="flex items-center gap-2">
+                  {(() => {
+                    const config = KPI_ICON_CONFIG[kpi.key] || DEFAULT_ICON_CONFIG;
+                    const Icon = config.icon;
+                    return (
+                      <div className={`rounded-lg p-2 ${config.bg}`}>
+                        <Icon className={`h-4 w-4 ${config.text}`} />
+                      </div>
+                    );
+                  })()}
+                  <div>
                   <CardTitle className="text-sm font-medium text-muted-foreground">
                     {kpi.label}
                   </CardTitle>
@@ -72,6 +100,7 @@ export function KPIGrid({ kpis, history, onSelect }: KPIGridProps) {
                       {kpi.plainEnglish}
                     </p>
                   )}
+                  </div>
                 </div>
                 {kpi.benchmark_status !== 'none' && (
                   <Badge

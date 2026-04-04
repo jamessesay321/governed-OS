@@ -24,6 +24,7 @@ import { CrossRef } from '@/components/shared/in-page-link';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { Scale, Building2, Wallet, Flame } from 'lucide-react';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -231,9 +232,14 @@ export default function FinancialHealthClient({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Current Ratio" orgId={orgId}>Current Ratio</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-amber-100 dark:bg-amber-950 p-2">
+                    <Scale className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Current Ratio" orgId={orgId}>Current Ratio</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{currentRatio.toFixed(2)}</p>
@@ -243,9 +249,14 @@ export default function FinancialHealthClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Total Assets" orgId={orgId}>Total Assets</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-blue-100 dark:bg-blue-950 p-2">
+                    <Building2 className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Total Assets" orgId={orgId}>Total Assets</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{format(totalAssets)}</p>
@@ -254,9 +265,14 @@ export default function FinancialHealthClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Cash Position" orgId={orgId}>Cash Position</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-emerald-100 dark:bg-emerald-950 p-2">
+                    <Wallet className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Cash Position" orgId={orgId}>Cash Position</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{format(cashPosition)}</p>
@@ -265,9 +281,14 @@ export default function FinancialHealthClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Monthly Burn" orgId={orgId}>Monthly Burn</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-rose-100 dark:bg-rose-950 p-2">
+                    <Flame className="h-4 w-4 text-rose-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Monthly Burn" orgId={orgId}>Monthly Burn</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{format(latestBurn)}</p>

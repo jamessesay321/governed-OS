@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { SourceBadge } from '@/components/data-primitives';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, Percent, Receipt, PiggyBank, BarChart3, Wallet, Target } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/formatting/currency';
 
 type BenchmarkStatus = 'green' | 'amber' | 'red' | 'none';
@@ -35,6 +35,18 @@ interface KPICardsProps {
   };
   onCardClick?: (metric: string) => void;
 }
+
+const KPI_ICONS: Record<string, React.ElementType> = {
+  revenue: DollarSign,
+  gross_margin: Percent,
+  gross_profit: TrendingUp,
+  expenses: Receipt,
+  operating_expenses: Receipt,
+  net_profit: PiggyBank,
+  net_margin: BarChart3,
+  current_ratio: Target,
+  cash_position: Wallet,
+};
 
 function formatPercentage(value: number): string {
   return formatPercent(value);
@@ -163,9 +175,20 @@ export function KPICards({
             onClick={() => onCardClick?.(card.label.toLowerCase().replace(/\s+/g, '_'))}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                <FinancialTooltip term={card.label}>{card.label}</FinancialTooltip>
-              </CardTitle>
+              {(() => {
+                const metricKey = card.label.toLowerCase().replace(/\s+/g, '_');
+                const Icon = KPI_ICONS[metricKey] || BarChart3;
+                return (
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <Icon className="h-4 w-4 text-primary" />
+                    </div>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      <FinancialTooltip term={card.label}>{card.label}</FinancialTooltip>
+                    </CardTitle>
+                  </div>
+                );
+              })()}
               <div className="flex items-center gap-1.5">
                 {status !== 'none' && (
                   <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${statusLabel.className}`}>

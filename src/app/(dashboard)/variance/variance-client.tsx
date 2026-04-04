@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Target, DollarSign, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
@@ -172,9 +173,14 @@ export function VarianceClient({
         <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Budget
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-blue-100 dark:bg-blue-950 p-2">
+                  <Target className="h-4 w-4 text-blue-600" />
+                </div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Budget
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -184,9 +190,14 @@ export function VarianceClient({
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Actual
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-emerald-100 dark:bg-emerald-950 p-2">
+                  <DollarSign className="h-4 w-4 text-emerald-600" />
+                </div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Actual
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
@@ -196,9 +207,14 @@ export function VarianceClient({
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Variance
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-violet-100 dark:bg-violet-950 p-2">
+                  <ArrowUpDown className="h-4 w-4 text-violet-600" />
+                </div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Variance
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div
@@ -214,9 +230,14 @@ export function VarianceClient({
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Material Variances
-              </CardTitle>
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-rose-100 dark:bg-rose-950 p-2">
+                  <AlertTriangle className="h-4 w-4 text-rose-600" />
+                </div>
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Material Variances
+                </CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">

@@ -17,6 +17,7 @@ import { CrossRef } from '@/components/shared/in-page-link';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { DollarSign, Percent, BarChart3, PiggyBank } from 'lucide-react';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -198,9 +199,14 @@ export default function ProfitabilityClient({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Total Revenue" orgId={orgId}>Total Revenue</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-blue-100 dark:bg-blue-950 p-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Total Revenue" orgId={orgId}>Total Revenue</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{format(totalRevenue)}</p>
@@ -212,9 +218,14 @@ export default function ProfitabilityClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Gross Margin" orgId={orgId}>Avg Gross Margin</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-emerald-100 dark:bg-emerald-950 p-2">
+                    <Percent className="h-4 w-4 text-emerald-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Gross Margin" orgId={orgId}>Avg Gross Margin</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{avgGrossMargin}%</p>
@@ -232,9 +243,14 @@ export default function ProfitabilityClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Operating Margin" orgId={orgId}>Avg Operating Margin</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-violet-100 dark:bg-violet-950 p-2">
+                    <BarChart3 className="h-4 w-4 text-violet-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Operating Margin" orgId={orgId}>Avg Operating Margin</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{avgOperatingMargin}%</p>
@@ -252,9 +268,14 @@ export default function ProfitabilityClient({
 
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  <FinancialTooltip term="Net Profit" orgId={orgId}>Total Net Profit</FinancialTooltip>
-                </CardTitle>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-lg bg-amber-100 dark:bg-amber-950 p-2">
+                    <PiggyBank className="h-4 w-4 text-amber-600" />
+                  </div>
+                  <CardTitle className="text-sm font-medium text-muted-foreground">
+                    <FinancialTooltip term="Net Profit" orgId={orgId}>Total Net Profit</FinancialTooltip>
+                  </CardTitle>
+                </div>
               </CardHeader>
               <CardContent>
                 <p className={`text-3xl font-bold ${totalNetProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
