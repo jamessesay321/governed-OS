@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useCurrency } from '@/components/providers/currency-context';
 import {
   ReportControls,
@@ -27,6 +28,12 @@ const CLASS_LABELS: Record<string, string> = {
   EQUITY: 'Equity',
 };
 
+const CLASS_DESCRIPTIONS: Record<string, string> = {
+  ASSET: 'What the business owns',
+  LIABILITY: 'What the business owes',
+  EQUITY: "The owners' stake in the business",
+};
+
 function formatPeriodLabel(period: string | null): string {
   if (!period) return '-';
   const d = new Date(period);
@@ -42,6 +49,17 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
   const [controls, setControls] = useState<ReportControlsState>(() =>
     getDefaultReportState(availablePeriods, yearEndMonth)
   );
+
+  // Track which sections are expanded (all expanded by default)
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    ASSET: true,
+    LIABILITY: true,
+    EQUITY: true,
+  });
+
+  function toggleSection(cls: string) {
+    setExpandedSections((prev) => ({ ...prev, [cls]: !prev[cls] }));
+  }
 
   // Sync from global period selector when it changes
   const prevGlobalPeriodRef = useRef(globalPeriod.period);
@@ -130,6 +148,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
       const row: Record<string, unknown> = {
         Class: CLASS_LABELS[section.class] ?? section.class,
         Account: acc.name,
+        Code: acc.code,
         [formatPeriodLabel(currentPeriod)]: acc.amount,
       };
       if (priorPeriod) {
@@ -147,8 +166,17 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
   const totalEquity = currentData.find((s) => s.class === 'EQUITY')?.total ?? 0;
   const netAssets = totalAssets - totalLiabilities;
 
+  // Prior totals
+  const priorTotalAssets = priorData.find((s) => s.class === 'ASSET')?.total ?? 0;
+  const priorTotalLiabilities = priorData.find((s) => s.class === 'LIABILITY')?.total ?? 0;
+  const priorTotalEquity = priorData.find((s) => s.class === 'EQUITY')?.total ?? 0;
+  const priorNetAssets = priorTotalAssets - priorTotalLiabilities;
+
+  // Column count for colSpan calculations
+  const colCount = priorPeriod ? 5 : 3; // Account, Current, % | + Prior, Change
+
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-5xl">
       <div>
         <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
           &larr; Back to Financials
@@ -178,6 +206,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
             <tr className="border-b bg-muted/50">
               <th className="text-left px-4 py-3 font-semibold min-w-[280px]">Account</th>
               <th className="text-right px-4 py-3 font-semibold min-w-[120px]">{formatPeriodLabel(currentPeriod)}</th>
+              <th className="text-right px-4 py-3 font-semibold min-w-[70px]">% Total</th>
               {priorPeriod && (
                 <th className="text-right px-4 py-3 font-semibold min-w-[120px]">{formatPeriodLabel(priorPeriod)}</th>
               )}
@@ -187,59 +216,141 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
             </tr>
           </thead>
           <tbody>
-            {currentData.map((section) => (
-              <>
-                <tr key={`h-${section.class}`} className="border-b bg-muted/30">
-                  <td colSpan={priorPeriod ? 4 : 2} className="px-4 py-2.5 font-semibold text-muted-foreground uppercase text-xs tracking-wide">
-                    {CLASS_LABELS[section.class] ?? section.class}
-                  </td>
-                </tr>
-                {section.accounts.map((acc) => {
-                  const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
-                  const change = acc.amount - priorAmount;
-                  const changePct = priorAmount !== 0 ? ((change / Math.abs(priorAmount)) * 100) : 0;
-                  return (
-                    <tr
-                      key={`${section.class}-${acc.name}`}
-                      className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-                      onClick={() => {
-                        if (currentPeriod && acc.accountId) {
-                          openDrill({
-                            type: 'account',
-                            accountId: acc.accountId,
-                            accountName: acc.name,
-                            accountCode: acc.code,
-                            amount: acc.amount,
-                            period: currentPeriod,
-                          });
-                        }
-                      }}
-                    >
-                      <td className="px-4 py-2.5 pl-8 text-muted-foreground">{acc.name}</td>
-                      <td className="text-right px-4 py-2.5 font-mono text-xs">{formatCurrency(acc.amount)}</td>
-                      {priorPeriod && (
-                        <td className="text-right px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatCurrency(priorAmount)}</td>
-                      )}
-                      {priorPeriod && (
-                        <td className={`text-right px-4 py-2.5 font-mono text-xs ${change > 0 ? 'text-emerald-600' : change < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                          {change !== 0 ? `${change > 0 ? '+' : ''}${changePct.toFixed(1)}%` : '-'}
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })}
-                <tr key={`t-${section.class}`} className="border-b border-t-2 border-t-border bg-muted/20">
-                  <td className="px-4 py-2.5 font-semibold">Total {CLASS_LABELS[section.class] ?? section.class}</td>
-                  <td className="text-right px-4 py-2.5 font-mono text-xs font-semibold">{formatCurrency(section.total)}</td>
-                  {priorPeriod && (
-                    <td className="text-right px-4 py-2.5 font-mono text-xs font-semibold text-muted-foreground">
-                      {formatCurrency(priorData.find((s) => s.class === section.class)?.total ?? 0)}
+            {currentData.map((section) => {
+              const isExpanded = expandedSections[section.class] ?? true;
+              const priorSectionTotal = priorData.find((s) => s.class === section.class)?.total ?? 0;
+              const sectionChange = section.total - priorSectionTotal;
+              const sectionChangePct = priorSectionTotal !== 0 ? ((sectionChange / Math.abs(priorSectionTotal)) * 100) : 0;
+              const refTotal = section.class === 'ASSET' ? totalAssets : section.class === 'LIABILITY' ? totalLiabilities : totalEquity;
+
+              return (
+                <tbody key={section.class}>
+                  {/* Section header — clickable to expand/collapse */}
+                  <tr
+                    className="border-b bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => toggleSection(section.class)}
+                  >
+                    <td className="px-4 py-2.5 font-semibold">
+                      <div className="flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <div>
+                          <span className="uppercase text-xs tracking-wide">{CLASS_LABELS[section.class] ?? section.class}</span>
+                          <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
+                            {CLASS_DESCRIPTIONS[section.class]} ({section.accounts.length} accounts)
+                          </span>
+                        </div>
+                      </div>
                     </td>
-                  )}
-                  {priorPeriod && <td />}
-                </tr>
-              </>
-            ))}
+                    <td className="text-right px-4 py-2.5 font-mono text-xs font-semibold">
+                      {formatCurrency(section.total)}
+                    </td>
+                    <td className="text-right px-4 py-2.5 text-xs text-muted-foreground">
+                      100%
+                    </td>
+                    {priorPeriod && (
+                      <td className="text-right px-4 py-2.5 font-mono text-xs font-semibold text-muted-foreground">
+                        {formatCurrency(priorSectionTotal)}
+                      </td>
+                    )}
+                    {priorPeriod && (
+                      <td className={`text-right px-4 py-2.5 font-mono text-xs font-semibold ${
+                        sectionChange > 0 ? 'text-emerald-600' : sectionChange < 0 ? 'text-red-600' : 'text-muted-foreground'
+                      }`}>
+                        {sectionChange !== 0 ? (
+                          <div>
+                            <div>{sectionChange > 0 ? '+' : ''}{formatCurrency(sectionChange)}</div>
+                            <div className="text-[10px] font-normal">{sectionChangePct > 0 ? '+' : ''}{sectionChangePct.toFixed(1)}%</div>
+                          </div>
+                        ) : '-'}
+                      </td>
+                    )}
+                  </tr>
+
+                  {/* Account rows — only shown when expanded */}
+                  {isExpanded && section.accounts.map((acc) => {
+                    const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
+                    const change = acc.amount - priorAmount;
+                    const changePct = priorAmount !== 0 ? ((change / Math.abs(priorAmount)) * 100) : 0;
+                    const pctOfSection = refTotal !== 0 ? ((Math.abs(acc.amount) / Math.abs(refTotal)) * 100) : 0;
+
+                    return (
+                      <tr
+                        key={`${section.class}-${acc.name}`}
+                        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => {
+                          if (currentPeriod && acc.accountId) {
+                            openDrill({
+                              type: 'account',
+                              accountId: acc.accountId,
+                              accountName: acc.name,
+                              accountCode: acc.code,
+                              amount: acc.amount,
+                              period: currentPeriod,
+                            });
+                          }
+                        }}
+                      >
+                        <td className="px-4 py-2.5 pl-10">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground">{acc.name}</span>
+                            <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                          </div>
+                          {acc.code && (
+                            <span className="text-[10px] text-muted-foreground/60 font-mono">{acc.code}</span>
+                          )}
+                        </td>
+                        <td className="text-right px-4 py-2.5 font-mono text-xs">{formatCurrency(acc.amount)}</td>
+                        <td className="text-right px-4 py-2.5 text-[11px] text-muted-foreground">
+                          {pctOfSection.toFixed(1)}%
+                        </td>
+                        {priorPeriod && (
+                          <td className="text-right px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatCurrency(priorAmount)}</td>
+                        )}
+                        {priorPeriod && (
+                          <td className={`text-right px-4 py-2.5 font-mono text-xs ${change > 0 ? 'text-emerald-600' : change < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                            {change !== 0 ? (
+                              <div>
+                                <div>{change > 0 ? '+' : ''}{formatCurrency(change)}</div>
+                                <div className="text-[10px] font-normal">{changePct > 0 ? '+' : ''}{changePct.toFixed(1)}%</div>
+                              </div>
+                            ) : '-'}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              );
+            })}
+
+            {/* Net Assets row */}
+            <tbody>
+              <tr className="border-t-2 border-t-border bg-muted/20">
+                <td className="px-4 py-3 font-bold">Net Assets (Assets - Liabilities)</td>
+                <td className={`text-right px-4 py-3 font-mono text-sm font-bold ${netAssets >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatCurrency(netAssets)}
+                </td>
+                <td />
+                {priorPeriod && (
+                  <td className="text-right px-4 py-3 font-mono text-xs font-semibold text-muted-foreground">
+                    {formatCurrency(priorNetAssets)}
+                  </td>
+                )}
+                {priorPeriod && (
+                  <td className={`text-right px-4 py-3 font-mono text-xs font-semibold ${
+                    (netAssets - priorNetAssets) > 0 ? 'text-emerald-600' : (netAssets - priorNetAssets) < 0 ? 'text-red-600' : ''
+                  }`}>
+                    {(netAssets - priorNetAssets) !== 0
+                      ? `${(netAssets - priorNetAssets) > 0 ? '+' : ''}${formatCurrency(netAssets - priorNetAssets)}`
+                      : '-'}
+                  </td>
+                )}
+              </tr>
+            </tbody>
           </tbody>
         </table>
       </div>
@@ -247,16 +358,55 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
       {/* Key Ratios */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Assets', value: formatCurrency(totalAssets), good: true },
-          { label: 'Total Liabilities', value: formatCurrency(totalLiabilities), good: totalLiabilities < totalAssets },
-          { label: 'Total Equity', value: formatCurrency(totalEquity), good: totalEquity > 0 },
-          { label: 'Net Assets', value: formatCurrency(netAssets), good: netAssets > 0 },
+          {
+            label: 'Total Assets',
+            value: formatCurrency(totalAssets),
+            good: true,
+            change: priorPeriod ? totalAssets - priorTotalAssets : null,
+          },
+          {
+            label: 'Total Liabilities',
+            value: formatCurrency(totalLiabilities),
+            good: totalLiabilities < totalAssets,
+            change: priorPeriod ? totalLiabilities - priorTotalLiabilities : null,
+          },
+          {
+            label: 'Total Equity',
+            value: formatCurrency(totalEquity),
+            good: totalEquity > 0,
+            change: priorPeriod ? totalEquity - priorTotalEquity : null,
+          },
+          {
+            label: 'Net Assets',
+            value: formatCurrency(netAssets),
+            good: netAssets > 0,
+            change: priorPeriod ? netAssets - priorNetAssets : null,
+          },
         ].map((card, i) => (
           <div key={i} className="rounded-lg border bg-card p-4">
             <p className="text-xs text-muted-foreground font-medium">{card.label}</p>
             <p className={`text-xl font-bold mt-1 ${card.good ? 'text-emerald-600' : 'text-red-600'}`}>{card.value}</p>
+            {card.change !== null && card.change !== 0 && (
+              <p className={`text-[11px] mt-0.5 ${card.change > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {card.change > 0 ? '+' : ''}{formatCurrency(card.change)} vs prior
+              </p>
+            )}
           </div>
         ))}
+      </div>
+
+      {/* Accounting equation check */}
+      <div className="rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
+        <span className="font-medium">Accounting Equation:</span>{' '}
+        Assets ({formatCurrency(totalAssets)}) = Liabilities ({formatCurrency(totalLiabilities)}) + Equity ({formatCurrency(totalEquity)})
+        {' '}
+        {Math.abs(totalAssets - totalLiabilities - totalEquity) < 1 ? (
+          <span className="text-emerald-600 font-medium ml-1">Balanced</span>
+        ) : (
+          <span className="text-red-600 font-medium ml-1">
+            Imbalance: {formatCurrency(totalAssets - totalLiabilities - totalEquity)}
+          </span>
+        )}
       </div>
     </div>
   );

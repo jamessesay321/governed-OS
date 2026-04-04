@@ -26,7 +26,7 @@ export default async function CashFlowPage() {
   // Fetch normalised financials with account info
   const { data: financials } = await supabase
     .from('normalised_financials')
-    .select('*, chart_of_accounts!inner(code, name, type, class)')
+    .select('*, chart_of_accounts!inner(id, code, name, type, class)')
     .eq('org_id', orgId)
     .order('period', { ascending: false });
 
@@ -37,7 +37,7 @@ export default async function CashFlowPage() {
     .eq('org_id', orgId);
 
   const finData = (financials ?? []) as (NormalisedFinancial & {
-    chart_of_accounts: { code: string; name: string; type: string; class: string };
+    chart_of_accounts: { id: string; code: string; name: string; type: string; class: string };
   })[];
   const accData = (accounts ?? []) as ChartOfAccount[];
 
@@ -45,7 +45,7 @@ export default async function CashFlowPage() {
   const availablePeriods = [...new Set(finData.map((f) => f.period))].sort();
 
   // Build P&L for net profit figures — for ALL periods
-  type BSSection = { class: string; accounts: { name: string; amount: number }[]; total: number };
+  type BSSection = { class: string; accounts: { name: string; amount: number; accountId: string; code: string }[]; total: number };
 
   const allPnL: Record<string, { netProfit: number }> = {};
   for (const period of availablePeriods) {
@@ -56,7 +56,7 @@ export default async function CashFlowPage() {
   // Build balance sheet data for ALL periods
   function buildBS(data: typeof finData, period: string): BSSection[] {
     const periodData = data.filter((f) => f.period === period);
-    const groups = new Map<string, Map<string, number>>();
+    const groups = new Map<string, Map<string, { amount: number; accountId: string; code: string }>>();
 
     for (const fin of periodData) {
       const account = fin.chart_of_accounts;
@@ -65,8 +65,12 @@ export default async function CashFlowPage() {
 
       if (!groups.has(cls)) groups.set(cls, new Map());
       const accMap = groups.get(cls)!;
-      const existing = accMap.get(account.name) ?? 0;
-      accMap.set(account.name, existing + Number(fin.amount));
+      const existing = accMap.get(account.name);
+      if (existing) {
+        existing.amount += Number(fin.amount);
+      } else {
+        accMap.set(account.name, { amount: Number(fin.amount), accountId: account.id, code: account.code });
+      }
     }
 
     const result: BSSection[] = [];
@@ -77,7 +81,7 @@ export default async function CashFlowPage() {
         continue;
       }
       const accs = Array.from(accMap.entries())
-        .map(([name, amount]) => ({ name, amount }))
+        .map(([name, entry]) => ({ name, amount: entry.amount, accountId: entry.accountId, code: entry.code }))
         .sort((a, b) => a.name.localeCompare(b.name));
       const total = accs.reduce((s, a) => s + a.amount, 0);
       result.push({ class: cls, accounts: accs, total });
