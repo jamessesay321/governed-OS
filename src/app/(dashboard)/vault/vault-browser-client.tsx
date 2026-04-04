@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   FileText, Search, Filter, Archive, Clock, Shield, ChevronRight,
   FileBarChart, Brain, AlertTriangle, MessageSquare, ClipboardList,
-  TrendingUp, BookOpen, Upload, Download, Paperclip, X,
+  TrendingUp, BookOpen, Upload, Download, Paperclip, X, ChevronDown,
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ai-reasoning';
 
@@ -32,6 +32,7 @@ interface VaultItem {
 interface VaultVersion {
   id: string;
   version_number: number;
+  content: Record<string, unknown>;
   change_summary: string;
   provenance: Record<string, unknown>;
   created_by: string;
@@ -78,6 +79,452 @@ const STATUS_COLOURS: Record<string, string> = {
 };
 
 // ============================================================
+// JsonTree — recursive key-value renderer with collapsible nodes
+// ============================================================
+
+function JsonTree({ data, depth = 0 }: { data: unknown; depth?: number }) {
+  if (data === null || data === undefined) {
+    return <span className="text-gray-400 italic">null</span>;
+  }
+
+  if (typeof data === 'boolean') {
+    return <span className="text-purple-600">{data ? 'true' : 'false'}</span>;
+  }
+
+  if (typeof data === 'number') {
+    return <span className="text-blue-600">{data.toLocaleString()}</span>;
+  }
+
+  if (typeof data === 'string') {
+    if (data.length > 200) {
+      return <span className="text-gray-800 whitespace-pre-wrap">{data}</span>;
+    }
+    return <span className="text-gray-800">{data}</span>;
+  }
+
+  if (Array.isArray(data)) {
+    if (data.length === 0) {
+      return <span className="text-gray-400 italic">empty list</span>;
+    }
+    return (
+      <div className={depth > 0 ? 'ml-3 border-l border-gray-200 pl-3' : ''}>
+        {data.map((item, i) => (
+          <div key={i} className="py-0.5">
+            <JsonTreeNode label={String(i + 1)} value={item} depth={depth} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (typeof data === 'object') {
+    const entries = Object.entries(data as Record<string, unknown>);
+    if (entries.length === 0) {
+      return <span className="text-gray-400 italic">empty</span>;
+    }
+    return (
+      <div className={depth > 0 ? 'ml-3 border-l border-gray-200 pl-3' : ''}>
+        {entries.map(([key, value]) => (
+          <div key={key} className="py-0.5">
+            <JsonTreeNode label={key} value={value} depth={depth} />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return <span className="text-gray-600">{String(data)}</span>;
+}
+
+function JsonTreeNode({ label, value, depth }: { label: string; value: unknown; depth: number }) {
+  const [collapsed, setCollapsed] = useState(depth >= 2);
+  const isExpandable =
+    value !== null &&
+    value !== undefined &&
+    typeof value === 'object' &&
+    Object.keys(value as Record<string, unknown>).length > 0;
+
+  const prettyLabel = label
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^./, (c) => c.toUpperCase());
+
+  if (!isExpandable) {
+    return (
+      <div className="flex items-start gap-2 text-xs">
+        <span className="text-gray-500 font-medium flex-shrink-0">{prettyLabel}:</span>
+        <JsonTree data={value} depth={depth + 1} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-xs">
+      <button
+        onClick={() => setCollapsed(!collapsed)}
+        className="flex items-center gap-1 text-gray-700 font-medium hover:text-gray-900"
+      >
+        <ChevronDown
+          className={`h-3 w-3 transition-transform ${collapsed ? '-rotate-90' : ''}`}
+        />
+        {prettyLabel}
+        <span className="text-gray-400 font-normal">
+          {Array.isArray(value) ? `(${(value as unknown[]).length})` : `(${Object.keys(value as Record<string, unknown>).length})`}
+        </span>
+      </button>
+      {!collapsed && <JsonTree data={value} depth={depth + 1} />}
+    </div>
+  );
+}
+
+// ============================================================
+// VaultContentRenderer — type-aware content display
+// ============================================================
+
+function VaultContentRenderer({
+  itemType,
+  content,
+}: {
+  itemType: string;
+  content: Record<string, unknown> | null;
+}) {
+  if (itemType === 'file_upload') {
+    return (
+      <p className="text-xs text-gray-500 italic">
+        Content stored as file. Use the Download button below.
+      </p>
+    );
+  }
+
+  if (!content || Object.keys(content).length === 0) {
+    return (
+      <p className="text-xs text-gray-400 italic">No content available.</p>
+    );
+  }
+
+  switch (itemType) {
+    case 'narrative':
+    case 'ai_analysis':
+      return <NarrativeRenderer content={content} />;
+    case 'kpi_snapshot':
+      return <KpiSnapshotRenderer content={content} />;
+    case 'variance_analysis':
+      return <VarianceRenderer content={content} />;
+    case 'board_pack':
+      return <BoardPackRenderer content={content} />;
+    case 'interview_transcript':
+      return <InterviewRenderer content={content} />;
+    case 'playbook_assessment':
+      return <PlaybookRenderer content={content} />;
+    case 'scenario_output':
+      return <ScenarioRenderer content={content} />;
+    default:
+      return <JsonTree data={content} />;
+  }
+}
+
+// --- Narrative / AI Analysis ---
+function NarrativeRenderer({ content }: { content: Record<string, unknown> }) {
+  const textKeys = ['text', 'narrative', 'summary', 'content', 'analysis', 'body'];
+  const textValue = textKeys.reduce<string | null>((found, key) => {
+    if (found) return found;
+    if (typeof content[key] === 'string') return content[key] as string;
+    return null;
+  }, null);
+
+  const remaining = Object.fromEntries(
+    Object.entries(content).filter(([k]) => !textKeys.includes(k))
+  );
+
+  return (
+    <div className="space-y-2">
+      {textValue && (
+        <div className="text-xs text-gray-800 whitespace-pre-wrap leading-relaxed">
+          {textValue}
+        </div>
+      )}
+      {Object.keys(remaining).length > 0 && <JsonTree data={remaining} />}
+    </div>
+  );
+}
+
+// --- KPI Snapshot ---
+function KpiSnapshotRenderer({ content }: { content: Record<string, unknown> }) {
+  const kpis = (content.kpis ?? content.metrics ?? content.data) as
+    | Array<Record<string, unknown>>
+    | undefined;
+
+  if (!Array.isArray(kpis)) {
+    return <JsonTree data={content} />;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-200 text-gray-500">
+            <th className="text-left py-1 pr-2 font-medium">Metric</th>
+            <th className="text-right py-1 px-2 font-medium">Value</th>
+            <th className="text-center py-1 pl-2 font-medium">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {kpis.map((kpi, i) => (
+            <tr key={i} className="border-b border-gray-100">
+              <td className="py-1 pr-2 text-gray-800">
+                {String(kpi.label ?? kpi.name ?? kpi.metric ?? `KPI ${i + 1}`)}
+              </td>
+              <td className="py-1 px-2 text-right text-gray-900 font-medium tabular-nums">
+                {String(kpi.value ?? '—')}
+              </td>
+              <td className="py-1 pl-2 text-center">
+                <KpiStatusBadge status={kpi.status as string | undefined} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function KpiStatusBadge({ status }: { status: string | undefined }) {
+  if (!status) return <span className="text-gray-400">—</span>;
+  const s = status.toLowerCase();
+  const colours =
+    s === 'green' || s === 'good' || s === 'favourable'
+      ? 'bg-green-100 text-green-700'
+      : s === 'amber' || s === 'warning' || s === 'watch'
+        ? 'bg-amber-100 text-amber-700'
+        : s === 'red' || s === 'bad' || s === 'unfavourable'
+          ? 'bg-red-100 text-red-700'
+          : 'bg-gray-100 text-gray-600';
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${colours}`}>
+      {status}
+    </span>
+  );
+}
+
+// --- Variance Analysis ---
+function VarianceRenderer({ content }: { content: Record<string, unknown> }) {
+  const rows = (content.variances ?? content.data ?? content.items) as
+    | Array<Record<string, unknown>>
+    | undefined;
+
+  if (!Array.isArray(rows)) {
+    return <JsonTree data={content} />;
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-gray-200 text-gray-500">
+            <th className="text-left py-1 pr-2 font-medium">Metric</th>
+            <th className="text-right py-1 px-2 font-medium">Actual</th>
+            <th className="text-right py-1 px-2 font-medium">Budget</th>
+            <th className="text-right py-1 pl-2 font-medium">Variance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const variance = row.variance ?? row.diff ?? row.delta;
+            const varianceNum = typeof variance === 'number' ? variance : null;
+            return (
+              <tr key={i} className="border-b border-gray-100">
+                <td className="py-1 pr-2 text-gray-800">
+                  {String(row.label ?? row.metric ?? row.name ?? `Item ${i + 1}`)}
+                </td>
+                <td className="py-1 px-2 text-right tabular-nums">
+                  {String(row.actual ?? '—')}
+                </td>
+                <td className="py-1 px-2 text-right tabular-nums">
+                  {String(row.budget ?? row.prior ?? '—')}
+                </td>
+                <td
+                  className={`py-1 pl-2 text-right font-medium tabular-nums ${
+                    varianceNum !== null
+                      ? varianceNum >= 0
+                        ? 'text-green-600'
+                        : 'text-red-600'
+                      : ''
+                  }`}
+                >
+                  {variance !== undefined && variance !== null ? String(variance) : '—'}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// --- Board Pack ---
+function BoardPackRenderer({ content }: { content: Record<string, unknown> }) {
+  const sections = (content.sections ?? content.pages) as
+    | Array<Record<string, unknown>>
+    | undefined;
+
+  if (!Array.isArray(sections)) {
+    return <JsonTree data={content} />;
+  }
+
+  return (
+    <div className="space-y-3">
+      {sections.map((section, i) => (
+        <div key={i}>
+          <h5 className="text-xs font-semibold text-gray-700">
+            {String(section.title ?? section.heading ?? `Section ${i + 1}`)}
+          </h5>
+          {typeof section.content === 'string' ? (
+            <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap">
+              {section.content}
+            </p>
+          ) : typeof section.body === 'string' ? (
+            <p className="text-xs text-gray-600 mt-0.5 whitespace-pre-wrap">
+              {section.body}
+            </p>
+          ) : section.content ? (
+            <div className="mt-0.5">
+              <JsonTree data={section.content} />
+            </div>
+          ) : (
+            <div className="mt-0.5">
+              <JsonTree
+                data={Object.fromEntries(
+                  Object.entries(section).filter(([k]) => k !== 'title' && k !== 'heading')
+                )}
+              />
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Interview Transcript ---
+function InterviewRenderer({ content }: { content: Record<string, unknown> }) {
+  const pairs = (content.questions ?? content.transcript ?? content.qa ?? content.pairs) as
+    | Array<Record<string, unknown>>
+    | undefined;
+
+  if (!Array.isArray(pairs)) {
+    return <JsonTree data={content} />;
+  }
+
+  return (
+    <div className="space-y-2">
+      {pairs.map((pair, i) => (
+        <div key={i} className="text-xs space-y-0.5">
+          <p className="text-gray-500 font-medium">
+            Q: {String(pair.question ?? pair.q ?? `Question ${i + 1}`)}
+          </p>
+          <p className="text-gray-800 pl-3">
+            {String(pair.answer ?? pair.a ?? pair.response ?? '—')}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// --- Playbook Assessment ---
+function PlaybookRenderer({ content }: { content: Record<string, unknown> }) {
+  const modules = (content.modules ?? content.scores ?? content.assessments) as
+    | Array<Record<string, unknown>>
+    | undefined;
+
+  if (!Array.isArray(modules)) {
+    return <JsonTree data={content} />;
+  }
+
+  return (
+    <div className="space-y-1.5">
+      {modules.map((mod, i) => {
+        const score = typeof mod.score === 'number' ? mod.score : null;
+        const maxScore = typeof mod.max_score === 'number' ? mod.max_score : 5;
+        return (
+          <div key={i} className="flex items-center gap-2 text-xs">
+            <span className="text-gray-700 font-medium flex-shrink-0 w-28 truncate">
+              {String(mod.module ?? mod.name ?? mod.label ?? `Module ${i + 1}`)}
+            </span>
+            {score !== null && (
+              <>
+                <div className="flex-1 bg-gray-100 rounded-full h-2 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-blue-500"
+                    style={{ width: `${Math.min((score / maxScore) * 100, 100)}%` }}
+                  />
+                </div>
+                <span className="text-gray-600 tabular-nums w-10 text-right">
+                  {score}/{maxScore}
+                </span>
+              </>
+            )}
+            {score === null && (
+              <span className="text-gray-500">{String(mod.score ?? mod.rating ?? '—')}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// --- Scenario Output ---
+function ScenarioRenderer({ content }: { content: Record<string, unknown> }) {
+  const assumptions = content.assumptions as Array<Record<string, unknown>> | undefined;
+  const outcomes = content.outcomes ?? content.projections ?? content.results;
+
+  return (
+    <div className="space-y-3">
+      {Array.isArray(assumptions) && assumptions.length > 0 && (
+        <div>
+          <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            Assumptions
+          </h5>
+          <ul className="space-y-0.5 text-xs text-gray-700">
+            {assumptions.map((a, i) => (
+              <li key={i} className="flex items-start gap-1">
+                <span className="text-gray-400 mt-px">&bull;</span>
+                <span>
+                  {typeof a === 'string'
+                    ? a
+                    : String(a.label ?? a.name ?? '')}
+                  {typeof a === 'object' && a.value !== undefined && (
+                    <span className="text-gray-500"> = {String(a.value)}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {outcomes !== undefined && (
+        <div>
+          <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
+            Outcomes
+          </h5>
+          <JsonTree data={outcomes} />
+        </div>
+      )}
+      {/* Render any remaining keys not already shown */}
+      {(() => {
+        const shown = new Set(['assumptions', 'outcomes', 'projections', 'results']);
+        const remaining = Object.fromEntries(
+          Object.entries(content).filter(([k]) => !shown.has(k))
+        );
+        return Object.keys(remaining).length > 0 ? <JsonTree data={remaining} /> : null;
+      })()}
+    </div>
+  );
+}
+
+// ============================================================
 // Component
 // ============================================================
 
@@ -101,6 +548,7 @@ export function VaultBrowserClient({
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [downloading, setDownloading] = useState(false);
+  const [latestContent, setLatestContent] = useState<Record<string, unknown> | null>(null);
 
   const fetchItems = useCallback(async () => {
     setLoading(true);
@@ -134,9 +582,26 @@ export function VaultBrowserClient({
         const data = await res.json();
         setVersions(data.versions);
         setShowVersions(true);
+        const latestVersion = (data.versions as VaultVersion[])[0];
+        if (latestVersion?.content) {
+          setLatestContent(latestVersion.content);
+        }
       }
     } catch {
       console.error('Failed to fetch versions');
+    }
+  };
+
+  const fetchContent = async (itemId: string) => {
+    try {
+      const res = await fetch(`/api/vault/${orgId}/${itemId}/versions`);
+      if (res.ok) {
+        const data = await res.json();
+        const latestVersion = (data.versions as VaultVersion[])[0];
+        setLatestContent(latestVersion?.content ?? null);
+      }
+    } catch {
+      console.error('Failed to fetch content');
     }
   };
 
@@ -294,6 +759,10 @@ export function VaultBrowserClient({
                   onClick={() => {
                     setSelectedItem(item);
                     setShowVersions(false);
+                    setLatestContent(null);
+                    if (item.item_type !== 'file_upload') {
+                      fetchContent(item.id);
+                    }
                   }}
                   className={`w-full text-left rounded-lg border p-4 transition-colors ${
                     isSelected
@@ -383,6 +852,19 @@ export function VaultBrowserClient({
                         <p className="text-gray-900">{formatDate(selectedItem.data_freshness_at)}</p>
                       </div>
                     )}
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="border-t pt-3 space-y-2">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Content
+                  </h4>
+                  <div className="max-h-80 overflow-y-auto">
+                    <VaultContentRenderer
+                      itemType={selectedItem.item_type}
+                      content={latestContent}
+                    />
                   </div>
                 </div>
 

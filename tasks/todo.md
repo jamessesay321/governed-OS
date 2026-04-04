@@ -71,7 +71,7 @@ All audit files written to `docs/audits/`:
 
 ### Audit 11: Knowledge Vault
 - [x] Build file upload pipeline (Supabase Storage)
-- [ ] Build content renderer for vault JSONB items
+- [x] Build content renderer for vault JSONB items
 - [x] Wire AI Outputs sub-page to filtered vault query
 
 ### Audit 12: Advisor Portal (CRITICAL ARCHITECTURE)
@@ -91,7 +91,7 @@ All audit files written to `docs/audits/`:
 - [x] Build functional data exports
 - [ ] Add GDPR data deletion workflow
 - [x] Complete team management CRUD
-- [ ] Build audit log viewer UI
+- [x] Build audit log viewer UI
 - [ ] Persist module toggle state
 
 ### Audit 15: Automations & Alerts

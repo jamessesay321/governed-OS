@@ -1,23 +1,8 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { hasMinRole } from '@/lib/supabase/roles';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import type { Role } from '@/types';
+import AuditLogClient from './audit-log-client';
 
 export default async function AuditPage() {
   const { orgId, role } = await getUserProfile();
@@ -39,7 +24,7 @@ export default async function AuditPage() {
     .select('*')
     .eq('org_id', orgId)
     .order('created_at', { ascending: false })
-    .limit(100);
+    .limit(500);
 
   // Fetch profile names for display
   const { data: profiles } = await supabase
@@ -47,72 +32,21 @@ export default async function AuditPage() {
     .select('id, display_name')
     .eq('org_id', orgId);
 
-  const nameMap = new Map<string, string>();
-  for (const p of profiles || []) {
-    nameMap.set(p.id, p.display_name);
+  const nameMap: Record<string, string> = {};
+  for (const p of profiles ?? []) {
+    nameMap[p.id] = p.display_name;
   }
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Audit Log</h2>
+      <div>
+        <h2 className="text-2xl font-bold">Audit Log</h2>
+        <p className="text-sm text-muted-foreground">
+          Immutable log of all actions. Cannot be modified or deleted.
+        </p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity History</CardTitle>
-          <CardDescription>
-            Immutable log of all actions. Cannot be modified or deleted.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {(!logs || logs.length === 0) ? (
-            <p className="py-8 text-center text-muted-foreground">
-              No audit entries yet.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Entity</TableHead>
-                  <TableHead>Details</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.map((log) => (
-                  <TableRow key={log.id}>
-                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                      {new Date(log.created_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {nameMap.get(log.user_id) || 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{log.action}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {log.entity_type}
-                      {log.entity_id && (
-                        <span className="ml-1 text-muted-foreground">
-                          ({log.entity_id.slice(0, 8)})
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-[300px] truncate text-sm text-muted-foreground">
-                      {log.changes
-                        ? JSON.stringify(log.changes)
-                        : log.metadata
-                          ? JSON.stringify(log.metadata)
-                          : '—'}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+      <AuditLogClient logs={logs ?? []} nameMap={nameMap} />
     </div>
   );
 }
