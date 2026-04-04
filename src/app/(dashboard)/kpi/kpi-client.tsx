@@ -218,6 +218,7 @@ export function KPIDashboardClient({
             <KPIDetail
               kpi={selectedKPIData}
               history={kpiHistory}
+              period={selectedPeriod}
               onClose={() => setSelectedKPI(null)}
             />
           )}

@@ -20,15 +20,18 @@ import {
 import { formatKPIValue } from '@/lib/kpi/format';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import { AIReasoning } from '@/components/ui/ai-reasoning';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import type { KPISnapshot } from '@/types';
 
 interface KPIDetailProps {
   kpi: CalculatedKPI;
   history: KPISnapshot[];
+  period?: string;
   onClose?: () => void;
 }
 
-export function KPIDetail({ kpi, history, onClose }: KPIDetailProps) {
+export function KPIDetail({ kpi, history, period, onClose }: KPIDetailProps) {
+  const { openDrill } = useDrillDown();
   const chartData = history.map((snap) => ({
     period: snap.period.slice(0, 7), // YYYY-MM
     value: snap.value,
@@ -80,7 +83,23 @@ export function KPIDetail({ kpi, history, onClose }: KPIDetailProps) {
       <CardContent className="space-y-6">
         {/* Current value + trend */}
         <div className="flex items-baseline gap-4">
-          <span className="text-4xl font-bold">{kpi.formatted_value}</span>
+          <button
+            type="button"
+            className="text-4xl font-bold hover:underline hover:text-primary cursor-pointer transition-colors"
+            title="Drill into this KPI"
+            onClick={() =>
+              openDrill({
+                type: 'kpi',
+                kpiKey: kpi.key,
+                label: kpi.label,
+                value: kpi.value ?? 0,
+                formattedValue: kpi.formatted_value,
+                period: period ?? '',
+              })
+            }
+          >
+            {kpi.formatted_value}
+          </button>
           <span
             className={`text-sm font-medium ${
               kpi.trend_direction === 'up'

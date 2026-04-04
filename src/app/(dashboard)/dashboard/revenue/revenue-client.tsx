@@ -17,6 +17,7 @@ import { CrossRef } from '@/components/shared/in-page-link';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -39,7 +40,7 @@ interface RevenueProps {
     revenue: number;
     growthPct: number;
   }>;
-  revenueByAccount: Array<{ name: string; value: number }>;
+  revenueByAccount: Array<{ name: string; value: number; accountId: string; accountCode: string }>;
   lastSync: { completedAt: string | null };
 }
 
@@ -57,6 +58,7 @@ export default function RevenueClient({
   lastSync,
 }: RevenueProps) {
   const { format } = useCurrency();
+  const { openDrill } = useDrillDown();
 
   const availablePeriods = useMemo(() => periods.map((p) => p.period), [periods]);
   const { yearEndMonth } = useAccountingConfig();
@@ -269,6 +271,18 @@ export default function RevenueClient({
                         `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
                       }
                       labelLine={{ strokeWidth: 1 }}
+                      onClick={(data: Record<string, unknown>) => {
+                        const entry = data as { name: string; value: number; accountId: string; accountCode: string };
+                        openDrill({
+                          type: 'account',
+                          accountId: entry.accountId,
+                          accountName: entry.name,
+                          accountCode: entry.accountCode,
+                          amount: entry.value,
+                          period: controls.selectedPeriods[controls.selectedPeriods.length - 1],
+                        });
+                      }}
+                      style={{ cursor: 'pointer' }}
                     >
                       {revenueByAccount.map((_, i) => (
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />

@@ -58,23 +58,30 @@ export default async function RevenuePage() {
   });
 
   /* ── Revenue breakdown by account name (REVENUE class) ── */
-  const revenueAccountMap = new Map<string, number>();
+  const revenueAccountMap = new Map<string, { value: number; accountId: string; accountCode: string }>();
   for (const period of sortedPeriods) {
     const pnl = buildPnL(financials, accounts, period);
     for (const section of pnl.sections) {
       if (section.class === 'REVENUE') {
         for (const row of section.rows) {
-          revenueAccountMap.set(
-            row.accountName,
-            (revenueAccountMap.get(row.accountName) ?? 0) + row.amount,
-          );
+          const existing = revenueAccountMap.get(row.accountName);
+          revenueAccountMap.set(row.accountName, {
+            value: (existing?.value ?? 0) + row.amount,
+            accountId: row.accountId,
+            accountCode: row.accountCode,
+          });
         }
       }
     }
   }
 
   const revenueByAccount = Array.from(revenueAccountMap.entries())
-    .map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 }))
+    .map(([name, data]) => ({
+      name,
+      value: Math.round(data.value * 100) / 100,
+      accountId: data.accountId,
+      accountCode: data.accountCode,
+    }))
     .sort((a, b) => b.value - a.value);
 
   /* ── Fetch last sync time ── */
