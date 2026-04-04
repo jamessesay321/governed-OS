@@ -59,6 +59,7 @@ const navigation: NavGroup[] = [
       { href: '/dashboard/profitability', label: 'Profitability' },
       { href: '/dashboard/widgets', label: 'Widgets' },
       { href: '/dashboard/alerts', label: 'Alerts' },
+      { href: '/dashboard/review-queue', label: 'Review Queue' },
     ],
   },
   {

@@ -10,6 +10,7 @@ import { AccountingConfigProvider } from '@/components/providers/accounting-conf
 import { DrillDownProviderWrapper } from '@/components/providers/drill-down-provider-wrapper';
 import { GlobalPeriodProvider } from '@/components/providers/global-period-provider';
 import { GlobalPeriodSelector } from '@/components/layout/global-period-selector';
+import { ChallengeProvider, ChallengePanel } from '@/components/shared/challenge-panel';
 // Ask Grove functionality is merged into the CMD+K search bar in the Header
 
 export default async function DashboardLayout({
@@ -103,7 +104,10 @@ export default async function DashboardLayout({
             <GlobalPeriodProvider availablePeriods={availablePeriods}>
               <GlobalPeriodSelector />
               <DrillDownProviderWrapper orgId={orgId}>
-                <main className="flex-1 overflow-y-auto p-6">{children}</main>
+                <ChallengeProvider>
+                  <main className="flex-1 overflow-y-auto p-6">{children}</main>
+                  <ChallengePanel />
+                </ChallengeProvider>
               </DrillDownProviderWrapper>
             </GlobalPeriodProvider>
           </div>
