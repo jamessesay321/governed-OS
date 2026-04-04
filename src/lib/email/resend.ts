@@ -19,6 +19,7 @@ const SUBJECT_MAP: Record<string, string> = {
   verification: 'Verify your email address',
   'password-reset': 'Reset your password',
   invitation: 'You have been invited to join a team on Grove',
+  'challenges-digest': 'Grove: Open challenges need your attention',
 };
 
 const FROM_ADDRESS = process.env.RESEND_FROM_ADDRESS ?? 'Grove <notifications@grove.dev>';

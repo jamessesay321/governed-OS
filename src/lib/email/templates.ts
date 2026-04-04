@@ -268,3 +268,143 @@ export function invitationEmailTemplate(
 
   return wrap(body);
 }
+
+// ── Severity helpers for challenge digest ───────────────────────────────────
+
+const SEVERITY_COLOURS: Record<ChallengeSeverity, string> = {
+  error: '#ef4444',
+  concern: '#f59e0b',
+  question: '#3b82f6',
+};
+
+const SEVERITY_LABELS: Record<ChallengeSeverity, string> = {
+  error: 'Error',
+  concern: 'Concern',
+  question: 'Question',
+};
+
+const SEVERITY_ORDER: readonly ChallengeSeverity[] = ['error', 'concern', 'question'] as const;
+
+type ChallengeSeverity = 'question' | 'concern' | 'error';
+
+interface DigestChallenge {
+  severity: ChallengeSeverity;
+  page: string;
+  metricLabel: string;
+  metricValue: string;
+  reason: string;
+  createdAt: string;
+}
+
+function severityBadge(severity: ChallengeSeverity): string {
+  const colour = SEVERITY_COLOURS[severity];
+  const label = SEVERITY_LABELS[severity];
+  return `<span style="
+    display: inline-block;
+    padding: 2px 10px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    color: #ffffff;
+    background-color: ${colour};
+    border-radius: 4px;
+    line-height: 18px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  ">${label}</span>`;
+}
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1) + '\u2026';
+}
+
+function challengeRow(challenge: DigestChallenge): string {
+  return `
+    <tr>
+      <td style="padding: 12px 16px; border-bottom: 1px solid ${BRAND.border}; vertical-align: top;">
+        ${severityBadge(challenge.severity)}
+      </td>
+      <td style="
+        padding: 12px 16px;
+        border-bottom: 1px solid ${BRAND.border};
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        font-size: 14px;
+        line-height: 20px;
+        color: ${BRAND.textDark};
+        vertical-align: top;
+      ">
+        <strong>${challenge.metricLabel}</strong>
+        <span style="color: ${BRAND.textMuted};"> &middot; ${challenge.page}</span>
+        <br />
+        <span style="color: ${BRAND.textMuted}; font-size: 13px;">
+          Value: <strong>${challenge.metricValue}</strong> &mdash; ${truncate(challenge.reason, 80)}
+        </span>
+      </td>
+    </tr>`;
+}
+
+/**
+ * Weekly digest email summarising open challenges for an organisation.
+ */
+export function challengeDigestEmailTemplate(opts: {
+  userName: string;
+  orgName: string;
+  openCount: number;
+  challenges: DigestChallenge[];
+  reviewQueueUrl: string;
+}): string {
+  // Group challenges by severity in priority order
+  const grouped = new Map<ChallengeSeverity, DigestChallenge[]>();
+  for (const sev of SEVERITY_ORDER) {
+    const items = opts.challenges.filter((c) => c.severity === sev);
+    if (items.length > 0) {
+      grouped.set(sev, items);
+    }
+  }
+
+  let tableRows = '';
+  for (const [severity, items] of grouped) {
+    tableRows += `
+      <tr>
+        <td colspan="2" style="
+          padding: 10px 16px 4px;
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+          font-size: 13px;
+          font-weight: 700;
+          color: ${SEVERITY_COLOURS[severity]};
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          border-bottom: 2px solid ${SEVERITY_COLOURS[severity]};
+        ">
+          ${SEVERITY_LABELS[severity]}s (${items.length})
+        </td>
+      </tr>`;
+    for (const ch of items) {
+      tableRows += challengeRow(ch);
+    }
+  }
+
+  const body = `
+    <tr>
+      <td style="padding: 0 32px 24px;">
+        ${heading(`Hi ${opts.userName},`)}
+        ${paragraph(
+          `You have <strong>${opts.openCount} open challenge${opts.openCount === 1 ? '' : 's'}</strong> for <strong>${opts.orgName}</strong> that need attention.`
+        )}
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="
+          border: 1px solid ${BRAND.border};
+          border-radius: 8px;
+          border-collapse: separate;
+          overflow: hidden;
+          margin-bottom: 8px;
+        ">
+          ${tableRows}
+        </table>
+        ${ctaButton('View Review Queue', opts.reviewQueueUrl)}
+        ${muted('Manage email preferences in Settings')}
+      </td>
+    </tr>`;
+
+  return wrap(body);
+}

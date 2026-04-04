@@ -21,6 +21,7 @@ export interface DrillableValue {
 
 interface DrillableNumberProps {
   data: DrillableValue;
+  onDrillClick?: () => void;
   onDrill?: (data: DrillableValue) => void;
   onEdit?: (data: DrillableValue, newValue: number) => void;
   size?: 'sm' | 'md' | 'lg';
@@ -58,6 +59,7 @@ function formatNumber(n: number, compact?: boolean): string {
 
 export function DrillableNumber({
   data,
+  onDrillClick,
   onDrill,
   onEdit,
   size = 'md',
@@ -76,6 +78,8 @@ export function DrillableNumber({
       setEditValue(String(data.value));
       setEditing(true);
       setTimeout(() => inputRef.current?.focus(), 0);
+    } else if (data.drillable && onDrillClick) {
+      onDrillClick();
     } else if (data.drillable && onDrill) {
       onDrill(data);
     }
@@ -147,6 +151,9 @@ export function DrillableNumber({
             )}
             {data.type === 'assumption' && (
               <div className="text-blue-300 mt-1">Click to edit</div>
+            )}
+            {data.drillable && onDrillClick && data.type !== 'assumption' && (
+              <div className="text-blue-300 mt-1">Click to drill down</div>
             )}
           </div>
         </div>

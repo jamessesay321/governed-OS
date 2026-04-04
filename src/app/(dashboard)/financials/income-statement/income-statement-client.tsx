@@ -13,6 +13,8 @@ import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { DrillableNumber } from '@/components/data-primitives';
+import type { DrillableValue } from '@/components/data-primitives';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -125,14 +127,20 @@ export function IncomeStatementClient({ connected, periods }: Props) {
 
   const isDetailedView = controls.viewMode === 'detailed';
 
-  // Collect all account names per section
+  // Collect all account names per section + name-to-code mapping
   const sectionAccounts = new Map<string, string[]>();
+  const accountCodeMap = new Map<string, string>(); // accountName -> accountCode
   for (const cls of sectionOrder) {
     const names = new Set<string>();
     for (const p of filteredPeriods) {
       const section = p.sections.find((s) => s.class === cls);
       if (section) {
-        for (const r of section.rows) names.add(r.name);
+        for (const r of section.rows) {
+          names.add(r.name);
+          if (r.code && !accountCodeMap.has(r.name)) {
+            accountCodeMap.set(r.name, r.code);
+          }
+        }
       }
     }
     sectionAccounts.set(cls, Array.from(names).sort());
@@ -167,6 +175,10 @@ export function IncomeStatementClient({ connected, periods }: Props) {
     sectionHeader?: boolean;
     /** If set, clicking this row opens the drill-down sheet for the first period */
     drillSectionClass?: string;
+    /** Account code for individual account rows */
+    accountCode?: string;
+    /** Parent section class for individual account rows */
+    sectionClass?: string;
   };
 
   const rows: RowDef[] = [];
@@ -195,7 +207,7 @@ export function IncomeStatementClient({ connected, periods }: Props) {
           const accMap = sectionMap?.get(cls);
           return accMap?.get(name) ?? 0;
         });
-        rows.push({ label: name, values, indent: true });
+        rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), sectionClass: cls });
       }
     }
 
@@ -364,29 +376,88 @@ export function IncomeStatementClient({ connected, periods }: Props) {
                       )}
                     </div>
                   </td>
-                  {row.values.map((v, i) => (
-                    <td
-                      key={i}
-                      className={`text-right px-3 py-2.5 font-mono text-xs ${
-                        row.bold ? 'font-semibold' : ''
-                      } ${
-                        row.profitRow
-                          ? v >= 0
-                            ? 'text-emerald-600'
-                            : 'text-red-600'
-                          : row.indent
-                            ? 'text-muted-foreground'
-                            : ''
-                      }`}
-                    >
-                      <div>{formatCurrency(v)}</div>
-                      {row.marginPcts?.[i] && (
-                        <div className="text-[10px] text-muted-foreground font-normal">
-                          {row.marginPcts[i]} margin
+                  {row.values.map((v, i) => {
+                    const period = sortedPeriods[i]?.period;
+                    const isDrillable = !!(row.drillSectionClass || row.accountCode);
+                    const drillValue: DrillableValue = {
+                      value: v,
+                      type: 'actual',
+                      label: row.label,
+                      drillable: isDrillable,
+                      prefix: '',
+                      compact: false,
+                    };
+                    const handleDrillClick = () => {
+                      if (!period) return;
+                      if (row.accountCode && row.sectionClass) {
+                        openDrill({
+                          type: 'account',
+                          accountId: row.accountCode,
+                          accountName: row.label,
+                          accountCode: row.accountCode,
+                          amount: v,
+                          period,
+                        });
+                      } else if (row.drillSectionClass) {
+                        const pData = sortedPeriods[i];
+                        const section = pData?.sections.find((s) => s.class === row.drillSectionClass);
+                        if (section) {
+                          openDrill({
+                            type: 'pnl_section',
+                            section: {
+                              label: section.label,
+                              class: section.class,
+                              total: section.total,
+                              rows: section.rows.map((r) => ({
+                                accountId: r.code,
+                                accountCode: r.code,
+                                accountName: r.name,
+                                accountType: '',
+                                accountClass: section.class,
+                                amount: r.amount,
+                                transactionCount: 0,
+                              })),
+                            },
+                            period,
+                          });
+                        }
+                      }
+                    };
+                    return (
+                      <td
+                        key={i}
+                        className={`text-right px-3 py-2.5 font-mono text-xs ${
+                          row.bold ? 'font-semibold' : ''
+                        } ${
+                          row.profitRow
+                            ? v >= 0
+                              ? 'text-emerald-600'
+                              : 'text-red-600'
+                            : row.indent
+                              ? 'text-muted-foreground'
+                              : ''
+                        }`}
+                      >
+                        <div>
+                          {isDrillable ? (
+                            <DrillableNumber
+                              data={drillValue}
+                              onDrillClick={handleDrillClick}
+                              size="sm"
+                              showTooltip={true}
+                            />
+                          ) : (
+                            formatCurrency(v)
+                          )}
                         </div>
-                      )}
-                    </td>
-                  ))}
+                        {row.marginPcts?.[i] && (
+                          <div className="text-[10px] text-muted-foreground font-normal">
+                            {row.marginPcts[i]} margin
+                          </div>
+                        )}
+                      </td>
+                    );
+                  })}
                   <td
                     className={`text-right px-4 py-2.5 font-mono text-xs border-l ${
                       row.bold ? 'font-bold' : 'font-semibold'
@@ -405,6 +476,7 @@ export function IncomeStatementClient({ connected, periods }: Props) {
                       </div>
                     )}
                   </td>
+
                 </tr>
               );
             })}

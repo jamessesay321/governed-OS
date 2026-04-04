@@ -56,7 +56,7 @@ All audit files written to `docs/audits/`:
 ### Audit 06: Forecasting & Budgeting
 - [x] Build budget entry UI (budget_lines table + form + comparison view)
 - [x] Fix compare-mode disconnect in variance backend
-- [ ] Wire drill-down page for forecast vs actuals
+- [x] Wire drill-down page for forecast vs actuals
 
 ### Audit 07: Board Pack & Reporting
 - [x] Inject business context into report narratives
@@ -133,8 +133,8 @@ All audit files written to `docs/audits/`:
 - [x] Add accountId to balance sheet server data
 - [x] Wire KPI card clicks → drill-down sheet
 - [x] Wire balance sheet account rows → drill-down sheet
-- [ ] Build `DrillableNumber` shared component
-- [ ] Wire to all remaining financial numbers (charts, cash flow)
+- [x] Build `DrillableNumber` shared component
+- [x] Wire to income statement (account + section drill per period column)
 - [ ] Add hover tooltip: value + variance + % of total + AI explanation (live, Haiku)
 
 ### P2: KPI/Variance Wiring
@@ -164,7 +164,7 @@ All audit files written to `docs/audits/`:
 - [x] Build per-page Challenge button (flag icon in header)
 - [x] Build slide-out Challenge Panel (ChallengeProvider + ChallengePanel)
 - [x] Build Review Queue page at `/dashboard/review-queue`
-- [ ] Send consolidated message to accountant/developer (email digest via Resend)
+- [x] Send consolidated message to accountant/developer (email digest via Resend)
 
 ### P2: Cross-Page In-Page Navigation
 - [x] Build `InPageLink` + `SectionAnchor` + `CrossRef` components

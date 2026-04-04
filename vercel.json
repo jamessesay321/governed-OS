@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/xero-sync",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/challenges-digest",
+      "schedule": "0 8 * * 1"
     }
   ],
   "functions": {
