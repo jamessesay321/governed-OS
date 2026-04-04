@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { VisualiseButton } from '@/components/ui/visualise-button';
@@ -15,6 +15,7 @@ import {
   type ReportControlsState,
 } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 
 type PeriodSummary = {
   period: string;
@@ -115,6 +116,20 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
   const [controls, setControls] = useState<ReportControlsState>(() =>
     getDefaultReportState(availablePeriods, yearEndMonth)
   );
+
+  const globalPeriod = useGlobalPeriodContext();
+  const prevGlobalPeriodRef = useRef(globalPeriod.period);
+  useEffect(() => {
+    if (globalPeriod.period && globalPeriod.period !== prevGlobalPeriodRef.current) {
+      prevGlobalPeriodRef.current = globalPeriod.period;
+      setControls((prev) => ({
+        ...prev,
+        selectedPeriods: globalPeriod.selectedPeriods.filter((p) =>
+          availablePeriods.includes(p)
+        ),
+      }));
+    }
+  }, [globalPeriod.period, globalPeriod.selectedPeriods, availablePeriods]);
 
   // Filter periods by selected periods
   const filteredPeriods = useMemo(

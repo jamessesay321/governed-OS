@@ -1,0 +1,146 @@
+import { getUserProfile } from '@/lib/auth/get-user-profile';
+import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
+import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import type { AccountMapping } from '@/types';
+import { ExecutiveSummaryClient } from './executive-summary-client';
+
+export default async function ExecutiveSummaryPage() {
+  const { orgId, role, displayName } = await getUserProfile();
+  const supabase = await createClient();
+  const svc = await createUntypedServiceClient();
+
+  // Parallel fetches
+  const [financialsResult, accountsResult, xeroResult, syncResult, profileResult, mappingsResult, bsResult] =
+    await Promise.all([
+      supabase.from('normalised_financials').select('*').eq('org_id', orgId),
+      supabase.from('chart_of_accounts').select('*').eq('org_id', orgId),
+      supabase
+        .from('xero_connections')
+        .select('id, status')
+        .eq('org_id', orgId)
+        .eq('status', 'active')
+        .maybeSingle(),
+      supabase
+        .from('sync_log')
+        .select('started_at, completed_at, status')
+        .eq('org_id', orgId)
+        .order('started_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('organisations' as any)
+        .select('industry, description, name')
+        .eq('id', orgId)
+        .single(),
+      svc.from('account_mappings').select('*').eq('org_id', orgId),
+      // Balance sheet data for cash position
+      supabase
+        .from('normalised_financials')
+        .select('*, chart_of_accounts!inner(code, name, type, class)')
+        .eq('org_id', orgId)
+        .order('period', { ascending: false }),
+    ]);
+
+  const financials = financialsResult.data ?? [];
+  const accounts = accountsResult.data ?? [];
+  const mappings = (mappingsResult.data ?? []) as AccountMapping[];
+  const connected = !!xeroResult.data;
+  const lastSyncAt = syncResult.data?.completed_at ?? null;
+  const orgData = profileResult.data as Record<string, unknown> | null;
+  const orgName = (orgData?.name as string) ?? '';
+  const industry = (orgData?.industry as string) ?? '';
+
+  const periods = getAvailablePeriods(financials);
+
+  if (periods.length === 0) {
+    return (
+      <ExecutiveSummaryClient
+        orgId={orgId}
+        orgName={orgName}
+        displayName={displayName}
+        industry={industry}
+        connected={connected}
+        lastSyncAt={lastSyncAt}
+        hasData={false}
+        periods={[]}
+        pnlByPeriod={{}}
+        cashPosition={0}
+        totalAssets={0}
+        totalLiabilities={0}
+      />
+    );
+  }
+
+  // Build P&L for all periods
+  const hasMappings = mappings.length > 0;
+  const pnlByPeriod: Record<string, {
+    revenue: number;
+    costOfSales: number;
+    grossProfit: number;
+    expenses: number;
+    netProfit: number;
+  }> = {};
+
+  for (const period of periods) {
+    if (hasMappings) {
+      const spnl = buildSemanticPnL(financials, accounts, mappings, period);
+      pnlByPeriod[period] = {
+        revenue: spnl.revenue,
+        costOfSales: spnl.costOfSales,
+        grossProfit: spnl.grossProfit,
+        expenses: spnl.operatingExpenses,
+        netProfit: spnl.netProfit,
+      };
+    } else {
+      const pnl = buildPnL(financials, accounts, period);
+      pnlByPeriod[period] = {
+        revenue: pnl.revenue,
+        costOfSales: pnl.costOfSales,
+        grossProfit: pnl.grossProfit,
+        expenses: pnl.expenses,
+        netProfit: pnl.netProfit,
+      };
+    }
+  }
+
+  // Extract cash position from latest BS data
+  const latestPeriod = periods[0];
+  const bsData = bsResult.data ?? [];
+  const latestBsRows = bsData.filter((f: Record<string, unknown>) => f.period === latestPeriod);
+  let cashPosition = 0;
+  let totalAssets = 0;
+  let totalLiabilities = 0;
+
+  for (const fin of latestBsRows) {
+    const account = fin.chart_of_accounts as { code: string; name: string; type: string; class: string };
+    const cls = account.class.toUpperCase();
+    const amount = Number(fin.amount);
+    const type = account.type.toUpperCase();
+
+    if (cls === 'ASSET') {
+      totalAssets += amount;
+      if (type === 'BANK' || type === 'CASH' || account.name.toLowerCase().includes('bank') || account.name.toLowerCase().includes('cash')) {
+        cashPosition += amount;
+      }
+    } else if (cls === 'LIABILITY') {
+      totalLiabilities += amount;
+    }
+  }
+
+  return (
+    <ExecutiveSummaryClient
+      orgId={orgId}
+      orgName={orgName}
+      displayName={displayName}
+      industry={industry}
+      connected={connected}
+      lastSyncAt={lastSyncAt}
+      hasData={true}
+      periods={periods}
+      pnlByPeriod={pnlByPeriod}
+      cashPosition={cashPosition}
+      totalAssets={totalAssets}
+      totalLiabilities={totalLiabilities}
+    />
+  );
+}

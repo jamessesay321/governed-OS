@@ -54,6 +54,7 @@ const navigation: NavGroup[] = [
     href: '/dashboard',
     children: [
       { href: '/dashboard', label: 'CEO Overview' },
+      { href: '/dashboard/executive-summary', label: 'Executive Summary' },
       { href: '/dashboard/revenue', label: 'Revenue' },
       { href: '/dashboard/profitability', label: 'Profitability' },
       { href: '/dashboard/widgets', label: 'Widgets' },

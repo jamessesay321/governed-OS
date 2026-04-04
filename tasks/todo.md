@@ -146,11 +146,15 @@ All audit files written to `docs/audits/`:
 - [ ] CF: operating/investing/financing breakdown with expandable items
 
 ### P2: Executive Summary (replace Financial Summary)
-- [ ] Rename page → "Executive Summary"
-- [ ] AI narrative lead (3-4 sentences, founder-tone)
-- [ ] Visual P&L waterfall + 4-5 KPI bullet graphs
-- [ ] Correct terminology + hover tooltip definitions
-- [ ] Comparison context (vs last month + vs same month last year)
+- [x] Build Executive Summary page at `/dashboard/executive-summary`
+- [x] AI narrative lead (NarrativeSummary component)
+- [x] Visual P&L waterfall (horizontal bar chart)
+- [x] 5 KPI bullet graphs (Revenue, Gross Margin, Net Profit, Expenses, Cash Position)
+- [x] Comparison context table (vs last month + vs same month last year)
+- [x] Quick links to Income Statement, Balance Sheet, Variance
+- [x] Drill-down wired on Revenue, Net Profit, Expenses metrics
+- [x] Added to sidebar navigation
+- [ ] Correct terminology + hover tooltip definitions (use FinancialTooltip)
 
 ### P2: Challenge Panel + Review Queue
 - [ ] Create `number_challenges` table
