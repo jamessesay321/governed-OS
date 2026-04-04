@@ -13,6 +13,7 @@ import type { ReportControlsState } from '@/components/financial/report-controls
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -176,7 +177,7 @@ export default function ProfitabilityClient({
 
       {hasData && (
         <>
-          {/* Summary stat cards */}
+          {/* Summary stat cards with inline bullet bars */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
@@ -200,6 +201,12 @@ export default function ProfitabilityClient({
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{avgGrossMargin}%</p>
+                <div className="mt-2 h-2 rounded-full bg-muted/50 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${Math.min(Math.max(avgGrossMargin, 0), 100)}%` }}
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Average across all periods
                 </p>
@@ -214,6 +221,12 @@ export default function ProfitabilityClient({
               </CardHeader>
               <CardContent>
                 <p className="text-3xl font-bold">{avgOperatingMargin}%</p>
+                <div className="mt-2 h-2 rounded-full bg-muted/50 overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${avgOperatingMargin >= 0 ? 'bg-blue-500' : 'bg-red-500'}`}
+                    style={{ width: `${Math.min(Math.abs(avgOperatingMargin), 100)}%` }}
+                  />
+                </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Net profit / revenue
                 </p>
@@ -356,6 +369,14 @@ export default function ProfitabilityClient({
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Cross-references */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="font-medium">Related:</span>
+            <CrossRef href="/financials/income-statement" label="Income Statement" />
+            <CrossRef href="/variance" label="Variance Analysis" />
+            <CrossRef href="/kpi" label="KPI Dashboard" />
           </div>
         </>
       )}

@@ -157,7 +157,7 @@ All audit files written to `docs/audits/`:
 - [x] Quick links to Income Statement, Balance Sheet, Variance
 - [x] Drill-down wired on Revenue, Net Profit, Expenses metrics
 - [x] Added to sidebar navigation
-- [ ] Correct terminology + hover tooltip definitions (use FinancialTooltip)
+- [x] Correct terminology + hover tooltip definitions (FinancialTooltip on Revenue, Gross Margin, Net Profit, OpEx, Cash Position)
 
 ### P2: Challenge Panel + Review Queue
 - [x] Create `number_challenges` table (migration 028)
@@ -167,8 +167,8 @@ All audit files written to `docs/audits/`:
 - [ ] Send consolidated message to accountant/developer (email digest via Resend)
 
 ### P2: Cross-Page In-Page Navigation
-- [ ] Build `InPageLink` component (smooth scroll to section)
-- [ ] Wire cross-references throughout financials pages
+- [x] Build `InPageLink` + `SectionAnchor` + `CrossRef` components
+- [ ] Wire cross-references throughout financials pages (InPageLink usage)
 
 ### P3: Widget Expansion (19 widgets + 4 templates)
 - [ ] Build 14 additional widget components
@@ -177,13 +177,14 @@ All audit files written to `docs/audits/`:
 - [ ] Template flow: select starting point → customise → save → switch/delete
 
 ### P3: KPI Alerts Visual Upgrade
-- [ ] Add icons, sparklines, bullet graphs to alert rules
-- [ ] Color-coded severity badges (info/warning/critical)
+- [x] Add severity icons (Info/AlertTriangle/AlertCircle) to alert rules
+- [x] Color-coded severity badges with icons (info/warning/critical)
+- [ ] Add sparklines and bullet graphs to alert rules
 - [ ] AI-generated explanation cards for triggered alerts
 
 ### P3: Graph Builder Fixes
 - [ ] Fix AI → pie chart type mapping
-- [ ] Apply formatCurrency to all chart tooltips and labels
+- [x] Apply formatCurrency to all chart tooltips and Y-axis labels (bar, line, area, pie, waterfall)
 - [ ] Add hover drill-down to chart data points
 
 ### P3: Platform-Wide Visual Character (apply data-visualization-design skill)

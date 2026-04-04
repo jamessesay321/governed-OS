@@ -12,6 +12,7 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -426,6 +427,15 @@ export function IncomeStatementClient({ connected, periods }: Props) {
             </p>
           </div>
         ))}
+      </div>
+
+      {/* Cross-references */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="font-medium">Related:</span>
+        <CrossRef href="/financials/balance-sheet" label="Balance Sheet" />
+        <CrossRef href="/financials/cash-flow" label="Cash Flow" />
+        <CrossRef href="/variance" label="Variance Analysis" />
+        <CrossRef href="/dashboard/profitability" label="Profitability" />
       </div>
     </div>
   );

@@ -13,6 +13,7 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -413,6 +414,14 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
             Imbalance: {formatCurrency(totalAssets - totalLiabilities - totalEquity)}
           </span>
         )}
+      </div>
+
+      {/* Cross-references */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="font-medium">Related:</span>
+        <CrossRef href="/financials/cash-flow" label="Cash Flow Statement" />
+        <CrossRef href="/financials/income-statement" label="Income Statement" />
+        <CrossRef href="/dashboard/financial-health" label="Financial Health" />
       </div>
     </div>
   );

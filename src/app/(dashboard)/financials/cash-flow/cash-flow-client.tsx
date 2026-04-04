@@ -13,6 +13,7 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -582,6 +583,14 @@ export function CashFlowClient({
       <div className="rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">
         <span className="font-medium">Cash Flow Equation:</span>{' '}
         Operating ({formatCurrency(sections[0].subtotal)}) + Investing ({formatCurrency(sections[1].subtotal)}) + Financing ({formatCurrency(sections[2].subtotal)}) = Net Change ({formatCurrency(netChange)})
+      </div>
+
+      {/* Cross-references */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="font-medium">Related:</span>
+        <CrossRef href="/financials/balance-sheet" label="Balance Sheet" />
+        <CrossRef href="/financials/income-statement" label="Income Statement" />
+        <CrossRef href="/dashboard/financial-health" label="Financial Health" />
       </div>
     </div>
   );
