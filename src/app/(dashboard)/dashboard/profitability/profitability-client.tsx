@@ -14,6 +14,7 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 
@@ -198,7 +199,7 @@ export default function ProfitabilityClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Revenue
+                  <FinancialTooltip term="Total Revenue" orgId={orgId}>Total Revenue</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -212,7 +213,7 @@ export default function ProfitabilityClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Avg Gross Margin
+                  <FinancialTooltip term="Gross Margin" orgId={orgId}>Avg Gross Margin</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -232,7 +233,7 @@ export default function ProfitabilityClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Avg Operating Margin
+                  <FinancialTooltip term="Operating Margin" orgId={orgId}>Avg Operating Margin</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -252,7 +253,7 @@ export default function ProfitabilityClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Net Profit
+                  <FinancialTooltip term="Net Profit" orgId={orgId}>Total Net Profit</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -271,7 +272,7 @@ export default function ProfitabilityClient({
             {/* Gross Margin Trend */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Gross Margin Trend</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Gross Margin" orgId={orgId}>Gross Margin Trend</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -299,7 +300,7 @@ export default function ProfitabilityClient({
             {/* Operating Margin Trend */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Operating Margin Trend</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Operating Margin" orgId={orgId}>Operating Margin Trend</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -328,7 +329,7 @@ export default function ProfitabilityClient({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">
-                  Expense Breakdown ({format(totalExpenses)} total)
+                  <FinancialTooltip term="Expense Breakdown" orgId={orgId}>Expense Breakdown</FinancialTooltip> ({format(totalExpenses)} total)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -360,7 +361,7 @@ export default function ProfitabilityClient({
             {/* Net Profit Trend */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Net Profit Trend</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Net Profit" orgId={orgId}>Net Profit Trend</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>

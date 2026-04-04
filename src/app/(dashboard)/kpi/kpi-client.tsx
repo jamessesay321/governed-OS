@@ -8,6 +8,7 @@ import { KPIDetail } from '@/components/kpi/kpi-detail';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { VisualiseButton } from '@/components/ui/visualise-button';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import type { KPISnapshot, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -40,6 +41,7 @@ export function KPIDashboardClient({
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [kpiHistory, setKPIHistory] = useState<KPISnapshot[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [recalculating, setRecalculating] = useState(false);
 
   const canRecalculate = hasMinRole(role as Role, 'advisor');
@@ -55,14 +57,29 @@ export function KPIDashboardClient({
 
   const fetchKPIs = useCallback(async (period: string) => {
     setLoading(true);
+    setError(null);
     try {
       const res = await fetch(
         `/api/kpi/${orgId}?period=${period}&type=universal`
       );
-      if (res.ok) {
-        const data = await res.json();
-        setKPIs(data);
+      if (!res.ok) {
+        let message = `KPI fetch failed (${res.status})`;
+        try {
+          const body = await res.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // response may not be JSON
+        }
+        console.error('KPI API error:', res.status, message);
+        setError(message);
+        return;
       }
+      const data = await res.json();
+      setKPIs(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load KPIs';
+      console.error('KPI fetch exception:', err);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -76,16 +93,31 @@ export function KPIDashboardClient({
 
   async function handleRecalculate() {
     setRecalculating(true);
+    setError(null);
     try {
       const res = await fetch(`/api/kpi/${orgId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ period: selectedPeriod, type: 'universal' }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setKPIs(data.kpis);
+      if (!res.ok) {
+        let message = `Recalculation failed (${res.status})`;
+        try {
+          const body = await res.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // response may not be JSON
+        }
+        console.error('KPI recalculate error:', res.status, message);
+        setError(message);
+        return;
       }
+      const data = await res.json();
+      setKPIs(data.kpis);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Recalculation failed';
+      console.error('KPI recalculate exception:', err);
+      setError(message);
     } finally {
       setRecalculating(false);
     }
@@ -132,6 +164,11 @@ export function KPIDashboardClient({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <ChallengeButton
+            page="kpi"
+            metricLabel="KPI Dashboard"
+            period={selectedPeriod}
+          />
           <VisualiseButton context="kpi" />
           {/* Period selection handled by global period selector in layout */}
           {canRecalculate && (
@@ -149,6 +186,22 @@ export function KPIDashboardClient({
 
       {/* Narrative-first: AI summary before numbers */}
       <NarrativeSummary orgId={orgId} period={selectedPeriod} narrativeEndpoint="kpi/narrative" />
+
+      {error && (
+        <Card className="border-destructive">
+          <CardContent className="py-8 text-center">
+            <p className="text-sm font-medium text-destructive">{error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => fetchKPIs(selectedPeriod)}
+            >
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {loading ? (
         <div className="py-12 text-center text-muted-foreground">

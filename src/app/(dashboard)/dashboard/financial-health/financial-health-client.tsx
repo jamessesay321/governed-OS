@@ -21,6 +21,7 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 
@@ -231,7 +232,7 @@ export default function FinancialHealthClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Current Ratio
+                  <FinancialTooltip term="Current Ratio" orgId={orgId}>Current Ratio</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -243,7 +244,7 @@ export default function FinancialHealthClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Assets
+                  <FinancialTooltip term="Total Assets" orgId={orgId}>Total Assets</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -254,7 +255,7 @@ export default function FinancialHealthClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Cash Position
+                  <FinancialTooltip term="Cash Position" orgId={orgId}>Cash Position</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -265,7 +266,7 @@ export default function FinancialHealthClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Monthly Burn
+                  <FinancialTooltip term="Monthly Burn" orgId={orgId}>Monthly Burn</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -280,7 +281,7 @@ export default function FinancialHealthClient({
             {/* Burn Rate Trend */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Burn Rate Trend</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Burn Rate Trend" orgId={orgId}>Burn Rate Trend</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 {chartBurnRates.length > 0 ? (
@@ -314,7 +315,7 @@ export default function FinancialHealthClient({
             {/* Cash Position */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Cash Position</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Cash Position" orgId={orgId}>Cash Position</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 {chartCashByPeriod.length > 0 ? (
@@ -349,7 +350,7 @@ export default function FinancialHealthClient({
             {/* Runway Gauge */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">Cash Runway</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Cash Runway" orgId={orgId}>Cash Runway</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col items-center justify-center gap-4 pt-4">
                 <div className="w-full max-w-md">

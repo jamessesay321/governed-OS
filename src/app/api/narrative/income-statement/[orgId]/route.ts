@@ -1,0 +1,258 @@
+import { NextResponse, type NextRequest } from 'next/server';
+import { requireRole } from '@/lib/supabase/roles';
+import { createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
+import { callLLMCached } from '@/lib/ai/cache';
+import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
+import { hasBudgetRemaining, trackTokenUsage } from '@/lib/ai/token-budget';
+import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { getSkillAsSystemPrompt } from '@/lib/skills/company-skill';
+import { governedOutput, xeroFinancialsSource, accountMappingsSource, companySkillSource } from '@/lib/governance/checkpoint';
+import { llmLimiter } from '@/lib/rate-limit';
+import { z } from 'zod';
+import type { NormalisedFinancial, ChartOfAccount, AccountMapping } from '@/types';
+
+const querySchema = z.object({
+  period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+});
+
+/**
+ * GET /api/narrative/income-statement/[orgId]
+ * Generate a Claude API narrative for the Income Statement view.
+ * Narrative-first principle: every screen leads with written insight.
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ orgId: string }> }
+) {
+  try {
+    const { profile } = await requireRole('viewer');
+    const { orgId } = await params;
+
+    if (profile.org_id !== orgId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    // Rate limit: 10 LLM calls per minute per org
+    const limited = llmLimiter.check(orgId);
+    if (limited) return limited;
+
+    const url = new URL(request.url);
+    const parsed = querySchema.safeParse({
+      period: url.searchParams.get('period') || undefined,
+    });
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: parsed.error.issues[0]?.message ?? 'Invalid input' },
+        { status: 400 }
+      );
+    }
+
+    const supabase = await createServiceClient();
+    const untypedDb = await createUntypedServiceClient();
+
+    // Fetch financial data, accounts, mappings, and company skill in parallel
+    const [financialsResult, accountsResult, mappingsResult, companySystemPrompt, syncResult] =
+      await Promise.all([
+        supabase.from('normalised_financials').select('*').eq('org_id', orgId),
+        supabase.from('chart_of_accounts').select('*').eq('org_id', orgId),
+        untypedDb.from('account_mappings').select('*').eq('org_id', orgId),
+        getSkillAsSystemPrompt(orgId),
+        supabase.from('sync_log').select('completed_at').eq('org_id', orgId).eq('status', 'completed').order('completed_at', { ascending: false }).limit(1).single(),
+      ]);
+
+    const fins = (financialsResult.data ?? []) as NormalisedFinancial[];
+    const accs = (accountsResult.data ?? []) as ChartOfAccount[];
+    const mappings = (mappingsResult.data ?? []) as AccountMapping[];
+    const lastSync = syncResult.data;
+
+    const periods = getAvailablePeriods(fins);
+    if (periods.length === 0) {
+      return NextResponse.json({
+        narrative: 'Connect your Xero account and sync data to see your income statement analysis.',
+        period: null,
+        reasoning: null,
+        confidence: null,
+      });
+    }
+
+    const period = parsed.data.period && periods.includes(parsed.data.period)
+      ? parsed.data.period
+      : periods[0];
+
+    // Build P&L for current and previous periods
+    const hasMappings = mappings.length > 0;
+    const currentPnL = buildPnL(fins, accs, period);
+    const periodIdx = periods.indexOf(period);
+    const previousPeriod = periodIdx < periods.length - 1 ? periods[periodIdx + 1] : null;
+    const previousPnL = previousPeriod ? buildPnL(fins, accs, previousPeriod) : null;
+
+    // Semantic P&L for richer category-level detail
+    const semanticPnL = hasMappings ? buildSemanticPnL(fins, accs, mappings, period) : null;
+
+    const currentData = {
+      period,
+      revenue: currentPnL.revenue,
+      costOfSales: currentPnL.costOfSales,
+      grossProfit: currentPnL.grossProfit,
+      grossMargin: currentPnL.revenue > 0 ? ((currentPnL.grossProfit / currentPnL.revenue) * 100).toFixed(1) : '0',
+      expenses: currentPnL.expenses,
+      netProfit: currentPnL.netProfit,
+      netMargin: currentPnL.revenue > 0 ? ((currentPnL.netProfit / currentPnL.revenue) * 100).toFixed(1) : '0',
+    };
+
+    const previousData = previousPnL ? {
+      period: previousPeriod,
+      revenue: previousPnL.revenue,
+      costOfSales: previousPnL.costOfSales,
+      grossProfit: previousPnL.grossProfit,
+      grossMargin: previousPnL.revenue > 0 ? ((previousPnL.grossProfit / previousPnL.revenue) * 100).toFixed(1) : '0',
+      expenses: previousPnL.expenses,
+      netProfit: previousPnL.netProfit,
+      netMargin: previousPnL.revenue > 0 ? ((previousPnL.netProfit / previousPnL.revenue) * 100).toFixed(1) : '0',
+    } : null;
+
+    // Build system prompt: Company Skill + income statement-specific instructions
+    const systemPrompt = `${companySystemPrompt}
+
+## Narrative Task — Income Statement Analysis
+This is a UK-based business. Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
+
+Generate a concise income statement narrative (3-5 sentences) that analyses the profit and loss performance.
+
+Rules:
+- Lead with the most important revenue or profitability insight
+- Break down the income statement: revenue, cost of sales, gross profit, operating expenses, and net profit
+- Highlight gross margin and net margin percentages
+- If there's a previous period, identify the most significant line-item changes
+- Flag any expense categories growing faster than revenue
+- Assess whether the cost structure is sustainable
+- Respond with ONLY valid JSON
+
+Output JSON schema:
+{
+  "narrative": "string — the 3-5 sentence income statement analysis",
+  "reasoning": "string — brief explanation of why you highlighted these points",
+  "confidence": "high | medium | low"
+}`;
+
+    // Build category-aware P&L breakdown
+    const topLines = semanticPnL
+      ? semanticPnL.sections
+          .flatMap((s) =>
+            s.rows.map((r) => ({
+              name: r.accountName,
+              category: r.categoryLabel,
+              amount: r.amount,
+              section: s.label,
+            }))
+          )
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 15)
+          .map(
+            (r) =>
+              `- ${r.name} [${r.category}] (${r.section}): £${Math.abs(r.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
+          )
+          .join('\n')
+      : currentPnL.sections
+          .flatMap((s) =>
+            s.rows.map((r) => ({ name: r.accountName, amount: r.amount, section: s.label }))
+          )
+          .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+          .slice(0, 12)
+          .map(
+            (r) =>
+              `- ${r.name} (${r.section}): £${Math.abs(r.amount).toLocaleString('en-GB', { minimumFractionDigits: 2 })}`
+          )
+          .join('\n');
+
+    const userMessage = `Income Statement for ${period}:
+${JSON.stringify(currentData, null, 2)}
+
+${previousData ? `Previous period (${previousData.period}):\n${JSON.stringify(previousData, null, 2)}` : 'No previous period data available.'}
+
+Full P&L line items (sorted by amount):
+${topLines}`;
+
+    // Rate limit + budget checks
+    const rateCheck = checkRateLimit(orgId, 'narrative');
+    if (!rateCheck.allowed) {
+      const headers = getRateLimitHeaders(rateCheck);
+      return NextResponse.json(
+        { error: 'Rate limit exceeded. Please try again later.' },
+        { status: 429, headers }
+      );
+    }
+
+    const hasBudget = await hasBudgetRemaining(orgId);
+    if (!hasBudget) {
+      return NextResponse.json(
+        { error: 'Monthly AI token budget exhausted. Upgrade your plan for more.' },
+        { status: 402 }
+      );
+    }
+
+    const llmResult = await callLLMCached({
+      systemPrompt,
+      userMessage,
+      orgId,
+      temperature: 0.3,
+      model: 'sonnet',
+      maxTokens: 4096,
+      cacheSystemPrompt: true,
+    });
+    const responseText = llmResult.response;
+    await trackTokenUsage(orgId, llmResult.tokensUsed, 'narrative');
+
+    // Parse JSON response
+    let result: { narrative: string; reasoning: string; confidence: string };
+    try {
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        result = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error('No JSON in response');
+      }
+    } catch {
+      result = {
+        narrative: responseText.slice(0, 500),
+        reasoning: 'Failed to parse structured response',
+        confidence: 'low',
+      };
+    }
+
+    // Pass through governance checkpoint
+    const governed = await governedOutput({
+      orgId,
+      userId: profile.id as string,
+      outputType: 'narrative',
+      content: result.narrative,
+      modelTier: 'sonnet',
+      modelId: 'claude-sonnet-4-20250514',
+      dataSources: [
+        xeroFinancialsSource(period, lastSync?.completed_at as string | undefined),
+        ...(hasMappings ? [accountMappingsSource(mappings.length)] : []),
+        companySkillSource('2'),
+      ],
+      tokensUsed: llmResult.tokensUsed,
+      cached: llmResult.cached,
+    });
+
+    return NextResponse.json({
+      narrative: result.narrative,
+      reasoning: result.reasoning,
+      confidence: result.confidence,
+      period,
+      dataFreshness: lastSync?.completed_at || null,
+      governanceId: governed.id,
+    });
+  } catch (err) {
+    console.error('[NARRATIVE:INCOME-STATEMENT] Error:', err);
+    if (err instanceof Error && err.name === 'AuthorizationError') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    return NextResponse.json(
+      { error: 'Failed to generate income statement narrative' },
+      { status: 500 }
+    );
+  }
+}

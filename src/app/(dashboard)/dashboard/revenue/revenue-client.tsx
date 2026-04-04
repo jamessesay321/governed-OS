@@ -14,6 +14,7 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 
@@ -190,7 +191,7 @@ export default function RevenueClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Total Revenue
+                  <FinancialTooltip term="Total Revenue" orgId={orgId}>Total Revenue</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -204,7 +205,7 @@ export default function RevenueClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Latest Month Revenue
+                  <FinancialTooltip term="Latest Month Revenue" orgId={orgId}>Latest Month Revenue</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -218,7 +219,7 @@ export default function RevenueClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Avg Monthly Revenue
+                  <FinancialTooltip term="Avg Monthly Revenue" orgId={orgId}>Avg Monthly Revenue</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -232,7 +233,7 @@ export default function RevenueClient({
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Revenue Growth
+                  <FinancialTooltip term="Revenue Growth" orgId={orgId}>Revenue Growth</FinancialTooltip>
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -251,7 +252,7 @@ export default function RevenueClient({
             {/* Revenue by Account */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Revenue by Account</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Revenue by Account" orgId={orgId}>Revenue by Account</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -282,7 +283,7 @@ export default function RevenueClient({
             {/* Revenue Trend */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Revenue Trend</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Revenue Trend" orgId={orgId}>Revenue Trend</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
@@ -310,7 +311,7 @@ export default function RevenueClient({
             {/* Growth Rate */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-base">Revenue Growth Rate (MoM %)</CardTitle>
+                <CardTitle className="text-base"><FinancialTooltip term="Revenue Growth Rate" orgId={orgId}>Revenue Growth Rate (MoM %)</FinancialTooltip></CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
