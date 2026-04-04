@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { Bell, Info, AlertTriangle, AlertCircle, Trash2, Plus, X } from 'lucide-react';
 import { useUser } from '@/components/providers/user-context';
 
 // ============================================================
@@ -26,6 +27,13 @@ const CONDITION_LABELS: Record<string, string> = {
   change_below: 'decreases by more than',
 };
 
+const SEVERITY_CONFIG: Record<string, { bg: string; text: string; icon: typeof Info; label: string }> = {
+  info: { bg: 'bg-blue-100', text: 'text-blue-800', icon: Info, label: 'Info' },
+  warning: { bg: 'bg-amber-100', text: 'text-amber-800', icon: AlertTriangle, label: 'Warning' },
+  critical: { bg: 'bg-red-100', text: 'text-red-800', icon: AlertCircle, label: 'Critical' },
+};
+
+// Keep backward compat
 const SEVERITY_COLOURS: Record<string, string> = {
   info: 'bg-blue-100 text-blue-800',
   warning: 'bg-amber-100 text-amber-800',
@@ -165,7 +173,10 @@ export default function DashboardAlertsPage() {
       </Link>
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold" style={{ color: '#1c1b1b' }}>KPI Alerts</h2>
+          <h2 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Bell className="h-6 w-6 text-muted-foreground" />
+            KPI Alerts
+          </h2>
           <p className="text-sm text-muted-foreground mt-1">
             Get notified when KPIs cross your configured thresholds.
           </p>
@@ -175,7 +186,7 @@ export default function DashboardAlertsPage() {
             onClick={() => setShowForm(!showForm)}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
-            {showForm ? 'Cancel' : 'New Alert Rule'}
+            {showForm ? (<><X className="h-4 w-4 mr-1 inline" />Cancel</>) : (<><Plus className="h-4 w-4 mr-1 inline" />New Alert Rule</>)}
           </button>
         )}
       </div>
@@ -267,9 +278,7 @@ export default function DashboardAlertsPage() {
       ) : rules.length === 0 ? (
         <div className="rounded-lg border bg-card p-8 text-center">
           <div className="mx-auto h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-            <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
+            <Bell className="h-6 w-6 text-primary" />
           </div>
           <h3 className="text-lg font-semibold mb-2">No Alert Rules</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
@@ -306,12 +315,20 @@ export default function DashboardAlertsPage() {
                       {rule.condition.startsWith('change_') ? `${rule.threshold}%` : rule.threshold.toLocaleString()}
                     </span>
                   </p>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_COLOURS[rule.severity] ?? 'bg-gray-100 text-gray-600'}`}>
-                      {rule.severity}
-                    </span>
+                  <div className="flex items-center gap-2 mt-1">
+                    {(() => {
+                      const sev = SEVERITY_CONFIG[rule.severity];
+                      if (!sev) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{rule.severity}</span>;
+                      const SevIcon = sev.icon;
+                      return (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${sev.bg} ${sev.text}`}>
+                          <SevIcon className="h-3 w-3" />
+                          {sev.label}
+                        </span>
+                      );
+                    })()}
                     {!rule.enabled && (
-                      <span className="text-xs text-muted-foreground">Paused</span>
+                      <span className="text-xs text-muted-foreground italic">Paused</span>
                     )}
                   </div>
                 </div>
@@ -320,8 +337,9 @@ export default function DashboardAlertsPage() {
               {canEdit && (
                 <button
                   onClick={() => handleDelete(rule.id)}
-                  className="text-xs text-red-500 hover:text-red-700"
+                  className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
                 >
+                  <Trash2 className="h-3.5 w-3.5" />
                   Delete
                 </button>
               )}

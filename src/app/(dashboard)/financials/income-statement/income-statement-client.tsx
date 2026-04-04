@@ -11,6 +11,7 @@ import {
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -268,6 +269,11 @@ export function IncomeStatementClient({ connected, periods }: Props) {
             {formatPeriodRange(filteredPeriods.map((p) => p.period))}
           </p>
         </div>
+        <ChallengeButton
+          page="income-statement"
+          metricLabel="Income Statement"
+          period={filteredPeriods[filteredPeriods.length - 1]?.period}
+        />
       </div>
 
       {/* Report Controls */}

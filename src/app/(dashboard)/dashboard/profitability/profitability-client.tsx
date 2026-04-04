@@ -12,6 +12,7 @@ import { ReportControls, getDefaultReportState } from '@/components/financial/re
 import type { ReportControlsState } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -128,12 +129,19 @@ export default function ProfitabilityClient({
             Margins, expenses, and profitability trends
           </p>
         </div>
-        <Link
-          href="/dashboard"
-          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
-        >
-          &larr; Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <ChallengeButton
+            page="profitability"
+            metricLabel="Profitability"
+            period={filteredPeriods[filteredPeriods.length - 1]?.period}
+          />
+          <Link
+            href="/dashboard"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            &larr; Back to Dashboard
+          </Link>
+        </div>
       </div>
 
       {hasData && (

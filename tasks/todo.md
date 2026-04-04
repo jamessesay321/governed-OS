@@ -145,8 +145,8 @@ All audit files written to `docs/audits/`:
 - [x] Wire profitability + financial health pages to global period
 
 ### P2: Balance Sheet + Cash Flow Detail Parity
-- [ ] BS: expandable sections, account-level data, period comparison columns
-- [ ] CF: operating/investing/financing breakdown with expandable items
+- [x] BS: expandable sections, account-level data, period comparison columns, % of total, accounting equation check
+- [x] CF: operating/investing/financing breakdown with expandable items, drill-down, % of ops column
 
 ### P2: Executive Summary (replace Financial Summary)
 - [x] Build Executive Summary page at `/dashboard/executive-summary`
@@ -160,11 +160,11 @@ All audit files written to `docs/audits/`:
 - [ ] Correct terminology + hover tooltip definitions (use FinancialTooltip)
 
 ### P2: Challenge Panel + Review Queue
-- [ ] Create `number_challenges` table
-- [ ] Build per-page Challenge button (flag icon in header)
-- [ ] Build slide-out Challenge Panel
-- [ ] Build Review Queue page at `/dashboard/review-queue`
-- [ ] Send consolidated message to accountant/developer
+- [x] Create `number_challenges` table (migration 028)
+- [x] Build per-page Challenge button (flag icon in header)
+- [x] Build slide-out Challenge Panel (ChallengeProvider + ChallengePanel)
+- [x] Build Review Queue page at `/dashboard/review-queue`
+- [ ] Send consolidated message to accountant/developer (email digest via Resend)
 
 ### P2: Cross-Page In-Page Navigation
 - [ ] Build `InPageLink` component (smooth scroll to section)

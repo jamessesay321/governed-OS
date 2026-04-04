@@ -9,8 +9,10 @@ import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { formatCurrency, formatPercent, formatCurrencyCompact } from '@/lib/formatting/currency';
 import {
   TrendingUp, TrendingDown, Minus, ArrowLeft,
-  Sparkles, DollarSign, BarChart3, PieChart, Wallet,
+  Sparkles, DollarSign, BarChart3, PieChart, Wallet, Flag,
 } from 'lucide-react';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
+import { useChallenge } from '@/components/shared/challenge-panel';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -156,6 +158,7 @@ export function ExecutiveSummaryClient({
 }: ExecutiveSummaryClientProps) {
   const { period: globalPeriod } = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
+  const { openChallenge } = useChallenge();
 
   // Use global period, fall back to latest
   const currentPeriod = useMemo(() => {
@@ -249,9 +252,25 @@ export function ExecutiveSummaryClient({
             )}
           </p>
         </div>
-        <div className="text-right text-xs text-muted-foreground">
-          <p>{formatDataFreshness(lastSyncAt)}</p>
-          <p className="mt-0.5">Source: Xero</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() =>
+              openChallenge({
+                page: 'executive-summary',
+                metricLabel: 'Executive Summary',
+                period: currentPeriod,
+              })
+            }
+            className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Flag a number for review"
+          >
+            <Flag className="h-3.5 w-3.5" />
+            Challenge
+          </button>
+          <div className="text-right text-xs text-muted-foreground">
+            <p>{formatDataFreshness(lastSyncAt)}</p>
+            <p className="mt-0.5">Source: Xero</p>
+          </div>
         </div>
       </div>
 
@@ -283,7 +302,7 @@ export function ExecutiveSummaryClient({
               }
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Revenue</span>
+                <FinancialTooltip term="revenue" orgId={orgId}><span className="text-sm font-medium">Revenue</span></FinancialTooltip>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold">{formatCurrency(currentPnl.revenue)}</span>
                   {previousPnl && (
@@ -309,7 +328,7 @@ export function ExecutiveSummaryClient({
             {/* Gross Margin */}
             <div className="space-y-1 rounded-lg p-3 -m-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Gross Margin</span>
+                <FinancialTooltip term="gross_margin" orgId={orgId}><span className="text-sm font-medium">Gross Margin</span></FinancialTooltip>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold">{formatPercent(grossMarginPct)}</span>
                   {previousPnl && (
@@ -344,7 +363,7 @@ export function ExecutiveSummaryClient({
               }
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Net Profit</span>
+                <FinancialTooltip term="net_profit" orgId={orgId}><span className="text-sm font-medium">Net Profit</span></FinancialTooltip>
                 <div className="flex items-center gap-2">
                   <span className={`text-lg font-bold ${currentPnl.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                     {formatCurrency(currentPnl.netProfit)}
@@ -382,7 +401,7 @@ export function ExecutiveSummaryClient({
               }
             >
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Operating Expenses</span>
+                <FinancialTooltip term="operating_expenses" orgId={orgId}><span className="text-sm font-medium">Operating Expenses</span></FinancialTooltip>
                 <div className="flex items-center gap-2">
                   <span className="text-lg font-bold">{formatCurrency(currentPnl.expenses)}</span>
                   {previousPnl && (
@@ -411,7 +430,7 @@ export function ExecutiveSummaryClient({
             {/* Cash Position */}
             <div className="space-y-1 rounded-lg p-3 -m-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Cash Position</span>
+                <FinancialTooltip term="cash_position" orgId={orgId}><span className="text-sm font-medium">Cash Position</span></FinancialTooltip>
                 <span className={`text-lg font-bold ${cashPosition >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatCurrency(cashPosition)}
                 </span>

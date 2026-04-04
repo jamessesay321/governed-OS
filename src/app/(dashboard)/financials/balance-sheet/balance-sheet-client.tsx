@@ -12,6 +12,7 @@ import {
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -186,6 +187,11 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
           As at {formatPeriodLabel(currentPeriod)}
         </p>
       </div>
+      <ChallengeButton
+        page="balance-sheet"
+        metricLabel="Balance Sheet"
+        period={currentPeriod ?? undefined}
+      />
 
       {/* Report Controls */}
       <ReportControls

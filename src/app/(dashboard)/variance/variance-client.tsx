@@ -11,6 +11,7 @@ import { VisualiseButton } from '@/components/ui/visualise-button';
 import { formatPence } from '@/lib/formatting/currency';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -123,6 +124,11 @@ export function VarianceClient({
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <ChallengeButton
+            page="variance"
+            metricLabel="Variance Analysis"
+            period={selectedPeriod}
+          />
           <VisualiseButton context="variance" />
           {/* Compare mode selector */}
           <div className="flex flex-col items-end gap-1">

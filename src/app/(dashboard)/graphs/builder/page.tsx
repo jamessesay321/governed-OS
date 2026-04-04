@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency } from '@/lib/formatting/currency'
 
 /* ------------------------------------------------------------------ */
 /*  Chart types                                                        */
@@ -120,6 +121,9 @@ const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#64748b', '#f43
 function DynamicChart({ chart }: { chart: GeneratedChart }) {
   const { chartType, data, dataKeys, xAxisKey } = chart
 
+  // Currency formatter for chart tooltips
+  const fmtTooltip = (v: number | string) => formatCurrency(Number(v ?? 0))
+
   if (chartType === 'pie') {
     return (
       <ResponsiveContainer width="100%" height={320}>
@@ -140,7 +144,7 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
               <Cell key={i} fill={dataKeys[i]?.color || PIE_COLORS[i % PIE_COLORS.length]} />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip formatter={(v) => fmtTooltip(v as number)} />
         </RechartsPieChart>
       </ResponsiveContainer>
     )
@@ -152,8 +156,8 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
         <RechartsLineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} />
+          <Tooltip formatter={(v) => fmtTooltip(v as number)} />
           <Legend />
           {dataKeys.map((dk) => (
             <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} strokeWidth={2} dot={false} />
@@ -169,8 +173,8 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
         <RechartsAreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
-          <YAxis tick={{ fontSize: 12 }} />
-          <Tooltip />
+          <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} />
+          <Tooltip formatter={(v) => fmtTooltip(v as number)} />
           <Legend />
           {dataKeys.map((dk) => (
             <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} fill={dk.color} fillOpacity={0.15} strokeWidth={2} />
@@ -202,7 +206,7 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
           <YAxis tick={{ fontSize: 12 }} />
           <Tooltip
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            formatter={(value: any) => `£${Math.abs(Number(value ?? 0)).toLocaleString()}`}
+            formatter={(value: any) => formatCurrency(Math.abs(Number(value ?? 0)))}
           />
           <Bar dataKey="base" stackId="stack" fill="transparent" />
           <Bar dataKey="height" stackId="stack" radius={[3, 3, 0, 0]}>
@@ -224,8 +228,8 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
       <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} />
-        <Tooltip />
+        <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} />
+        <Tooltip formatter={(v) => fmtTooltip(v as number)} />
         <Legend />
         {dataKeys.map((dk) => (
           <Bar key={dk.key} dataKey={dk.key} name={dk.name} fill={dk.color} radius={[3, 3, 0, 0]} />

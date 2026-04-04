@@ -19,6 +19,7 @@ import { useCurrency } from '@/components/providers/currency-context';
 import { ReportControls, getDefaultReportState, type ReportControlsState } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -155,12 +156,18 @@ export default function FinancialHealthClient({
             Cash flow, runway, and working-capital overview
           </p>
         </div>
-        <Link
-          href="/dashboard"
-          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
-        >
-          ← Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <ChallengeButton
+            page="financial-health"
+            metricLabel="Financial Health"
+          />
+          <Link
+            href="/dashboard"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            ← Back to Dashboard
+          </Link>
+        </div>
       </div>
 
       {/* No-data banner */}
