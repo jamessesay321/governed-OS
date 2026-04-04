@@ -55,7 +55,7 @@ All audit files written to `docs/audits/`:
 
 ### Audit 06: Forecasting & Budgeting
 - [x] Build budget entry UI (budget_lines table + form + comparison view)
-- [ ] Fix compare-mode disconnect in variance backend
+- [x] Fix compare-mode disconnect in variance backend
 - [ ] Wire drill-down page for forecast vs actuals
 
 ### Audit 07: Board Pack & Reporting
@@ -92,7 +92,7 @@ All audit files written to `docs/audits/`:
 - [ ] Add GDPR data deletion workflow
 - [x] Complete team management CRUD
 - [x] Build audit log viewer UI
-- [ ] Persist module toggle state
+- [x] Persist module toggle state
 
 ### Audit 15: Automations & Alerts
 - [x] Implement scheduled Xero sync (Vercel Cron)

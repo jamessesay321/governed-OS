@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { requireRole } from '@/lib/supabase/roles';
 import { calculateVariances } from '@/lib/variance/engine';
+import type { CompareMode } from '@/lib/variance/engine';
 import { z } from 'zod';
 import { callLLMCached } from '@/lib/ai/cache';
 import { checkRateLimit, getRateLimitHeaders } from '@/lib/ai/rate-limiter';
@@ -23,12 +24,16 @@ export async function GET(
 
     const url = new URL(request.url);
     const period = url.searchParams.get('period');
+    const compare = url.searchParams.get('compare') as CompareMode | null;
 
     if (!period) {
       return NextResponse.json({ error: 'period query param required' }, { status: 400 });
     }
 
-    const report = await calculateVariances(orgId, period);
+    const validModes: CompareMode[] = ['budget', 'prev_month', 'prev_quarter', 'prev_year'];
+    const compareMode: CompareMode = compare && validModes.includes(compare) ? compare : 'budget';
+
+    const report = await calculateVariances(orgId, period, compareMode);
     return NextResponse.json(report);
   } catch (e) {
     if (e instanceof Error && e.name === 'AuthorizationError') {
