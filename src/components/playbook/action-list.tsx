@@ -4,18 +4,53 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import {
+  DollarSign,
+  TrendingUp,
+  Shield,
+  Users,
+  Target,
+  Lightbulb,
+  Wrench,
+  BarChart3,
+} from 'lucide-react';
 import type { PlaybookAction, ActionStatus, ActionPriority } from '@/types/playbook';
+import type { LucideIcon } from 'lucide-react';
 
 type ActionListProps = {
   actions: PlaybookAction[];
   onStatusChange?: (actionId: string, status: ActionStatus) => void;
 };
 
-const priorityConfig: Record<ActionPriority, { label: string; className: string }> = {
-  high: { label: 'High', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' },
-  medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' },
-  low: { label: 'Low', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' },
+const priorityConfig: Record<ActionPriority, { label: string; className: string; borderColor: string }> = {
+  high: { label: 'High', className: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', borderColor: 'border-l-red-500' },
+  medium: { label: 'Medium', className: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400', borderColor: 'border-l-amber-500' },
+  low: { label: 'Low', className: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400', borderColor: 'border-l-green-500' },
 };
+
+const dimensionIconMap: Record<string, { icon: LucideIcon; bgColor: string; textColor: string }> = {
+  financial: { icon: DollarSign, bgColor: 'bg-emerald-100 dark:bg-emerald-900/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+  finance: { icon: DollarSign, bgColor: 'bg-emerald-100 dark:bg-emerald-900/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+  revenue: { icon: DollarSign, bgColor: 'bg-emerald-100 dark:bg-emerald-900/30', textColor: 'text-emerald-600 dark:text-emerald-400' },
+  growth: { icon: TrendingUp, bgColor: 'bg-blue-100 dark:bg-blue-900/30', textColor: 'text-blue-600 dark:text-blue-400' },
+  compliance: { icon: Shield, bgColor: 'bg-purple-100 dark:bg-purple-900/30', textColor: 'text-purple-600 dark:text-purple-400' },
+  governance: { icon: Shield, bgColor: 'bg-purple-100 dark:bg-purple-900/30', textColor: 'text-purple-600 dark:text-purple-400' },
+  team: { icon: Users, bgColor: 'bg-orange-100 dark:bg-orange-900/30', textColor: 'text-orange-600 dark:text-orange-400' },
+  people: { icon: Users, bgColor: 'bg-orange-100 dark:bg-orange-900/30', textColor: 'text-orange-600 dark:text-orange-400' },
+  strategy: { icon: Target, bgColor: 'bg-rose-100 dark:bg-rose-900/30', textColor: 'text-rose-600 dark:text-rose-400' },
+  innovation: { icon: Lightbulb, bgColor: 'bg-yellow-100 dark:bg-yellow-900/30', textColor: 'text-yellow-600 dark:text-yellow-400' },
+  operations: { icon: Wrench, bgColor: 'bg-slate-100 dark:bg-slate-900/30', textColor: 'text-slate-600 dark:text-slate-400' },
+  performance: { icon: BarChart3, bgColor: 'bg-indigo-100 dark:bg-indigo-900/30', textColor: 'text-indigo-600 dark:text-indigo-400' },
+  kpi: { icon: BarChart3, bgColor: 'bg-indigo-100 dark:bg-indigo-900/30', textColor: 'text-indigo-600 dark:text-indigo-400' },
+};
+
+function getDimensionIcon(dimensionName: string) {
+  const lower = dimensionName.toLowerCase();
+  for (const [key, value] of Object.entries(dimensionIconMap)) {
+    if (lower.includes(key)) return value;
+  }
+  return { icon: Target, bgColor: 'bg-gray-100 dark:bg-gray-900/30', textColor: 'text-gray-600 dark:text-gray-400' };
+}
 
 const statusConfig: Record<ActionStatus, { label: string; next: ActionStatus | null }> = {
   pending: { label: 'Pending', next: 'in_progress' },
@@ -117,35 +152,48 @@ function ActionItem({
   const priority = priorityConfig[action.priority];
   const status = statusConfig[action.status];
   const isCompleted = action.status === 'completed';
+  const dimensionStyle = getDimensionIcon(action.dimensionName);
+  const DimensionIcon = dimensionStyle.icon;
 
   return (
     <div
       className={cn(
-        'flex items-start gap-3 rounded-lg border p-3 transition-colors',
+        'flex items-start gap-3 rounded-lg border border-l-4 p-3 transition-all hover:shadow-md hover:bg-muted/30',
+        priority.borderColor,
         isCompleted && 'opacity-60'
       )}
     >
+      {/* Dimension icon */}
+      <div
+        className={cn(
+          'mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full',
+          dimensionStyle.bgColor
+        )}
+      >
+        <DimensionIcon className={cn('h-4 w-4', dimensionStyle.textColor)} />
+      </div>
+
       {/* Status toggle */}
       <button
         onClick={() => onToggle(action.id)}
         className={cn(
-          'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+          'mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border-2 transition-all hover:scale-110',
           action.status === 'completed'
             ? 'border-primary bg-primary text-primary-foreground'
             : action.status === 'in_progress'
-              ? 'border-primary'
-              : 'border-muted-foreground/40 hover:border-primary'
+              ? 'border-primary bg-primary/10'
+              : 'border-muted-foreground/40 hover:border-primary hover:bg-primary/5'
         )}
         disabled={isCompleted}
         title={status.next ? `Move to ${statusConfig[status.next].label}` : 'Completed'}
       >
         {isCompleted && (
-          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
           </svg>
         )}
         {action.status === 'in_progress' && (
-          <div className="h-2 w-2 rounded-full bg-primary" />
+          <div className="h-2.5 w-2.5 rounded-full bg-primary animate-pulse" />
         )}
       </button>
 

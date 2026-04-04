@@ -5,6 +5,8 @@ import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { formatCurrencyCompact } from '@/lib/formatting/currency';
 import { AnomaliesClient } from './anomalies-client';
 
+export type AnomalyCategory = 'revenue' | 'expense' | 'cost_of_sales' | 'payroll' | 'tax' | 'new_activity' | 'general';
+
 export interface Anomaly {
   title: string;
   detail: string;
@@ -12,6 +14,8 @@ export interface Anomaly {
   impact: string;
   accountName: string;
   changePercent: number;
+  category: AnomalyCategory;
+  direction: 'up' | 'down' | 'new';
 }
 
 export default async function AnomaliesPage() {
@@ -60,6 +64,17 @@ export default async function AnomaliesPage() {
 
   const anomalies: Anomaly[] = [];
 
+  function inferCategory(acc: ChartOfAccount): AnomalyCategory {
+    const name = acc.name.toLowerCase();
+    const type = (acc.type ?? '').toLowerCase();
+    if (type === 'revenue' || name.includes('revenue') || name.includes('sales') || name.includes('income')) return 'revenue';
+    if (name.includes('salary') || name.includes('wage') || name.includes('payroll') || name.includes('staff')) return 'payroll';
+    if (name.includes('tax') || name.includes('vat') || name.includes('paye') || name.includes('corporation')) return 'tax';
+    if (type === 'direct costs' || name.includes('cost of') || name.includes('cogs') || name.includes('direct')) return 'cost_of_sales';
+    if (type === 'expense' || name.includes('expense') || name.includes('overhead') || name.includes('rent') || name.includes('utility')) return 'expense';
+    return 'general';
+  }
+
   // Compare each account between latest and prior period
   const allAccountIds = new Set([...latestByAccount.keys(), ...priorByAccount.keys()]);
 
@@ -82,6 +97,8 @@ export default async function AnomaliesPage() {
           impact: formatAmount(latest),
           accountName: acc.name,
           changePercent: 100,
+          category: 'new_activity',
+          direction: 'new',
         });
       }
       continue;
@@ -101,6 +118,8 @@ export default async function AnomaliesPage() {
         impact: formatAmount(latest - prior),
         accountName: acc.name,
         changePercent: change,
+        category: inferCategory(acc),
+        direction: change > 0 ? 'up' : 'down',
       });
     }
   }

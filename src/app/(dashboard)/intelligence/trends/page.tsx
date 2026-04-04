@@ -9,6 +9,11 @@ export interface TrendItem {
   title: string;
   detail: string;
   direction: 'up' | 'down' | 'flat';
+  metricType: 'revenue' | 'margin' | 'expense' | 'profit';
+  percentChange: string;
+  fromValue: string;
+  toValue: string;
+  periodCount: number;
 }
 
 function formatCurrency(amount: number): string {
@@ -76,6 +81,11 @@ export default async function TrendsPage() {
       : 'Revenue Stable',
     detail: `Revenue moved from ${formatCurrency(firstRevenue)} to ${formatCurrency(lastRevenue)} over ${pnls.length} periods (${revenueChange}% change).`,
     direction: revenueDirection,
+    metricType: 'revenue',
+    percentChange: revenueChange,
+    fromValue: formatCurrency(firstRevenue),
+    toValue: formatCurrency(lastRevenue),
+    periodCount: pnls.length,
   });
 
   // Gross margin trend
@@ -86,6 +96,10 @@ export default async function TrendsPage() {
   const firstGM = grossMargins[0];
   const lastGM = grossMargins[grossMargins.length - 1];
 
+  const gmChange = firstGM > 0
+    ? (((lastGM - firstGM) / firstGM) * 100).toFixed(1)
+    : '0';
+
   trends.push({
     title: gmDirection === 'up'
       ? 'Gross Margin Expanding'
@@ -94,6 +108,11 @@ export default async function TrendsPage() {
       : 'Gross Margin Stable',
     detail: `Gross margin moved from ${firstGM.toFixed(1)}% to ${lastGM.toFixed(1)}% over ${pnls.length} periods.`,
     direction: gmDirection,
+    metricType: 'margin',
+    percentChange: gmChange,
+    fromValue: `${firstGM.toFixed(1)}%`,
+    toValue: `${lastGM.toFixed(1)}%`,
+    periodCount: pnls.length,
   });
 
   // Expense trend (relative to revenue)
@@ -104,7 +123,12 @@ export default async function TrendsPage() {
   const firstExp = expenseRatios[0];
   const lastExp = expenseRatios[expenseRatios.length - 1];
 
+  const expChange = firstExp > 0
+    ? (((lastExp - firstExp) / firstExp) * 100).toFixed(1)
+    : '0';
+
   // For expenses, "up" direction means growing faster (bad), so flip labelling
+  const flippedExpDirection = expDirection === 'up' ? 'down' : expDirection === 'down' ? 'up' : 'flat';
   trends.push({
     title: expDirection === 'up'
       ? 'Expense Ratio Growing'
@@ -112,7 +136,12 @@ export default async function TrendsPage() {
       ? 'Expense Ratio Improving'
       : 'Expense Ratio Stable',
     detail: `Expenses as a share of revenue went from ${firstExp.toFixed(1)}% to ${lastExp.toFixed(1)}% over ${pnls.length} periods.`,
-    direction: expDirection === 'up' ? 'down' : expDirection === 'down' ? 'up' : 'flat',
+    direction: flippedExpDirection,
+    metricType: 'expense',
+    percentChange: expChange,
+    fromValue: `${firstExp.toFixed(1)}%`,
+    toValue: `${lastExp.toFixed(1)}%`,
+    periodCount: pnls.length,
   });
 
   // Net profit trend
@@ -120,6 +149,10 @@ export default async function TrendsPage() {
   const npDirection = computeDirection(netProfits);
   const firstNP = netProfits[0];
   const lastNP = netProfits[netProfits.length - 1];
+
+  const npChange = firstNP !== 0
+    ? (((lastNP - firstNP) / Math.abs(firstNP)) * 100).toFixed(1)
+    : '0';
 
   trends.push({
     title: npDirection === 'up'
@@ -129,6 +162,11 @@ export default async function TrendsPage() {
       : 'Net Profit Stable',
     detail: `Net profit moved from ${formatCurrency(firstNP)} to ${formatCurrency(lastNP)} over ${pnls.length} periods.`,
     direction: npDirection,
+    metricType: 'profit',
+    percentChange: npChange,
+    fromValue: formatCurrency(firstNP),
+    toValue: formatCurrency(lastNP),
+    periodCount: pnls.length,
   });
 
   return <TrendsClient trends={trends} hasData={true} />;
