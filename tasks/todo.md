@@ -54,7 +54,7 @@ All audit files written to `docs/audits/`:
 ## Remaining P0 Items (Next Priority)
 
 ### Audit 06: Forecasting & Budgeting
-- [ ] Build budget entry UI (budget_lines table + form + comparison view)
+- [x] Build budget entry UI (budget_lines table + form + comparison view)
 - [ ] Fix compare-mode disconnect in variance backend
 - [ ] Wire drill-down page for forecast vs actuals
 
@@ -168,7 +168,7 @@ All audit files written to `docs/audits/`:
 
 ### P2: Cross-Page In-Page Navigation
 - [x] Build `InPageLink` + `SectionAnchor` + `CrossRef` components
-- [ ] Wire cross-references throughout financials pages (InPageLink usage)
+- [x] Wire cross-references throughout financials pages (InPageLink usage)
 
 ### P3: Widget Expansion (19 widgets + 4 templates)
 - [ ] Build 14 additional widget components

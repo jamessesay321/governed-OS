@@ -12,6 +12,7 @@ import { ReportControls, getDefaultReportState } from '@/components/financial/re
 import type { ReportControlsState } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -309,6 +310,15 @@ export default function RevenueClient({
                 </ResponsiveContainer>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Cross-references */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="font-medium">Related:</span>
+            <CrossRef href="/financials/income-statement" label="Income Statement" />
+            <CrossRef href="/dashboard/profitability" label="Profitability" />
+            <CrossRef href="/variance" label="Variance Analysis" />
+            <CrossRef href="/kpi" label="KPI Dashboard" />
           </div>
         </>
       )}

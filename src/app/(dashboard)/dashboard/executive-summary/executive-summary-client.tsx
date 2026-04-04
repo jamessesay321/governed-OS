@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { useChallenge } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -548,6 +549,15 @@ export function ExecutiveSummaryClient({
           </CardContent>
         </Card>
       )}
+
+      {/* Cross-references */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="font-medium">Related:</span>
+        <CrossRef href="/kpi" label="KPI Dashboard" />
+        <CrossRef href="/dashboard/profitability" label="Profitability" />
+        <CrossRef href="/dashboard/financial-health" label="Financial Health" />
+        <CrossRef href="/dashboard/revenue" label="Revenue Analysis" />
+      </div>
 
       {/* Quick Links */}
       <div className="grid gap-3 sm:grid-cols-3">

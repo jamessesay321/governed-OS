@@ -13,6 +13,7 @@ import type { KPISnapshot, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { NumberLegend } from '@/components/data-primitives';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 interface KPIDashboardClientProps {
   orgId: string;
@@ -167,6 +168,15 @@ export function KPIDashboardClient({
               onClose={() => setSelectedKPI(null)}
             />
           )}
+
+          {/* Cross-references */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="font-medium">Related:</span>
+            <CrossRef href="/variance" label="Variance Analysis" />
+            <CrossRef href="/dashboard/profitability" label="Profitability" />
+            <CrossRef href="/financials/income-statement" label="Income Statement" />
+            <CrossRef href="/dashboard/financial-health" label="Financial Health" />
+          </div>
         </>
       )}
     </div>

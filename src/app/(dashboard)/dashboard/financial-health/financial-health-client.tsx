@@ -20,6 +20,7 @@ import { ReportControls, getDefaultReportState, type ReportControlsState } from 
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -393,6 +394,15 @@ export default function FinancialHealthClient({
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Cross-references */}
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span className="font-medium">Related:</span>
+            <CrossRef href="/financials/balance-sheet" label="Balance Sheet" />
+            <CrossRef href="/financials/cash-flow" label="Cash Flow" />
+            <CrossRef href="/dashboard/profitability" label="Profitability" />
+            <CrossRef href="/kpi" label="KPI Dashboard" />
           </div>
         </>
       )}

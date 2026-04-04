@@ -12,6 +12,7 @@ import { formatPence } from '@/lib/formatting/currency';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { CrossRef } from '@/components/shared/in-page-link';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -253,6 +254,15 @@ export function VarianceClient({
           onClose={() => setSelectedLine(null)}
         />
       )}
+
+      {/* Cross-references */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <span className="font-medium">Related:</span>
+        <CrossRef href="/financials/income-statement" label="Income Statement" />
+        <CrossRef href="/financials/budget" label="Budget Overview" />
+        <CrossRef href="/kpi" label="KPI Dashboard" />
+        <CrossRef href="/dashboard/profitability" label="Profitability" />
+      </div>
     </div>
   );
 }
