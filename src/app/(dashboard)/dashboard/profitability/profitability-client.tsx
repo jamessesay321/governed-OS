@@ -14,6 +14,8 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -29,6 +31,7 @@ const PIE_COLORS = [COLORS.blue, COLORS.rose, COLORS.amber, COLORS.violet, COLOR
 
 /* ─── Props ─── */
 interface ProfitabilityProps {
+  orgId: string;
   connected: boolean;
   periods: Array<{
     period: string;
@@ -39,6 +42,7 @@ interface ProfitabilityProps {
     expenses: number;
   }>;
   expenseBreakdown: Array<{ name: string; value: number }>;
+  lastSync: { completedAt: string | null };
 }
 
 /* ─── helper to format period YYYY-MM-01 to short label ─── */
@@ -48,9 +52,11 @@ function fmtPeriod(period: string): string {
 }
 
 export default function ProfitabilityClient({
+  orgId,
   connected,
   periods,
   expenseBreakdown,
+  lastSync,
 }: ProfitabilityProps) {
   const { format } = useCurrency();
 
@@ -129,6 +135,7 @@ export default function ProfitabilityClient({
           <p className="text-muted-foreground text-sm">
             Margins, expenses, and profitability trends
           </p>
+          <DataFreshness lastSyncAt={lastSync.completedAt} />
         </div>
         <div className="flex items-center gap-3">
           <ChallengeButton
@@ -154,6 +161,15 @@ export default function ProfitabilityClient({
           state={controls}
           exportTitle="profitability"
           exportData={csvData}
+        />
+      )}
+
+      {/* AI Narrative Summary */}
+      {hasData && (
+        <NarrativeSummary
+          orgId={orgId}
+          period={controls.selectedPeriods[controls.selectedPeriods.length - 1] ?? ''}
+          narrativeEndpoint="narrative/profitability"
         />
       )}
 

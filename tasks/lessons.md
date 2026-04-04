@@ -159,3 +159,20 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Fix:** Run invoice and bank transaction fetching sequentially. Each finishes its pagination before the next starts, allowing better rate limit window sharing.
 
 **Preventative rule:** When calling a rate-limited API, run paginated fetches SEQUENTIALLY unless the rate limit budget is clearly sufficient for parallel execution. Always calculate: (pages needed × streams) vs (rate limit per window).
+
+---
+
+## Lesson 15: Features without narrative are not features — Narrative Financial Reporting
+
+**Mistake:** Built 11 "features" across multiple sprints (audit log viewer, vault content renderer, cross-references, DrillableNumber, challenge digest, variance drill-down, etc.) — all structurally correct, all passing build — but pages still felt empty because they lacked the NARRATIVE LAYER that makes numbers meaningful.
+
+**Root cause:** Treated features as infrastructure (add a button, add a column, add a link) instead of treating each page as a COMMUNICATION PRODUCT. A table of numbers with a Challenge button is still just a table of numbers. The user — a non-finance business owner — needs the page to TELL THEM what the numbers mean.
+
+**The standard is called "Narrative Financial Reporting":** every financial page must have three layers on every number:
+1. **The Figure** — formatted correctly with `formatCurrency()`
+2. **The Context** — vs prior period, vs budget, % change, trend direction, margin %
+3. **The Narrative** — AI-generated plain English summary explaining "what this means for your business"
+
+**Fix:** Created `.claude/skills/narrative-financial-reporting.md` with the full standard and page-by-page checklist. Every financial page must include: `NarrativeSummary` at top, `DataFreshness` badge, `FinancialTooltip` on terms, `DrillableNumber` on figures, `ChallengeButton`, `CrossRef` links, and contextual comparisons on every number.
+
+**Preventative rule:** Before marking ANY financial page as "done", answer: "Would a non-accountant understand what this page is telling them?" If the answer is no, the page is not done. The Executive Summary page is the benchmark — every other page must match its level of narrative, context, and visual communication. Reference the skill at `.claude/skills/narrative-financial-reporting.md` for the full checklist.

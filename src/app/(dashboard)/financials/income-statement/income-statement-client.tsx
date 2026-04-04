@@ -15,6 +15,9 @@ import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { DrillableNumber } from '@/components/data-primitives';
 import type { DrillableValue } from '@/components/data-primitives';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 
 type AccountRow = { name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
@@ -31,6 +34,8 @@ type PeriodPnL = {
 type Props = {
   connected: boolean;
   periods: PeriodPnL[];
+  orgId: string;
+  lastSyncAt: string | null;
 };
 
 function formatMonth(period: string): string {
@@ -46,7 +51,7 @@ function formatPeriodRange(periods: string[]): string {
   return `${first.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })} \u2013 ${last.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}`;
 }
 
-export function IncomeStatementClient({ connected, periods }: Props) {
+export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }: Props) {
   const { format: formatCurrency } = useCurrency();
   const hasData = periods.length > 0;
 
@@ -277,7 +282,10 @@ export function IncomeStatementClient({ connected, periods }: Props) {
           <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             &larr; Back to Financials
           </Link>
-          <h2 className="text-2xl font-bold mt-1">Income Statement (P&amp;L)</h2>
+          <div className="flex items-center gap-3 mt-1">
+            <h2 className="text-2xl font-bold">Income Statement (P&amp;L)</h2>
+            <DataFreshness lastSyncAt={lastSyncAt} />
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
             {formatPeriodRange(filteredPeriods.map((p) => p.period))}
           </p>
@@ -288,6 +296,13 @@ export function IncomeStatementClient({ connected, periods }: Props) {
           period={filteredPeriods[filteredPeriods.length - 1]?.period}
         />
       </div>
+
+      {/* AI Narrative Summary */}
+      <NarrativeSummary
+        orgId={orgId}
+        period={controls.selectedPeriods[controls.selectedPeriods.length - 1] ?? ''}
+        narrativeEndpoint="narrative/income-statement"
+      />
 
       {/* Report Controls */}
       <ReportControls
@@ -368,7 +383,13 @@ export function IncomeStatementClient({ connected, periods }: Props) {
                     } ${row.indent ? 'pl-8 text-muted-foreground' : ''}`}
                   >
                     <div>
-                      {row.label}
+                      {(row.sectionHeader || row.profitRow) ? (
+                        <FinancialTooltip term={row.label} orgId={orgId}>
+                          {row.label}
+                        </FinancialTooltip>
+                      ) : (
+                        row.label
+                      )}
                       {row.sectionHeader && row.description && (
                         <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
                           {row.description}

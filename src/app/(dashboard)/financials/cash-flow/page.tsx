@@ -18,6 +18,17 @@ export default async function CashFlowPage() {
 
   const connected = !!xeroConn;
 
+  // Fetch last sync timestamp for DataFreshness
+  const syncResult = await supabase
+    .from('sync_log')
+    .select('completed_at')
+    .eq('org_id', orgId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastSyncAt = syncResult.data?.completed_at ?? null;
+
   // Auto-fetch balance sheet data if connected but none exists yet.
   if (connected) {
     await ensureBalanceSheetData(orgId);
@@ -100,6 +111,8 @@ export default async function CashFlowPage() {
       availablePeriods={availablePeriods}
       allPnL={allPnL}
       allBS={allBS}
+      orgId={orgId}
+      lastSyncAt={lastSyncAt}
     />
   );
 }

@@ -21,6 +21,8 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -35,6 +37,7 @@ const COLORS = {
 const RUNWAY_TARGET = 24;
 
 interface FinancialHealthProps {
+  orgId: string;
   connected: boolean;
   hasData: boolean;
   currentRatio: number;
@@ -44,6 +47,7 @@ interface FinancialHealthProps {
   burnRates: Array<{ period: string; burn: number }>;
   cashByPeriod: Array<{ period: string; cash: number }>;
   runwayMonths: number;
+  lastSync: { completedAt: string | null };
 }
 
 function formatPeriodLabel(period: string): string {
@@ -72,6 +76,7 @@ function getRatioBadge(ratio: number) {
 }
 
 export default function FinancialHealthClient({
+  orgId,
   connected,
   hasData,
   currentRatio,
@@ -80,6 +85,7 @@ export default function FinancialHealthClient({
   burnRates,
   cashByPeriod,
   runwayMonths,
+  lastSync,
 }: FinancialHealthProps) {
   const { format } = useCurrency();
 
@@ -156,6 +162,7 @@ export default function FinancialHealthClient({
           <p className="text-muted-foreground text-sm">
             Cash flow, runway, and working-capital overview
           </p>
+          <DataFreshness lastSyncAt={lastSync.completedAt} />
         </div>
         <div className="flex items-center gap-3">
           <ChallengeButton
@@ -195,6 +202,15 @@ export default function FinancialHealthClient({
             )}
           </CardContent>
         </Card>
+      )}
+
+      {/* AI Narrative Summary */}
+      {hasData && (
+        <NarrativeSummary
+          orgId={orgId}
+          period={controls.selectedPeriods[controls.selectedPeriods.length - 1] ?? ''}
+          narrativeEndpoint="narrative/financial-health"
+        />
       )}
 
       {hasData && (

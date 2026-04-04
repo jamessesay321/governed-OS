@@ -13,6 +13,8 @@ import { useGlobalPeriodContext } from '@/components/providers/global-period-pro
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -31,6 +33,7 @@ interface VarianceClientProps {
   periods: string[];
   defaultPeriod: string;
   role: string;
+  lastSync: { completedAt: string | null };
 }
 
 function hasMinRole(userRole: Role, minRole: Role): boolean {
@@ -44,6 +47,7 @@ export function VarianceClient({
   periods,
   defaultPeriod,
   role,
+  lastSync,
 }: VarianceClientProps) {
   const { period: globalPeriod, compare: globalCompare } = useGlobalPeriodContext();
   // Use global period as primary, fall back to prop for initial load
@@ -123,6 +127,7 @@ export function VarianceClient({
           <p className="text-sm text-muted-foreground">
             {COMPARE_LABELS[compareMode]} comparison with AI explanations
           </p>
+          <DataFreshness lastSyncAt={lastSync.completedAt} />
         </div>
         <div className="flex items-center gap-3">
           <ChallengeButton
@@ -154,6 +159,13 @@ export function VarianceClient({
           {/* Period selection now handled by global period selector in layout */}
         </div>
       </div>
+
+      {/* AI Narrative Summary */}
+      <NarrativeSummary
+        orgId={orgId}
+        period={selectedPeriod}
+        narrativeEndpoint="narrative/variance"
+      />
 
       {/* Summary cards */}
       {report && (

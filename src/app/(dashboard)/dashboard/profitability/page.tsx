@@ -78,11 +78,22 @@ export default async function ProfitabilityPage() {
     .map(([name, value]) => ({ name, value: Math.round(Math.abs(value) * 100) / 100 }))
     .sort((a, b) => b.value - a.value);
 
+  /* ── Fetch last sync time ── */
+  const { data: syncLog } = await supabase
+    .from('sync_log')
+    .select('completed_at')
+    .eq('org_id', orgId)
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .single();
+
   return (
     <ProfitabilityClient
+      orgId={orgId}
       connected={connected}
       periods={periods}
       expenseBreakdown={expenseBreakdown}
+      lastSync={{ completedAt: syncLog?.completed_at ?? null }}
     />
   );
 }

@@ -14,6 +14,9 @@ import { useGlobalPeriodContext } from '@/components/providers/global-period-pro
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -23,6 +26,8 @@ type Props = {
   availablePeriods: string[];
   allPnL: Record<string, { netProfit: number }>;
   allBS: Record<string, BSSection[]>;
+  orgId: string;
+  lastSyncAt: string | null;
 };
 
 function formatPeriodLabel(period: string | null): string {
@@ -183,6 +188,8 @@ export function CashFlowClient({
   availablePeriods,
   allPnL,
   allBS,
+  orgId,
+  lastSyncAt,
 }: Props) {
   const { format: formatCurrency } = useCurrency();
   const { yearEndMonth } = useAccountingConfig();
@@ -315,7 +322,10 @@ export function CashFlowClient({
         <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
           &larr; Back to Financials
         </Link>
-        <h2 className="text-2xl font-bold mt-1">Cash Flow Statement</h2>
+        <div className="flex items-center gap-3 mt-1">
+          <h2 className="text-2xl font-bold">Cash Flow Statement</h2>
+          <DataFreshness lastSyncAt={lastSyncAt} />
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           Indirect method, as at {formatPeriodLabel(currentPeriod)}
         </p>
@@ -324,6 +334,13 @@ export function CashFlowClient({
         page="cash-flow"
         metricLabel="Cash Flow Statement"
         period={currentPeriod ?? undefined}
+      />
+
+      {/* AI Narrative Summary */}
+      <NarrativeSummary
+        orgId={orgId}
+        period={currentPeriod ?? ''}
+        narrativeEndpoint="narrative/cash-flow"
       />
 
       {/* Report Controls */}
@@ -417,7 +434,11 @@ export function CashFlowClient({
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         )}
                         <div>
-                          <span className="uppercase text-xs tracking-wide">{section.title}</span>
+                          <span className="uppercase text-xs tracking-wide">
+                            <FinancialTooltip term={section.title} orgId={orgId}>
+                              {section.title}
+                            </FinancialTooltip>
+                          </span>
                           <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
                             {section.description}
                             {section.items.length > 0 && ` (${section.items.length} items)`}
@@ -529,7 +550,11 @@ export function CashFlowClient({
             {/* Net Change in Cash */}
             <tbody>
               <tr className="border-t-2 border-t-border bg-muted/20">
-                <td className="px-4 py-3 font-bold">Net Change in Cash</td>
+                <td className="px-4 py-3 font-bold">
+                  <FinancialTooltip term="Net Change in Cash" orgId={orgId}>
+                    Net Change in Cash
+                  </FinancialTooltip>
+                </td>
                 <td className={`text-right px-4 py-3 font-mono text-sm font-bold ${netChange >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatCurrency(netChange)}
                 </td>

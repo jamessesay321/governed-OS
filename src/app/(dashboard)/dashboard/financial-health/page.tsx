@@ -47,9 +47,21 @@ export default async function FinancialHealthPage() {
   const periods = getAvailablePeriods(financials);
   const hasData = periods.length > 0;
 
+  /* ── Fetch last sync time ── */
+  const { data: syncLog } = await supabase
+    .from('sync_log')
+    .select('completed_at')
+    .eq('org_id', orgId)
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .single();
+
+  const lastSync = { completedAt: syncLog?.completed_at ?? null };
+
   if (!hasData) {
     return (
       <FinancialHealthClient
+        orgId={orgId}
         connected={connected}
         hasData={false}
         currentRatio={0}
@@ -59,6 +71,7 @@ export default async function FinancialHealthPage() {
         burnRates={[]}
         cashByPeriod={[]}
         runwayMonths={0}
+        lastSync={lastSync}
       />
     );
   }
@@ -137,6 +150,7 @@ export default async function FinancialHealthPage() {
 
   return (
     <FinancialHealthClient
+      orgId={orgId}
       connected={connected}
       hasData={hasData}
       currentRatio={currentRatio}
@@ -146,6 +160,7 @@ export default async function FinancialHealthPage() {
       burnRates={burnRates}
       cashByPeriod={cashByPeriod}
       runwayMonths={runwayMonths}
+      lastSync={lastSync}
     />
   );
 }

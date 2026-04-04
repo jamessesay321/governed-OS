@@ -12,7 +12,10 @@ import { ReportControls, getDefaultReportState } from '@/components/financial/re
 import type { ReportControlsState } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -28,6 +31,7 @@ const PIE_COLORS = [COLORS.blue, COLORS.emerald, COLORS.violet, COLORS.amber, CO
 
 /* ─── Props ─── */
 interface RevenueProps {
+  orgId: string;
   connected: boolean;
   periods: Array<{
     period: string;
@@ -35,6 +39,7 @@ interface RevenueProps {
     growthPct: number;
   }>;
   revenueByAccount: Array<{ name: string; value: number }>;
+  lastSync: { completedAt: string | null };
 }
 
 /* ─── helper to format period YYYY-MM-01 to short label ─── */
@@ -44,9 +49,11 @@ function fmtPeriod(period: string): string {
 }
 
 export default function RevenueClient({
+  orgId,
   connected,
   periods,
   revenueByAccount,
+  lastSync,
 }: RevenueProps) {
   const { format } = useCurrency();
 
@@ -120,13 +127,21 @@ export default function RevenueClient({
           <p className="text-muted-foreground text-sm">
             Revenue mix, growth trends, and account breakdown
           </p>
+          <DataFreshness lastSyncAt={lastSync.completedAt} />
         </div>
-        <Link
-          href="/dashboard"
-          className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
-        >
-          &larr; Back to Dashboard
-        </Link>
+        <div className="flex items-center gap-3">
+          <ChallengeButton
+            page="revenue"
+            metricLabel="Revenue"
+            period={filteredPeriods[filteredPeriods.length - 1]?.period}
+          />
+          <Link
+            href="/dashboard"
+            className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent"
+          >
+            &larr; Back to Dashboard
+          </Link>
+        </div>
       </div>
 
       {hasData && (
@@ -138,6 +153,15 @@ export default function RevenueClient({
           state={controls}
           exportTitle="revenue"
           exportData={csvData}
+        />
+      )}
+
+      {/* AI Narrative Summary */}
+      {hasData && (
+        <NarrativeSummary
+          orgId={orgId}
+          period={controls.selectedPeriods[controls.selectedPeriods.length - 1] ?? ''}
+          narrativeEndpoint="narrative/revenue"
         />
       )}
 

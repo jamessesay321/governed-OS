@@ -16,12 +16,22 @@ export default async function VariancePage() {
   const periods = getAvailablePeriods((financials || []) as any);
   const defaultPeriod = periods[0] || '';
 
+  /* ── Fetch last sync time ── */
+  const { data: syncLog } = await supabase
+    .from('sync_log')
+    .select('completed_at')
+    .eq('org_id', orgId)
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .single();
+
   return (
     <VarianceClient
       orgId={orgId}
       periods={periods}
       defaultPeriod={defaultPeriod}
       role={role}
+      lastSync={{ completedAt: syncLog?.completed_at ?? null }}
     />
   );
 }

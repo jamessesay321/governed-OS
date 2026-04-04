@@ -32,6 +32,17 @@ export default async function IncomeStatementPage() {
       .eq('org_id', orgId),
   ]);
 
+  // Fetch last sync timestamp for DataFreshness
+  const syncResult = await supabase
+    .from('sync_log')
+    .select('completed_at')
+    .eq('org_id', orgId)
+    .order('started_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastSyncAt = syncResult.data?.completed_at ?? null;
+
   const finData = (financialsResult.data ?? []) as NormalisedFinancial[];
   const accData = (accountsResult.data ?? []) as ChartOfAccount[];
   const mappings = (mappingsResult.data ?? []) as AccountMapping[];
@@ -115,6 +126,8 @@ export default async function IncomeStatementPage() {
     <IncomeStatementClient
       connected={connected}
       periods={pnlByPeriod}
+      orgId={orgId}
+      lastSyncAt={lastSyncAt}
     />
   );
 }

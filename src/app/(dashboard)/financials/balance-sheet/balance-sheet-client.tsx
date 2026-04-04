@@ -14,6 +14,9 @@ import { useGlobalPeriodContext } from '@/components/providers/global-period-pro
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -22,6 +25,8 @@ type Props = {
   connected: boolean;
   availablePeriods: string[];
   allPeriodsData: Record<string, BSSection[]>;
+  orgId: string;
+  lastSyncAt: string | null;
 };
 
 const CLASS_LABELS: Record<string, string> = {
@@ -42,7 +47,7 @@ function formatPeriodLabel(period: string | null): string {
   return d.toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
 }
 
-export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData }: Props) {
+export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData, orgId, lastSyncAt }: Props) {
   const { format: formatCurrency } = useCurrency();
   const { yearEndMonth } = useAccountingConfig();
 
@@ -183,7 +188,10 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
         <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
           &larr; Back to Financials
         </Link>
-        <h2 className="text-2xl font-bold mt-1">Balance Sheet</h2>
+        <div className="flex items-center gap-3 mt-1">
+          <h2 className="text-2xl font-bold">Balance Sheet</h2>
+          <DataFreshness lastSyncAt={lastSyncAt} />
+        </div>
         <p className="text-sm text-muted-foreground mt-1">
           As at {formatPeriodLabel(currentPeriod)}
         </p>
@@ -192,6 +200,13 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
         page="balance-sheet"
         metricLabel="Balance Sheet"
         period={currentPeriod ?? undefined}
+      />
+
+      {/* AI Narrative Summary */}
+      <NarrativeSummary
+        orgId={orgId}
+        period={currentPeriod ?? ''}
+        narrativeEndpoint="narrative/balance-sheet"
       />
 
       {/* Report Controls */}
@@ -245,7 +260,11 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
                           <ChevronRight className="h-4 w-4 text-muted-foreground" />
                         )}
                         <div>
-                          <span className="uppercase text-xs tracking-wide">{CLASS_LABELS[section.class] ?? section.class}</span>
+                          <span className="uppercase text-xs tracking-wide">
+                          <FinancialTooltip term={CLASS_LABELS[section.class] ?? section.class} orgId={orgId}>
+                            {CLASS_LABELS[section.class] ?? section.class}
+                          </FinancialTooltip>
+                        </span>
                           <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
                             {CLASS_DESCRIPTIONS[section.class]} ({section.accounts.length} accounts)
                           </span>
@@ -337,7 +356,12 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
             {/* Net Assets row */}
             <tbody>
               <tr className="border-t-2 border-t-border bg-muted/20">
-                <td className="px-4 py-3 font-bold">Net Assets (Assets - Liabilities)</td>
+                <td className="px-4 py-3 font-bold">
+                  <FinancialTooltip term="Net Assets" orgId={orgId}>
+                    Net Assets
+                  </FinancialTooltip>
+                  {' '}(Assets - Liabilities)
+                </td>
                 <td className={`text-right px-4 py-3 font-mono text-sm font-bold ${netAssets >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
                   {formatCurrency(netAssets)}
                 </td>
