@@ -138,8 +138,11 @@ All audit files written to `docs/audits/`:
 - [ ] Add hover tooltip: value + variance + % of total + AI explanation (live, Haiku)
 
 ### P2: KPI/Variance Wiring
-- [ ] Wire KPI card click handlers → KPI detail page
-- [ ] Wire variance click → drill-down panel showing account drivers
+- [x] Wire KPI card clicks → drill-down sheet (done in P1 commit)
+- [x] Enhanced KPIContent renderer with contributing P&L sections map
+- [x] Wire variance line clicks → drill-down sheet with variance context
+- [x] Wire KPI page to global period (removed local period selector)
+- [x] Wire profitability + financial health pages to global period
 
 ### P2: Balance Sheet + Cash Flow Detail Parity
 - [ ] BS: expandable sections, account-level data, period comparison columns

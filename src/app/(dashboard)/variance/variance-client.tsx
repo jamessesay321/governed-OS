@@ -10,6 +10,7 @@ import { AIExplanationCard } from '@/components/variance/ai-explanation';
 import { VisualiseButton } from '@/components/ui/visualise-button';
 import { formatPence } from '@/lib/formatting/currency';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -51,6 +52,19 @@ export function VarianceClient({
   const [loading, setLoading] = useState(false);
 
   const canViewDetails = hasMinRole(role as Role, 'viewer');
+  const { openDrill } = useDrillDown();
+
+  function handleVarianceLineClick(line: VarianceLine) {
+    setSelectedLine(line);
+    // Also open drill-down sheet with variance context
+    openDrill({
+      type: 'variance',
+      metric: line.category.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),
+      current: line.actual_pence / 100,
+      previous: line.budget_pence / 100,
+      period: selectedPeriod,
+    });
+  }
 
   // Sync from global period selector when it changes
   const prevGlobalPeriodRef = useRef(globalPeriod);
@@ -212,7 +226,7 @@ export function VarianceClient({
           <CardContent>
             <VarianceTable
               report={report}
-              onSelectLine={canViewDetails ? setSelectedLine : undefined}
+              onSelectLine={canViewDetails ? handleVarianceLineClick : undefined}
             />
           </CardContent>
         </Card>

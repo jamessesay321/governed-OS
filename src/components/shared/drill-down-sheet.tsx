@@ -561,6 +561,16 @@ function PnLSectionContent({
 // KPI Content
 // ---------------------------------------------------------------------------
 
+/** Maps KPI keys to the P&L section classes that feed them */
+const KPI_SECTION_MAP: Record<string, { sections: string[]; description: string }> = {
+  revenue: { sections: ['REVENUE'], description: 'Sum of all revenue accounts' },
+  gross_margin: { sections: ['REVENUE', 'DIRECTCOSTS'], description: 'Revenue minus cost of goods sold, as a percentage' },
+  gross_profit: { sections: ['REVENUE', 'DIRECTCOSTS'], description: 'Revenue minus cost of goods sold' },
+  expenses: { sections: ['EXPENSE', 'OVERHEADS'], description: 'Sum of operating expenses and overheads' },
+  net_profit: { sections: ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'], description: 'Revenue minus all costs and expenses' },
+  net_margin: { sections: ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'], description: 'Net profit as a percentage of revenue' },
+};
+
 function KPIContent({
   kpiKey,
   label,
@@ -574,6 +584,8 @@ function KPIContent({
   formattedValue: string;
   period: string;
 }) {
+  const mapping = KPI_SECTION_MAP[kpiKey];
+
   return (
     <div className="space-y-4">
       {/* KPI summary card */}
@@ -583,24 +595,51 @@ function KPIContent({
         <p className="text-xs text-muted-foreground mt-1">{formatPeriodLabel(period)}</p>
       </div>
 
-      {/* Explanation */}
+      {/* Breakdown explanation */}
       <div className="rounded-lg border p-4 space-y-2">
         <p className="text-sm font-medium">What makes up this number</p>
-        <p className="text-xs text-muted-foreground">
-          This KPI ({kpiKey}) is calculated from your financial data for {formatPeriodLabel(period)}.
-          Click into the accounts on the financial statements page to see the source transactions.
-        </p>
+        {mapping ? (
+          <>
+            <p className="text-xs text-muted-foreground">{mapping.description}</p>
+            <div className="space-y-1 mt-2">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium">Contributing sections</p>
+              {mapping.sections.map((section) => {
+                const sectionLabels: Record<string, string> = {
+                  REVENUE: 'Revenue',
+                  DIRECTCOSTS: 'Cost of Goods Sold',
+                  EXPENSE: 'Operating Expenses',
+                  OVERHEADS: 'Overheads',
+                };
+                return (
+                  <a
+                    key={section}
+                    href="/financials/income-statement"
+                    className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm hover:bg-muted/50 transition-colors"
+                  >
+                    <span>{sectionLabels[section] ?? section}</span>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                  </a>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            This KPI ({kpiKey}) is calculated from your financial data for {formatPeriodLabel(period)}.
+            View the income statement for full account-level detail.
+          </p>
+        )}
       </div>
 
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="text-xs" asChild>
-          <a href={`/financials/income-statement`}>
+          <a href="/financials/income-statement">
             <ExternalLink className="h-3 w-3 mr-1.5" />
             View Income Statement
           </a>
         </Button>
         <Button variant="outline" size="sm" className="text-xs" asChild>
-          <a href={`/kpi`}>
+          <a href="/kpi">
             <ExternalLink className="h-3 w-3 mr-1.5" />
             View All KPIs
           </a>

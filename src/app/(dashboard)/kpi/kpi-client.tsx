@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { KPIGrid } from '@/components/kpi/kpi-grid';
@@ -12,6 +12,7 @@ import type { CalculatedKPI } from '@/lib/kpi/format';
 import type { KPISnapshot, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { NumberLegend } from '@/components/data-primitives';
+import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 
 interface KPIDashboardClientProps {
   orgId: string;
@@ -32,7 +33,8 @@ export function KPIDashboardClient({
   role,
   lastSync,
 }: KPIDashboardClientProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState(defaultPeriod);
+  const { period: globalPeriod } = useGlobalPeriodContext();
+  const [selectedPeriod, setSelectedPeriod] = useState(globalPeriod || defaultPeriod);
   const [kpis, setKPIs] = useState<CalculatedKPI[]>([]);
   const [selectedKPI, setSelectedKPI] = useState<string | null>(null);
   const [kpiHistory, setKPIHistory] = useState<KPISnapshot[]>([]);
@@ -40,6 +42,15 @@ export function KPIDashboardClient({
   const [recalculating, setRecalculating] = useState(false);
 
   const canRecalculate = hasMinRole(role as Role, 'advisor');
+
+  // Sync from global period selector
+  const prevGlobalPeriodRef = useRef(globalPeriod);
+  useEffect(() => {
+    if (globalPeriod && globalPeriod !== prevGlobalPeriodRef.current) {
+      prevGlobalPeriodRef.current = globalPeriod;
+      setSelectedPeriod(globalPeriod);
+    }
+  }, [globalPeriod]);
 
   const fetchKPIs = useCallback(async (period: string) => {
     setLoading(true);
@@ -121,20 +132,7 @@ export function KPIDashboardClient({
         </div>
         <div className="flex items-center gap-3">
           <VisualiseButton context="kpi" />
-          <select
-            value={selectedPeriod}
-            onChange={(e) => setSelectedPeriod(e.target.value)}
-            className="rounded-md border bg-background px-3 py-2 text-sm"
-          >
-            {periods.map((p) => (
-              <option key={p} value={p}>
-                {new Date(p).toLocaleDateString('en-GB', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
-              </option>
-            ))}
-          </select>
+          {/* Period selection handled by global period selector in layout */}
           {canRecalculate && (
             <Button
               variant="outline"
