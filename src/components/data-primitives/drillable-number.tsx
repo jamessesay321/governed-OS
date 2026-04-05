@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { AIHoverTooltip } from './ai-hover-tooltip';
 
 export interface DrillableValue {
   value: number;
@@ -27,6 +28,14 @@ interface DrillableNumberProps {
   size?: 'sm' | 'md' | 'lg';
   showTooltip?: boolean;
   className?: string;
+  /** Organisation ID — enables AI hover tooltip when provided */
+  orgId?: string;
+  /** Period label for AI tooltip context, e.g. "Jan 2026" */
+  period?: string;
+  /** Variance vs prior period as decimal (e.g. 0.12 = +12%) */
+  variance?: number;
+  /** Percentage of total as decimal (e.g. 0.35 = 35%) */
+  percentOfTotal?: number;
 }
 
 const TYPE_STYLES: Record<DrillableValue['type'], { color: string; bg: string; label: string }> = {
@@ -65,6 +74,10 @@ export function DrillableNumber({
   size = 'md',
   showTooltip = true,
   className = '',
+  orgId,
+  period,
+  variance,
+  percentOfTotal,
 }: DrillableNumberProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -110,7 +123,9 @@ export function DrillableNumber({
     );
   }
 
-  return (
+  const enableAITooltip = Boolean(orgId && period);
+
+  const numberDisplay = (
     <span
       className={`relative inline-flex items-center gap-1 ${SIZE_CLASSES[size]} ${className}`}
       onMouseEnter={() => setTooltipVisible(true)}
@@ -131,7 +146,8 @@ export function DrillableNumber({
         {formatted}
       </span>
 
-      {showTooltip && tooltipVisible && (
+      {/* Original source tooltip — only shown when AI tooltip is NOT active */}
+      {showTooltip && !enableAITooltip && tooltipVisible && (
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 whitespace-nowrap">
           <div className="bg-slate-900 text-white text-xs rounded-lg px-3 py-2 shadow-lg">
             <div className="flex items-center gap-2 mb-1">
@@ -160,4 +176,23 @@ export function DrillableNumber({
       )}
     </span>
   );
+
+  // When orgId + period are provided, wrap with AI hover tooltip
+  if (enableAITooltip) {
+    return (
+      <AIHoverTooltip
+        label={data.label || 'Value'}
+        value={data.value}
+        formattedValue={formatted}
+        period={period!}
+        orgId={orgId!}
+        variance={variance}
+        percentOfTotal={percentOfTotal}
+      >
+        {numberDisplay}
+      </AIHoverTooltip>
+    );
+  }
+
+  return numberDisplay;
 }

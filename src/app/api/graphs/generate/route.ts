@@ -93,7 +93,14 @@ Return ONLY valid JSON (no markdown fences, no explanation) with this exact stru
   "summary": "One-line description of what the chart shows"
 }
 
-Rules:
+Chart type selection rules (CRITICAL — follow these exactly):
+- If the query is about composition, breakdown, proportion, share, distribution, split, or "what percentage", ALWAYS use chartType: "pie"
+- If the query is about trends over time, growth, monthly/quarterly/yearly changes, or tracking, use chartType: "line"
+- If comparing categories, ranking items, or showing amounts side by side, use chartType: "bar"
+- If the query mentions waterfall, bridge, or "from X to Y", use chartType: "waterfall"
+- If the query mentions area or fill, use chartType: "area"
+
+General rules:
 - Use the business's REAL financial data provided below to generate accurate charts
 - If no real data is available, generate realistic sample data for a UK small business (use GBP)
 - Data should have 6-12 data points unless the request specifies otherwise

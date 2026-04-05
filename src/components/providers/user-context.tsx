@@ -8,6 +8,8 @@ export interface UserContextValue {
   role: string;
   displayName: string;
   orgName: string;
+  isAdvisorMode?: boolean;
+  advisorOwnOrgId?: string | null;
 }
 
 const UserContext = createContext<UserContextValue | null>(null);

@@ -18,7 +18,7 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId, orgId, role, displayName, orgName } = await getUserProfile();
+  const { userId, orgId, role, displayName, orgName, isAdvisorMode, advisorOwnOrgId } = await getUserProfile();
 
   // Check if org is in demo mode (column may not exist yet pre-migration)
   let isDemoMode = false;
@@ -73,7 +73,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <UserProvider value={{ userId, orgId, role, displayName, orgName }}>
+    <UserProvider value={{ userId, orgId, role, displayName, orgName, isAdvisorMode, advisorOwnOrgId }}>
       <AccountingConfigProvider
         yearEndMonth={yearEndMonth}
         yearEndDay={yearEndDay}

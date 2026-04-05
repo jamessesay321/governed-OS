@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   BarChart,
@@ -23,16 +23,41 @@ import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/components/providers/currency-context';
 import {
   WIDGET_REGISTRY,
-  DASHBOARD_TEMPLATES,
   type WidgetType,
-  type DashboardTemplate,
 } from '@/lib/dashboard/templates';
+import {
+  FULL_WIDGET_REGISTRY,
+  ALL_EXTENDED_WIDGET_TYPES,
+  type ExtendedWidgetType,
+} from '@/lib/dashboard/widget-registry';
+import {
+  WidgetTemplateSelector,
+  ENHANCED_TEMPLATES,
+  type WidgetTemplate,
+} from '@/components/dashboard/widget-template-selector';
 import {
   User,
   Briefcase,
   TrendingUp,
   BookOpen,
+  LayoutGrid,
 } from 'lucide-react';
+
+// New widget component imports
+import { DebtMaturityWidget } from '@/components/dashboard/widgets/debt-maturity-widget';
+import { WorkingCapitalWidget } from '@/components/dashboard/widgets/working-capital-widget';
+import { HeadcountCostWidget } from '@/components/dashboard/widgets/headcount-cost-widget';
+import { RevenueConcentrationWidget } from '@/components/dashboard/widgets/revenue-concentration-widget';
+import { MarginTrendWidget } from '@/components/dashboard/widgets/margin-trend-widget';
+import { RunwayWidget } from '@/components/dashboard/widgets/runway-widget';
+import { TopCustomersWidget } from '@/components/dashboard/widgets/top-customers-widget';
+import { TopExpensesWidget } from '@/components/dashboard/widgets/top-expenses-widget';
+import { BudgetVarianceWidget } from '@/components/dashboard/widgets/budget-variance-widget';
+import { PayrollSummaryWidget } from '@/components/dashboard/widgets/payroll-summary-widget';
+import { SeasonalPatternWidget } from '@/components/dashboard/widgets/seasonal-pattern-widget';
+import { GrowthMetricsWidget } from '@/components/dashboard/widgets/growth-metrics-widget';
+import { IndustryBenchmarkWidget } from '@/components/dashboard/widgets/industry-benchmark-widget';
+import { AlertSummaryWidget } from '@/components/dashboard/widgets/alert-summary-widget';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -92,7 +117,7 @@ const TEMPLATE_ICONS: Record<string, typeof User> = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Widget render functions (keyed by WidgetType)                      */
+/*  Widget render functions (keyed by ExtendedWidgetType)               */
 /* ------------------------------------------------------------------ */
 
 type WidgetRenderer = (
@@ -108,7 +133,7 @@ function placeholderRender(label: string): WidgetRenderer {
   );
 }
 
-const widgetRenderers: Record<WidgetType, WidgetRenderer> = {
+const widgetRenderers: Record<ExtendedWidgetType, WidgetRenderer> = {
   revenue_trend: (props, format) => {
     const data = props.revenueTrend.map((r) => ({
       label: formatPeriodLabel(r.period),
@@ -318,13 +343,23 @@ const widgetRenderers: Record<WidgetType, WidgetRenderer> = {
   tax_summary: placeholderRender('Tax Summary'),
   ar_ap_aging: placeholderRender('AR/AP Aging'),
   custom_kpis: placeholderRender('Custom KPIs'),
+
+  // ── New F-069/070 widget renderers ──
+  debt_maturity: () => <DebtMaturityWidget />,
+  working_capital: () => <WorkingCapitalWidget />,
+  headcount_cost: () => <HeadcountCostWidget />,
+  revenue_concentration: () => <RevenueConcentrationWidget />,
+  margin_trend: () => <MarginTrendWidget />,
+  runway: () => <RunwayWidget />,
+  top_customers: () => <TopCustomersWidget />,
+  top_expenses: () => <TopExpensesWidget />,
+  budget_variance: () => <BudgetVarianceWidget />,
+  payroll_summary: () => <PayrollSummaryWidget />,
+  seasonal_pattern: () => <SeasonalPatternWidget />,
+  growth_metrics: () => <GrowthMetricsWidget />,
+  industry_benchmark: () => <IndustryBenchmarkWidget />,
+  alert_summary: () => <AlertSummaryWidget />,
 };
-
-/* ------------------------------------------------------------------ */
-/*  Build widget definitions from WIDGET_REGISTRY                      */
-/* ------------------------------------------------------------------ */
-
-const ALL_WIDGET_TYPES = Object.keys(WIDGET_REGISTRY) as WidgetType[];
 
 /* ------------------------------------------------------------------ */
 /*  Page component                                                    */
@@ -336,29 +371,121 @@ export default function WidgetsClient(props: WidgetsClientProps) {
     props.revenueTrend.length > 0 || props.pnlSummary.length > 0;
 
   const [enabled, setEnabled] = useState<Record<string, boolean>>(
-    Object.fromEntries(ALL_WIDGET_TYPES.map((w) => [w, true]))
+    Object.fromEntries(ALL_EXTENDED_WIDGET_TYPES.map((w) => [w, true]))
   );
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
+  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load saved config from API on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function loadConfig() {
+      try {
+        const res = await fetch('/api/dashboard/widget-config');
+        if (res.ok) {
+          const { config } = await res.json();
+          if (config && !cancelled) {
+            const savedWidgets = new Set(config.widgets as string[]);
+            const newEnabled: Record<string, boolean> = {};
+            for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
+              newEnabled[wt] = savedWidgets.has(wt);
+            }
+            setEnabled(newEnabled);
+            setActiveTemplate(config.template_name ?? null);
+          }
+        }
+      } catch {
+        // Fall back to all enabled
+      } finally {
+        if (!cancelled) setLoaded(true);
+      }
+    }
+    loadConfig();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Save config to API when enabled state changes (after initial load)
+  const saveConfig = useCallback(async (widgetState: Record<string, boolean>, templateName: string | null) => {
+    if (!loaded) return;
+    setSaving(true);
+    try {
+      const widgets = Object.entries(widgetState)
+        .filter(([, v]) => v)
+        .map(([k]) => k);
+      await fetch('/api/dashboard/widget-config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ templateName, widgets }),
+      });
+    } catch {
+      // Silently fail — config will be re-saved next time
+    } finally {
+      setSaving(false);
+    }
+  }, [loaded]);
 
   const toggle = (id: string) => {
     setActiveTemplate(null);
-    setEnabled((prev) => ({ ...prev, [id]: !prev[id] }));
+    const newEnabled = { ...enabled, [id]: !enabled[id] };
+    setEnabled(newEnabled);
+    saveConfig(newEnabled, null);
   };
 
-  const applyTemplate = (template: DashboardTemplate) => {
-    const templateWidgetTypes = new Set(template.widgets.map((w) => w.type));
+  const applyTemplate = (template: WidgetTemplate) => {
+    const templateWidgets = new Set<string>(template.widgets);
     const newEnabled: Record<string, boolean> = {};
-    for (const wt of ALL_WIDGET_TYPES) {
-      newEnabled[wt] = templateWidgetTypes.has(wt);
+    for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
+      newEnabled[wt] = templateWidgets.has(wt);
     }
     setEnabled(newEnabled);
     setActiveTemplate(template.id);
+    setTemplateSelectorOpen(false);
+    saveConfig(newEnabled, template.id);
+  };
+
+  const handleStartFromScratch = () => {
+    const newEnabled: Record<string, boolean> = {};
+    for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
+      newEnabled[wt] = false;
+    }
+    setEnabled(newEnabled);
+    setActiveTemplate(null);
+    setTemplateSelectorOpen(false);
+    saveConfig(newEnabled, null);
   };
 
   const enabledCount = Object.values(enabled).filter(Boolean).length;
 
+  // Get label for a widget type — check both registries
+  function getWidgetLabel(wt: ExtendedWidgetType): string {
+    const full = FULL_WIDGET_REGISTRY[wt];
+    if (full) return full.title;
+    const legacy = WIDGET_REGISTRY[wt as WidgetType];
+    if (legacy) return legacy.label;
+    return wt;
+  }
+
+  function getWidgetDescription(wt: ExtendedWidgetType): string {
+    const full = FULL_WIDGET_REGISTRY[wt];
+    if (full) return full.description;
+    const legacy = WIDGET_REGISTRY[wt as WidgetType];
+    if (legacy) return legacy.description;
+    return '';
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-8 pb-12">
+      {/* Template Selector Modal */}
+      <WidgetTemplateSelector
+        open={templateSelectorOpen}
+        onClose={() => setTemplateSelectorOpen(false)}
+        onSelectTemplate={applyTemplate}
+        onStartFromScratch={handleStartFromScratch}
+        currentTemplateId={activeTemplate}
+      />
+
       {/* Back link */}
       <Link
         href="/dashboard"
@@ -377,18 +504,30 @@ export default function WidgetsClient(props: WidgetsClientProps) {
             Choose a template or toggle individual widgets to customise your dashboard view.
           </p>
         </div>
-        <Badge variant="secondary" className="mt-2 w-fit sm:mt-0">
-          {enabledCount} of {ALL_WIDGET_TYPES.length} active
-        </Badge>
+        <div className="mt-2 flex items-center gap-3 sm:mt-0">
+          {saving && (
+            <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>
+          )}
+          <Badge variant="secondary">
+            {enabledCount} of {ALL_EXTENDED_WIDGET_TYPES.length} active
+          </Badge>
+          <button
+            onClick={() => setTemplateSelectorOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors"
+          >
+            <LayoutGrid className="h-3.5 w-3.5" />
+            Change Template
+          </button>
+        </div>
       </div>
 
-      {/* Template Picker */}
+      {/* Template Picker (inline quick access) */}
       <div className="space-y-3">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           Templates
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {DASHBOARD_TEMPLATES.map((template) => {
+          {ENHANCED_TEMPLATES.map((template) => {
             const Icon = TEMPLATE_ICONS[template.role] ?? User;
             const isActive = activeTemplate === template.id;
             return (
@@ -461,8 +600,7 @@ export default function WidgetsClient(props: WidgetsClientProps) {
 
         {/* Widget grid */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
-          {ALL_WIDGET_TYPES.map((wt) => {
-            const meta = WIDGET_REGISTRY[wt];
+          {ALL_EXTENDED_WIDGET_TYPES.map((wt) => {
             const renderer = widgetRenderers[wt];
             return (
               <Card
@@ -476,11 +614,14 @@ export default function WidgetsClient(props: WidgetsClientProps) {
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                   <div className="space-y-0.5 pr-4">
                     <CardTitle className="text-sm font-semibold">
-                      {meta.label}
+                      {getWidgetLabel(wt)}
                     </CardTitle>
                     <p className="text-xs text-muted-foreground">
-                      {meta.description}
+                      {getWidgetDescription(wt)}
                     </p>
+                    <Badge variant="outline" className="text-[9px] mt-1">
+                      {FULL_WIDGET_REGISTRY[wt]?.category ?? 'financial'}
+                    </Badge>
                   </div>
                   <Toggle
                     checked={enabled[wt]}

@@ -15,7 +15,7 @@ ALTER TABLE company_skills ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can read own org skills"
   ON company_skills FOR SELECT
-  USING (org_id IN (SELECT org_id FROM user_profiles WHERE id = auth.uid()));
+  USING (org_id IN (SELECT org_id FROM profiles WHERE id = auth.uid()));
 
 CREATE POLICY "Service role can manage skills"
   ON company_skills FOR ALL

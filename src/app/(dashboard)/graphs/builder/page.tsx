@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import {
   ArrowLeft,
@@ -15,6 +15,7 @@ import {
   Download,
   RefreshCw,
 } from 'lucide-react'
+import { useDrillDown } from '@/components/shared/drill-down-sheet'
 import {
   BarChart,
   Bar,
@@ -118,11 +119,21 @@ const PIE_COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#8b5cf6', '#64748b', '#f43
 /*  Dynamic chart renderer                                             */
 /* ------------------------------------------------------------------ */
 
-function DynamicChart({ chart }: { chart: GeneratedChart }) {
+function DynamicChart({ chart, onDataPointClick }: { chart: GeneratedChart; onDataPointClick?: (label: string, value: number) => void }) {
   const { chartType, data, dataKeys, xAxisKey } = chart
 
   // Currency formatter for chart tooltips
   const fmtTooltip = (v: number | string) => formatCurrency(Number(v ?? 0))
+
+  // Click handler for chart elements
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const handleClick = (payload: any) => {
+    if (!onDataPointClick || !payload) return
+    const label = String(payload[xAxisKey] ?? payload.name ?? '')
+    const numKeys = Object.keys(payload).filter((k) => typeof payload[k] === 'number')
+    const value = Number(payload[numKeys[0]] ?? 0)
+    onDataPointClick(label, value)
+  }
 
   if (chartType === 'pie') {
     return (
@@ -139,6 +150,8 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
             nameKey={xAxisKey}
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             label={(props: any) => `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`}
+            onClick={(_: unknown, index: number) => handleClick(data[index])}
+            className="cursor-pointer"
           >
             {data.map((_, i) => (
               <Cell key={i} fill={dataKeys[i]?.color || PIE_COLORS[i % PIE_COLORS.length]} />
@@ -153,14 +166,14 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
   if (chartType === 'line') {
     return (
       <ResponsiveContainer width="100%" height={320}>
-        <RechartsLineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+        <RechartsLineChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }} onClick={(e: Record<string, unknown>) => { const ap = (e as Record<string, unknown>)?.activePayload as Array<Record<string, unknown>> | undefined; if (ap?.[0]) handleClick(ap[0].payload as Record<string, unknown>) }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} />
           <Tooltip formatter={(v) => fmtTooltip(v as number)} />
           <Legend />
           {dataKeys.map((dk) => (
-            <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} strokeWidth={2} dot={false} />
+            <Line key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} strokeWidth={2} dot={false} className="cursor-pointer" />
           ))}
         </RechartsLineChart>
       </ResponsiveContainer>
@@ -170,14 +183,14 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
   if (chartType === 'area') {
     return (
       <ResponsiveContainer width="100%" height={320}>
-        <RechartsAreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+        <RechartsAreaChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }} onClick={(e: Record<string, unknown>) => { const ap = (e as Record<string, unknown>)?.activePayload as Array<Record<string, unknown>> | undefined; if (ap?.[0]) handleClick(ap[0].payload as Record<string, unknown>) }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
           <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} />
           <Tooltip formatter={(v) => fmtTooltip(v as number)} />
           <Legend />
           {dataKeys.map((dk) => (
-            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} fill={dk.color} fillOpacity={0.15} strokeWidth={2} />
+            <Area key={dk.key} type="monotone" dataKey={dk.key} name={dk.name} stroke={dk.color} fill={dk.color} fillOpacity={0.15} strokeWidth={2} className="cursor-pointer" />
           ))}
         </RechartsAreaChart>
       </ResponsiveContainer>
@@ -200,7 +213,7 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
 
     return (
       <ResponsiveContainer width="100%" height={320}>
-        <BarChart data={processed} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+        <BarChart data={processed} margin={{ top: 8, right: 16, bottom: 0, left: -8 }} onClick={(e: Record<string, unknown>) => { const ap = (e as Record<string, unknown>)?.activePayload as Array<Record<string, unknown>> | undefined; if (ap?.[0]) handleClick(ap[0].payload as Record<string, unknown>) }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
           <XAxis dataKey={xAxisKey} tick={{ fontSize: 11 }} />
           <YAxis tick={{ fontSize: 12 }} />
@@ -209,7 +222,7 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
             formatter={(value: any) => formatCurrency(Math.abs(Number(value ?? 0)))}
           />
           <Bar dataKey="base" stackId="stack" fill="transparent" />
-          <Bar dataKey="height" stackId="stack" radius={[3, 3, 0, 0]}>
+          <Bar dataKey="height" stackId="stack" radius={[3, 3, 0, 0]} className="cursor-pointer">
             {processed.map((entry, i) => (
               <Cell
                 key={i}
@@ -225,14 +238,14 @@ function DynamicChart({ chart }: { chart: GeneratedChart }) {
   // Default: bar chart (also handles combo)
   return (
     <ResponsiveContainer width="100%" height={320}>
-      <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }}>
+      <BarChart data={data} margin={{ top: 8, right: 16, bottom: 0, left: -8 }} onClick={(e: Record<string, unknown>) => { const ap = (e as Record<string, unknown>)?.activePayload as Array<Record<string, unknown>> | undefined; if (ap?.[0]) handleClick(ap[0].payload as Record<string, unknown>) }}>
         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
         <XAxis dataKey={xAxisKey} tick={{ fontSize: 12 }} />
         <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => formatCurrency(Number(v ?? 0))} />
         <Tooltip formatter={(v) => fmtTooltip(v as number)} />
         <Legend />
         {dataKeys.map((dk) => (
-          <Bar key={dk.key} dataKey={dk.key} name={dk.name} fill={dk.color} radius={[3, 3, 0, 0]} />
+          <Bar key={dk.key} dataKey={dk.key} name={dk.name} fill={dk.color} radius={[3, 3, 0, 0]} className="cursor-pointer" />
         ))}
       </BarChart>
     </ResponsiveContainer>
@@ -310,6 +323,23 @@ export default function GraphBuilderPage() {
   const [generating, setGenerating] = useState(false)
   const [generatedChart, setGeneratedChart] = useState<GeneratedChart | null>(null)
   const [error, setError] = useState<string | null>(null)
+
+  // Drill-down on chart data point click
+  const { openDrill } = useDrillDown()
+
+  const handleDataPointClick = useCallback((label: string, value: number) => {
+    if (!openDrill) return
+    openDrill({
+      type: 'custom',
+      title: `Chart Detail: ${label}`,
+      subtitle: generatedChart?.title,
+      rows: [
+        { label: 'Data Point', value: label },
+        { label: 'Value', value: formatCurrency(value) },
+        ...(generatedChart?.summary ? [{ label: 'Context', value: generatedChart.summary }] : []),
+      ],
+    })
+  }, [openDrill, generatedChart])
 
   async function handleGenerate() {
     if (!prompt.trim()) return
@@ -532,7 +562,7 @@ export default function GraphBuilderPage() {
               </div>
             ) : generatedChart ? (
               <div className="w-full">
-                <DynamicChart chart={generatedChart} />
+                <DynamicChart chart={generatedChart} onDataPointClick={handleDataPointClick} />
               </div>
             ) : (
               <div className="w-full">

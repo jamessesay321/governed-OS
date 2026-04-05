@@ -1,7 +1,7 @@
 -- Agent trust levels per org
 create table if not exists agent_trust_levels (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   agent_id text not null,
   trust_level text not null default 'guided' check (trust_level in ('guided', 'confident', 'autonomous')),
   auto_approve_threshold numeric(3,2) default 1.0,
@@ -17,7 +17,7 @@ create table if not exists agent_trust_levels (
 -- Agent run history
 create table if not exists agent_runs (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   agent_id text not null,
   run_id text not null unique,
   status text not null check (status in ('completed', 'failed', 'needs_review')),
@@ -35,7 +35,7 @@ create table if not exists agent_runs (
 -- Agent memory (per-client learned patterns)
 create table if not exists agent_memory (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   agent_id text not null,
   key text not null,
   value text not null,
@@ -50,7 +50,7 @@ create table if not exists agent_memory (
 -- Agent audit trail
 create table if not exists agent_audit (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   agent_id text not null,
   run_id text,
   action text not null,

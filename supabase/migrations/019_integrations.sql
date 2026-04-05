@@ -3,7 +3,7 @@
 
 create table if not exists integration_connections (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   integration_id text not null,
   status text not null default 'active' check (status in ('active', 'paused', 'error', 'expired')),
   credentials jsonb default '{}',

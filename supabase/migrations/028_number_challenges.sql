@@ -47,7 +47,7 @@ create policy "Org members can view challenges"
   on public.number_challenges for select
   using (
     org_id in (
-      select om.org_id from public.org_members om where om.user_id = auth.uid()
+      select p.org_id from public.profiles p where p.id = auth.uid()
     )
   );
 
@@ -56,7 +56,7 @@ create policy "Org members can create challenges"
   on public.number_challenges for insert
   with check (
     org_id in (
-      select om.org_id from public.org_members om where om.user_id = auth.uid()
+      select p.org_id from public.profiles p where p.id = auth.uid()
     )
     and created_by = auth.uid()
   );
@@ -66,7 +66,7 @@ create policy "Admins can update challenges"
   on public.number_challenges for update
   using (
     org_id in (
-      select om.org_id from public.org_members om
+      select p.org_id from public.org_members om
       where om.user_id = auth.uid()
       and om.role in ('owner', 'admin', 'advisor')
     )

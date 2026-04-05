@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
@@ -15,7 +15,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { NotificationBell } from './notification-bell';
 import { CurrencySelector } from '@/components/ui/currency-selector';
 import { cn } from '@/lib/utils';
-import { VoiceInput } from '@/components/ui/voice-input';
+import { ClientSwitcher } from '@/components/layout/client-switcher';
+import { CommandPalette, CommandPaletteTrigger } from '@/components/layout/command-palette';
 
 /* ------------------------------------------------------------------ */
 /*  Search index — every page/feature mapped to searchable terms      */
@@ -36,6 +37,7 @@ const SEARCH_INDEX: SearchItem[] = [
 
   // Dashboard
   { label: 'Dashboard', href: '/dashboard', keywords: ['dashboard', 'overview', 'summary', 'ceo', 'snapshot', 'kpi cards'], category: 'Dashboard' },
+  { label: 'Key Actions', href: '/dashboard/key-actions', keywords: ['key actions', 'daily briefing', 'priorities', 'focus', 'what to do', 'action items', 'briefing'], category: 'Dashboard' },
   { label: 'Dashboard Widgets', href: '/dashboard/widgets', keywords: ['widgets', 'customise', 'dashboard', 'layout', 'cards'], category: 'Dashboard' },
   { label: 'Alerts & Notifications', href: '/dashboard/alerts', keywords: ['alerts', 'notifications', 'threshold', 'warnings'], category: 'Dashboard' },
 
@@ -115,6 +117,8 @@ const SEARCH_INDEX: SearchItem[] = [
   // Preferences & Support
   { label: 'Language & Preferences', href: '/settings/preferences', keywords: ['language', 'preferences', 'date format', 'timezone', 'locale', 'regional', 'notifications', 'number format'], category: 'Settings' },
   { label: 'Data Exports', href: '/settings/exports', keywords: ['export', 'download', 'csv', 'pdf', 'excel', 'data export', 'api', 'api key'], category: 'Settings' },
+  { label: 'Subscription & Billing', href: '/settings/billing', keywords: ['subscription', 'stripe', 'billing', 'upgrade', 'downgrade', 'plan', 'payment method'], category: 'Billing' },
+  { label: 'Data & Privacy', href: '/settings/data', keywords: ['gdpr', 'data deletion', 'privacy', 'delete account', 'delete data', 'right to erasure', 'data request'], category: 'Settings' },
   { label: 'Help & Support', href: '/help', keywords: ['help', 'support', 'faq', 'contact', 'chat', 'documentation', 'guide', 'how to', 'troubleshoot'], category: 'Help' },
 
   // Common natural language queries
@@ -149,86 +153,6 @@ interface HeaderProps {
 
 export function Header({ displayName, orgName, role }: HeaderProps) {
   const router = useRouter();
-  const [query, setQuery] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Filter results
-  const results = useMemo(() => {
-    if (!query.trim()) return [];
-    const q = query.toLowerCase().trim();
-    const scored = SEARCH_INDEX.map((item) => {
-      let score = 0;
-      // Label match (highest)
-      if (item.label.toLowerCase().includes(q)) score += 10;
-      // Keyword match
-      for (const kw of item.keywords) {
-        if (kw.includes(q)) score += 5;
-        if (kw.startsWith(q)) score += 3;
-      }
-      return { ...item, score };
-    })
-      .filter((item) => item.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 8);
-    return scored;
-  }, [query]);
-
-  useEffect(() => {
-    setSelectedIdx(0);
-  }, [results]);
-
-  // Keyboard shortcut: Cmd+K to focus search
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault();
-        inputRef.current?.focus();
-        setIsOpen(true);
-      }
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        inputRef.current?.blur();
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  // Close on click outside
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, []);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedIdx((i) => Math.min(i + 1, results.length - 1));
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === 'Enter' && results[selectedIdx]) {
-      e.preventDefault();
-      router.push(results[selectedIdx].href);
-      setQuery('');
-      setIsOpen(false);
-      inputRef.current?.blur();
-    }
-  };
-
-  const handleSelect = (href: string) => {
-    router.push(href);
-    setQuery('');
-    setIsOpen(false);
-  };
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -245,107 +169,46 @@ export function Header({ displayName, orgName, role }: HeaderProps) {
     .slice(0, 2);
 
   return (
-    <header className="flex h-14 items-center justify-between border-b px-6">
-      <div className="text-sm text-muted-foreground">
-        {orgName} &middot; <span className="capitalize">{role}</span>
-      </div>
-
-      {/* Global Search */}
-      <div className="relative flex-1 max-w-md mx-6" ref={dropdownRef}>
-        <div className="relative">
-          <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-          </svg>
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setIsOpen(true);
-            }}
-            onFocus={() => setIsOpen(true)}
-            onKeyDown={handleKeyDown}
-            placeholder="Search anything... (⌘K)"
-            className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-4 py-2 text-sm placeholder:text-muted-foreground focus:border-primary focus:ring-1 focus:ring-primary focus:bg-background outline-none transition-colors"
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <VoiceInput
-              onTranscript={(text) => { setQuery(text); setIsOpen(true); }}
-              size="sm"
-              replaceMode
-            />
-            <kbd className="hidden sm:inline-block text-[10px] font-medium text-muted-foreground bg-muted border rounded px-1.5 py-0.5">
-              ⌘K
-            </kbd>
-          </div>
+    <>
+      <header className="flex h-14 items-center justify-between border-b px-6">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span>{orgName} &middot; <span className="capitalize">{role}</span></span>
+          {role === 'advisor' && <ClientSwitcher currentOrgName={orgName} />}
         </div>
 
-        {/* Search Results Dropdown */}
-        {isOpen && results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border bg-popover shadow-lg z-50 overflow-hidden">
-            {results.map((item, idx) => (
-              <button
-                key={item.href + item.label}
-                onClick={() => handleSelect(item.href)}
-                className={cn(
-                  'w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors',
-                  idx === selectedIdx
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted text-foreground'
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <span className="font-medium">{item.label}</span>
-                </div>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-                  {item.category}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* CMD+K Command Palette trigger (replaces inline search) */}
+        <div className="flex-1 max-w-md mx-6 flex justify-center">
+          <CommandPaletteTrigger />
+        </div>
 
-        {/* No results */}
-        {isOpen && query.trim() && results.length === 0 && (
-          <div className="absolute top-full left-0 right-0 mt-1 rounded-lg border bg-popover shadow-lg z-50 p-4 text-center">
-            <p className="text-sm text-muted-foreground">No results for &quot;{query}&quot;</p>
-            <p className="text-xs text-muted-foreground mt-1">Try searching for a feature, page, or ask a question</p>
-          </div>
-        )}
-      </div>
-
-      <div className="flex items-center gap-3">
-        <CurrencySelector />
-        <NotificationBell />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{initials}</AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem className="font-medium">
-              {displayName}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push('/settings')}>
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleSignOut}>
-              Sign out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </header>
+        <div className="flex items-center gap-3">
+          <CurrencySelector />
+          <NotificationBell />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>{initials}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="font-medium">
+                {displayName}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings')}>
+                Settings
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleSignOut}>
+                Sign out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </header>
+      {/* CMD+K Command Palette (portal-rendered modal) */}
+      <CommandPalette />
+    </>
   );
 }
 

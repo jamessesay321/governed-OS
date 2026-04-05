@@ -50,6 +50,22 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Protect /advisor routes: require advisor, admin, or owner role
+  if (user && request.nextUrl.pathname.startsWith('/advisor')) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    const role = profile?.role as string | undefined;
+    if (role !== 'advisor' && role !== 'admin' && role !== 'owner') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/dashboard';
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Security headers
   supabaseResponse.headers.set('X-Content-Type-Options', 'nosniff');
   supabaseResponse.headers.set('X-Frame-Options', 'DENY');

@@ -4,6 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Bell, Info, AlertTriangle, AlertCircle, Trash2, Plus, X } from 'lucide-react';
 import { useUser } from '@/components/providers/user-context';
+import { AlertSparkline } from '@/components/alerts/alert-sparkline';
+import { AlertBulletGraph } from '@/components/alerts/alert-bullet-graph';
+import { AlertExplanationCard } from '@/components/alerts/alert-explanation-card';
 
 // ============================================================
 // Types
@@ -33,11 +36,10 @@ const SEVERITY_CONFIG: Record<string, { bg: string; text: string; icon: typeof I
   critical: { bg: 'bg-red-100', text: 'text-red-800', icon: AlertCircle, label: 'Critical' },
 };
 
-// Keep backward compat
-const SEVERITY_COLOURS: Record<string, string> = {
-  info: 'bg-blue-100 text-blue-800',
-  warning: 'bg-amber-100 text-amber-800',
-  critical: 'bg-red-100 text-red-800',
+const SEVERITY_SPARKLINE_COLORS: Record<string, string> = {
+  info: '#3b82f6',
+  warning: '#f59e0b',
+  critical: '#ef4444',
 };
 
 // Common KPI metrics that can be alerted on
@@ -56,12 +58,43 @@ const AVAILABLE_METRICS = [
   { key: 'current_ratio', label: 'Current Ratio' },
 ];
 
+/**
+ * Generate placeholder sparkline data based on metric key.
+ * In production, this would come from actual historical KPI values.
+ */
+function generateSparklineData(metricKey: string, threshold: number): number[] {
+  // Deterministic seed from metric key
+  let seed = 0;
+  for (let i = 0; i < metricKey.length; i++) {
+    seed += metricKey.charCodeAt(i);
+  }
+  const points: number[] = [];
+  for (let i = 0; i < 12; i++) {
+    const noise = Math.sin(seed + i * 1.7) * threshold * 0.15;
+    points.push(threshold + noise + (i * threshold * 0.02));
+  }
+  return points;
+}
+
+/**
+ * Determine bullet graph ranges from threshold.
+ * Poor: 0-50% of threshold, OK: 50-80%, Good: 80-120%
+ */
+function getBulletRanges(threshold: number, condition: string): [number, number, number] {
+  if (condition === 'below' || condition === 'change_below') {
+    // Lower is concerning, so ranges go: poor (0-50%), ok (50-80%), good (80-120%)
+    return [threshold * 0.5, threshold * 0.8, threshold * 1.2];
+  }
+  // For 'above' conditions — ranges are inverted
+  return [threshold * 0.5, threshold * 0.8, threshold * 1.2];
+}
+
 // ============================================================
 // Component
 // ============================================================
 
 export default function DashboardAlertsPage() {
-  const { role } = useUser();
+  const { role, orgId } = useUser();
   const canEdit = role === 'admin' || role === 'owner' || role === 'advisor';
 
   const [rules, setRules] = useState<AlertRule[]>([]);
@@ -69,6 +102,7 @@ export default function DashboardAlertsPage() {
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
 
   // Form state
   const [metricKey, setMetricKey] = useState(AVAILABLE_METRICS[0].key);
@@ -286,65 +320,159 @@ export default function DashboardAlertsPage() {
           </p>
         </div>
       ) : (
-        <div className="rounded-lg border bg-card divide-y">
-          {rules.map((rule) => (
-            <div key={rule.id} className="flex items-center justify-between px-5 py-4">
-              <div className="flex items-center gap-4">
-                {/* Toggle */}
-                <button
-                  onClick={() => canEdit && handleToggle(rule.id, rule.enabled)}
-                  disabled={!canEdit}
-                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                    rule.enabled ? 'bg-emerald-500' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                      rule.enabled ? 'translate-x-4.5' : 'translate-x-0.5'
-                    }`}
-                  />
-                </button>
+        <div className="space-y-3">
+          {rules.map((rule) => {
+            const sparklineData = generateSparklineData(rule.metric_key, rule.threshold);
+            const sparklineColor = SEVERITY_SPARKLINE_COLORS[rule.severity] ?? '#6366f1';
+            const bulletRanges = getBulletRanges(rule.threshold, rule.condition);
+            const currentValue = sparklineData[sparklineData.length - 1];
+            const isTriggered = rule.condition === 'below'
+              ? currentValue < rule.threshold
+              : rule.condition === 'above'
+                ? currentValue > rule.threshold
+                : false;
+            const isExpanded = expandedRuleId === rule.id;
 
-                <div>
-                  <p className="text-sm font-medium">
-                    {rule.metric_label}{' '}
-                    <span className="text-muted-foreground font-normal">
-                      {CONDITION_LABELS[rule.condition] ?? rule.condition}
-                    </span>{' '}
-                    <span className="font-semibold">
-                      {rule.condition.startsWith('change_') ? `${rule.threshold}%` : rule.threshold.toLocaleString()}
-                    </span>
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {(() => {
-                      const sev = SEVERITY_CONFIG[rule.severity];
-                      if (!sev) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{rule.severity}</span>;
-                      const SevIcon = sev.icon;
-                      return (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${sev.bg} ${sev.text}`}>
-                          <SevIcon className="h-3 w-3" />
-                          {sev.label}
+            return (
+              <div key={rule.id} className="rounded-lg border bg-card overflow-hidden">
+                {/* Main rule row */}
+                <div className="flex items-center justify-between px-5 py-4">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    {/* Toggle */}
+                    <button
+                      onClick={() => canEdit && handleToggle(rule.id, rule.enabled)}
+                      disabled={!canEdit}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                        rule.enabled ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                          rule.enabled ? 'translate-x-4.5' : 'translate-x-0.5'
+                        }`}
+                      />
+                    </button>
+
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium">
+                        {rule.metric_label}{' '}
+                        <span className="text-muted-foreground font-normal">
+                          {CONDITION_LABELS[rule.condition] ?? rule.condition}
+                        </span>{' '}
+                        <span className="font-semibold">
+                          {rule.condition.startsWith('change_') ? `${rule.threshold}%` : rule.threshold.toLocaleString()}
                         </span>
-                      );
-                    })()}
-                    {!rule.enabled && (
-                      <span className="text-xs text-muted-foreground italic">Paused</span>
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        {(() => {
+                          const sev = SEVERITY_CONFIG[rule.severity];
+                          if (!sev) return <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">{rule.severity}</span>;
+                          const SevIcon = sev.icon;
+                          return (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${sev.bg} ${sev.text}`}>
+                              <SevIcon className="h-3 w-3" />
+                              {sev.label}
+                            </span>
+                          );
+                        })()}
+                        {!rule.enabled && (
+                          <span className="text-xs text-muted-foreground italic">Paused</span>
+                        )}
+                        {isTriggered && rule.enabled && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Triggered
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Sparkline and Bullet Graph */}
+                    <div className="hidden sm:flex items-center gap-4 shrink-0">
+                      <div className="flex flex-col items-center gap-0.5">
+                        <AlertSparkline
+                          data={sparklineData}
+                          width={80}
+                          height={24}
+                          color={sparklineColor}
+                        />
+                        <span className="text-[9px] text-muted-foreground">12-period trend</span>
+                      </div>
+                      <div className="flex flex-col items-center gap-0.5">
+                        <AlertBulletGraph
+                          value={currentValue}
+                          target={rule.threshold}
+                          ranges={bulletRanges}
+                          width={120}
+                          height={24}
+                          higherIsBetter={rule.condition === 'below'}
+                        />
+                        <span className="text-[9px] text-muted-foreground">vs threshold</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0 ml-4">
+                    {/* Explain button for triggered alerts */}
+                    {isTriggered && rule.enabled && (
+                      <button
+                        onClick={() => setExpandedRuleId(isExpanded ? null : rule.id)}
+                        className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition-colors"
+                      >
+                        {isExpanded ? 'Hide' : 'Explain'}
+                      </button>
+                    )}
+                    {canEdit && (
+                      <button
+                        onClick={() => handleDelete(rule.id)}
+                        className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Delete
+                      </button>
                     )}
                   </div>
                 </div>
-              </div>
 
-              {canEdit && (
-                <button
-                  onClick={() => handleDelete(rule.id)}
-                  className="inline-flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition-colors"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </button>
-              )}
-            </div>
-          ))}
+                {/* Mobile sparkline/bullet (shown below on small screens) */}
+                <div className="sm:hidden border-t px-5 py-3 flex items-center gap-4">
+                  <div className="flex flex-col items-center gap-0.5">
+                    <AlertSparkline
+                      data={sparklineData}
+                      width={80}
+                      height={24}
+                      color={sparklineColor}
+                    />
+                    <span className="text-[9px] text-muted-foreground">Trend</span>
+                  </div>
+                  <div className="flex flex-col items-center gap-0.5 flex-1">
+                    <AlertBulletGraph
+                      value={currentValue}
+                      target={rule.threshold}
+                      ranges={bulletRanges}
+                      width={160}
+                      height={24}
+                      higherIsBetter={rule.condition === 'below'}
+                    />
+                    <span className="text-[9px] text-muted-foreground">vs threshold</span>
+                  </div>
+                </div>
+
+                {/* AI Explanation Card (expanded) */}
+                {isExpanded && isTriggered && (
+                  <div className="border-t px-5 py-4">
+                    <AlertExplanationCard
+                      alertRuleId={rule.id}
+                      metricKey={rule.metric_key}
+                      metricLabel={rule.metric_label}
+                      currentValue={currentValue}
+                      threshold={rule.threshold}
+                      orgId={orgId}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -355,6 +483,7 @@ export default function DashboardAlertsPage() {
           <li>Alert rules are checked after each Xero sync and when KPIs are recalculated.</li>
           <li>When a threshold is breached, you receive an in-app notification and an email (if enabled in Preferences).</li>
           <li>Critical alerts are always sent immediately. Info and warning alerts are batched daily.</li>
+          <li>Click <strong>Explain</strong> on any triggered alert to get an AI-powered analysis of why the metric changed and what action to take.</li>
         </ul>
       </div>
     </div>

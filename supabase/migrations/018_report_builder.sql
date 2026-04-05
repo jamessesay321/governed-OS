@@ -3,7 +3,7 @@
 
 create table if not exists generated_reports (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   template_id text not null,
   title text not null,
   period text,
@@ -18,7 +18,7 @@ create table if not exists generated_reports (
 
 create table if not exists report_templates_custom (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   name text not null,
   description text,
   category text,

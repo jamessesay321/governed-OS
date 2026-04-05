@@ -3,7 +3,7 @@
 
 create table if not exists forecasts (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   periods jsonb not null,
   pnl jsonb not null,
   balance_sheet jsonb not null,
@@ -16,7 +16,7 @@ create table if not exists forecasts (
 
 create table if not exists forecast_scenarios (
   id uuid default gen_random_uuid() primary key,
-  org_id uuid not null references organizations(id) on delete cascade,
+  org_id uuid not null references organisations(id) on delete cascade,
   name text not null,
   description text,
   assumptions jsonb not null default '[]',

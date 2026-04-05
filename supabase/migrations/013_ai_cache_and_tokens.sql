@@ -7,7 +7,7 @@
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ai_cache (
   id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  org_id      uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  org_id      uuid NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   cache_key   text NOT NULL,
   prompt_hash text NOT NULL,
   response    text NOT NULL,
@@ -35,7 +35,7 @@ CREATE POLICY "Service role full access on ai_cache"
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS ai_token_usage (
   id          uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  org_id      uuid NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  org_id      uuid NOT NULL REFERENCES organisations(id) ON DELETE CASCADE,
   endpoint    text NOT NULL,
   tokens_used integer NOT NULL DEFAULT 0,
   created_at  timestamptz NOT NULL DEFAULT now()

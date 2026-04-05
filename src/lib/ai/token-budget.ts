@@ -34,11 +34,30 @@ function nextMonthStart(): Date {
 }
 
 /**
- * Resolve the plan for an org. Falls back to 'free' if unrecognised.
+ * Resolve the plan for an org.
+ * Checks the `subscriptions` table first (Stripe source of truth),
+ * then falls back to `organisations.plan`, then defaults to 'free'.
  */
 export async function getOrgPlan(orgId: string): Promise<Plan> {
   const supabase = await createUntypedServiceClient();
 
+  // 1. Try subscriptions table (Stripe-managed)
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('plan, status')
+    .eq('org_id', orgId)
+    .maybeSingle();
+
+  if (subscription) {
+    const status = subscription.status as string;
+    // Only honour active/trialing subscriptions
+    if (status === 'active' || status === 'trialing') {
+      const plan = (subscription.plan as string)?.toLowerCase() as Plan | undefined;
+      if (plan && plan in PLAN_LIMITS) return plan;
+    }
+  }
+
+  // 2. Fallback to organisations table
   const { data } = await supabase
     .from('organizations')
     .select('plan')

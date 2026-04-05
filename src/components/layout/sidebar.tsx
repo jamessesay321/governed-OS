@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/components/providers/user-context';
 
 /* ------------------------------------------------------------------ */
 /*  Navigation structure: grouped with collapsible sub-items         */
@@ -23,6 +24,27 @@ interface NavGroup {
   href?: string;
   free?: boolean;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Investor-only navigation (restricted view)                        */
+/* ------------------------------------------------------------------ */
+
+const investorNavigation: NavGroup[] = [
+  {
+    group: 'Dashboard',
+    icon: 'BarChart3',
+    href: '/investor-portal',
+    children: [],
+  },
+  {
+    group: 'Portfolio Overview',
+    icon: 'Briefcase',
+    href: '/investor-portal',
+    children: [
+      { href: '/investor-portal', label: 'Financial Overview' },
+    ],
+  },
+];
 
 const navigation: NavGroup[] = [
   // ── GET STARTED ──
@@ -54,6 +76,7 @@ const navigation: NavGroup[] = [
     href: '/dashboard',
     children: [
       { href: '/dashboard', label: 'CEO Overview' },
+      { href: '/dashboard/key-actions', label: 'Key Actions' },
       { href: '/dashboard/executive-summary', label: 'Executive Summary' },
       { href: '/dashboard/revenue', label: 'Revenue' },
       { href: '/dashboard/profitability', label: 'Profitability' },
@@ -326,6 +349,7 @@ const navigation: NavGroup[] = [
     href: '/billing',
     children: [
       { href: '/billing', label: 'Overview' },
+      { href: '/settings/billing', label: 'Subscription' },
       { href: '/billing/pricing', label: 'Pricing & Bundles' },
       { href: '/billing/referrals', label: 'Referrals' },
     ],
@@ -337,10 +361,12 @@ const navigation: NavGroup[] = [
     children: [
       { href: '/settings', label: 'Account' },
       { href: '/settings/team', label: 'Team & Roles' },
+      { href: '/settings/investors', label: 'Investor Access' },
       { href: '/settings/preferences', label: 'Preferences' },
       { href: '/settings/modules', label: 'Modules' },
       { href: '/settings/blueprints', label: 'Industry Blueprints' },
       { href: '/settings/exports', label: 'Data Exports' },
+      { href: '/settings/data', label: 'Data & Privacy' },
     ],
   },
   {
@@ -591,14 +617,59 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+/** Advisor-only nav group, inserted dynamically when role === 'advisor' */
+const advisorNavGroup: NavGroup = {
+  group: 'Portfolio',
+  icon: 'Briefcase',
+  href: '/advisor',
+  children: [
+    { href: '/advisor', label: 'All Clients' },
+  ],
+};
+
 export function Sidebar({ className, onClose }: SidebarProps = {}) {
   const pathname = usePathname();
+  const user = useUser();
+  const isInvestor = user.role === 'investor';
+  const isAdvisor = user.role === 'advisor' || user.role === 'admin' || user.role === 'owner';
+
+  // Build the final navigation list
+  // Investors get a restricted view; others get the full navigation
+  const finalNavigation = useMemo(() => {
+    if (isInvestor) return investorNavigation;
+    if (!isAdvisor) return navigation;
+    const nav = [...navigation];
+    nav.splice(2, 0, advisorNavGroup);
+    return nav;
+  }, [isAdvisor, isInvestor]);
+
+  // Adjust section breaks if advisor group is inserted (not applicable for investors)
+  const finalSectionBreaks = useMemo(() => {
+    if (isInvestor) return { 0: 'INVESTOR' } as Record<number, string>;
+    if (!isAdvisor) return sectionBreaks;
+    // Shift all section break keys >= 2 by +1 to account for inserted group
+    const adjusted: Record<number, string> = {};
+    for (const [key, value] of Object.entries(sectionBreaks)) {
+      const k = Number(key);
+      if (k < 2) {
+        adjusted[k] = value;
+      } else if (k === 2) {
+        // Insert ADVISOR section at index 2
+        adjusted[2] = 'ADVISOR';
+        // Push OVERVIEW to 3
+        adjusted[k + 1] = value;
+      } else {
+        adjusted[k + 1] = value;
+      }
+    }
+    return adjusted;
+  }, [isAdvisor, isInvestor]);
 
   // Track which groups are expanded
   const [expanded, setExpanded] = useState<Record<string, boolean>>(() => {
     // Auto-expand the group that contains the current path
     const initial: Record<string, boolean> = {};
-    for (const nav of navigation) {
+    for (const nav of finalNavigation) {
       const isActive =
         (nav.href && (pathname === nav.href || pathname.startsWith(nav.href + '/'))) ||
         nav.children.some(
@@ -626,8 +697,8 @@ export function Sidebar({ className, onClose }: SidebarProps = {}) {
       </Link>
 
       <nav className="flex-1 py-2 px-3">
-        {/* Pinned quick-access items */}
-        <div className="mb-2 space-y-0.5">
+        {/* Pinned quick-access items — hidden for investor role */}
+        {!isInvestor && <div className="mb-2 space-y-0.5">
           {[
             { href: '/dashboard', label: 'Dashboard', icon: 'BarChart3' },
             { href: '/kpi', label: 'KPIs', icon: 'Activity' },
@@ -655,10 +726,10 @@ export function Sidebar({ className, onClose }: SidebarProps = {}) {
               </Link>
             );
           })}
-        </div>
-        <div className="border-t border-border/40 mb-2" />
+        </div>}
+        {!isInvestor && <div className="border-t border-border/40 mb-2" />}
 
-        {navigation.map((nav, idx) => {
+        {finalNavigation.map((nav, idx) => {
           const isGroupActive =
             (nav.href && (pathname === nav.href || pathname.startsWith(nav.href + '/'))) ||
             nav.children.some(
@@ -668,7 +739,7 @@ export function Sidebar({ className, onClose }: SidebarProps = {}) {
           const hasChildren = nav.children.length > 0;
 
           // Section label
-          const sectionLabel = sectionBreaks[idx];
+          const sectionLabel = finalSectionBreaks[idx];
 
           return (
             <div key={nav.group}>
