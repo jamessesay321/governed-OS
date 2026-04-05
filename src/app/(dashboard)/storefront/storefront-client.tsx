@@ -177,7 +177,7 @@ export default function StorefrontClient({
               and reconcile against your accounting data in Xero.
             </p>
             <a
-              href="/integrations"
+              href="/api/integrations/shopify/auth"
               className="inline-flex items-center gap-2 rounded-lg bg-[#96bf48] px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#7da03e] transition-colors"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>

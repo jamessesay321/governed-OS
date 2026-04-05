@@ -369,7 +369,7 @@ export function mapItemToGroveRecord(
   const columnValues: Record<string, string> = {};
 
   for (const cv of item.column_values) {
-    columnValues[cv.title] = cv.text ?? '';
+    columnValues[cv.title ?? cv.id] = cv.text ?? '';
 
     // Heuristic mapping based on column type
     switch (cv.type) {
@@ -387,9 +387,9 @@ export function mapItemToGroveRecord(
         break;
       case 'text':
         // Try to identify client/description columns by title
-        if (!client && /client|customer|company/i.test(cv.title) && cv.text) {
+        if (!client && cv.title && /client|customer|company/i.test(cv.title) && cv.text) {
           client = cv.text;
-        } else if (!description && /desc|note|detail/i.test(cv.title) && cv.text) {
+        } else if (!description && cv.title && /desc|note|detail/i.test(cv.title) && cv.text) {
           description = cv.text;
         }
         break;
