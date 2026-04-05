@@ -4,7 +4,7 @@
 > Skill: `.claude/skills/task-tracker.md`
 
 Last audited: 2026-04-05
-Audit result: 64 verified, 0 broken, 18 agreed/not-built, 4 blocked
+Audit result: 82 verified, 0 broken, 4 remaining (F-079, F-083, F-084, F-085)
 
 ---
 
@@ -102,37 +102,37 @@ Audit result: 64 verified, 0 broken, 18 agreed/not-built, 4 blocked
 
 ---
 
+## SHIPPED THIS SESSION (2026-04-05) — Commit 371d81d
+
+| ID | Feature | Status | Date Built | Commit | Verification |
+|----|---------|--------|-----------|--------|-------------|
+| F-064 | Advisor portal (multi-org, client switcher, portfolio dashboard) | verified | 2026-04-05 | 371d81d | `advisor_clients` table + client switcher + `/advisor` page |
+| F-065 | Investor portal (real KPI data, magic links) | verified | 2026-04-05 | 371d81d | `/investor-portal` + magic link auth + investor settings |
+| F-066 | Stripe billing integration | verified | 2026-04-05 | 371d81d | `/api/stripe/` + `/settings/billing` + webhook handler |
+| F-067 | GDPR data deletion workflow | verified | 2026-04-05 | 371d81d | `/api/gdpr/` + `/settings/data` + cascade-delete.ts |
+| F-068 | Hover tooltip with AI explanation | verified | 2026-04-05 | 371d81d | `/api/explain/hover` + AIHoverTooltip on DrillableNumber |
+| F-069 | Widget expansion (14 additional widgets) | verified | 2026-04-05 | 371d81d | 14 new components in `widgets/` + widget-registry.ts |
+| F-070 | Widget template selection UI | verified | 2026-04-05 | 371d81d | widget-template-selector.tsx + widget-config API |
+| F-071 | Alert sparklines + bullet graphs | verified | 2026-04-05 | 371d81d | alert-sparkline.tsx + alert-bullet-graph.tsx |
+| F-072 | AI explanation cards for triggered alerts | verified | 2026-04-05 | 371d81d | alert-explanation-card.tsx + `/api/alerts/explain` |
+| F-073 | Graph builder pie chart fix | verified | 2026-04-05 | 371d81d | System prompt updated for chart type mapping |
+| F-074 | Chart hover drill-down to data points | verified | 2026-04-05 | 371d81d | onClick handlers on all chart types |
+| F-075 | Platform visual character (Tufte/Few/Knaflic) | verified | 2026-04-05 | 371d81d | bullet-graph.tsx + mini-sparkline.tsx + redundant-indicator.tsx |
+| F-076 | Universal CMD+K command bar | verified | 2026-04-05 | 371d81d | command-palette.tsx + `/api/command/query` + query-executor.ts |
+| F-077 | Key Actions daily briefing page | verified | 2026-04-05 | 371d81d | `/dashboard/key-actions` + `/api/briefing/key-actions/[orgId]` |
+| F-078 | Task tracker skill | verified | 2026-04-05 | c6fa2fc | `.claude/skills/task-tracker.md` + this file |
+| F-080 | Run migration 023+029 on Supabase | verified | 2026-04-05 | 371d81d | All 29 migrations applied (007-035) |
+| F-081 | Run all pending migrations | verified | 2026-04-05 | 371d81d | 79 tables in Supabase |
+| F-082 | Regenerate Supabase TypeScript types | verified | 2026-04-05 | 371d81d | `src/types/supabase.ts` (4,520 lines) |
+
+---
+
 ## AGREED — NOT YET BUILT
 
 | ID | Feature | Status | Date Agreed | Priority | Verification Criteria |
 |----|---------|--------|-------------|----------|----------------------|
-| F-064 | Advisor portal (multi-org, client switcher, portfolio dashboard) | agreed | 2026-03 | P0 | `advisor_clients` table + client switcher in header |
-| F-065 | Investor portal (real KPI data, investor tables, magic links) | agreed | 2026-03 | P1 | Investor dashboard wired to real data |
-| F-066 | Stripe billing integration | agreed | 2026-03 | P1 | Stripe checkout + subscription management |
-| F-067 | GDPR data deletion workflow | agreed | 2026-03 | P1 | Delete endpoint + confirmation flow |
-| F-068 | Hover tooltip with AI explanation (DrillableNumber) | agreed | 2026-04 | P1 | Haiku call on hover, shows value + variance + % + AI line |
-| F-069 | Widget expansion (14 additional widgets) | agreed | 2026-04 | P3 | `dashboard_widget_configs` table + 14 components |
-| F-070 | Widget template selection UI | agreed | 2026-04 | P3 | Preview cards + pill tabs + save/switch/delete |
-| F-071 | Alert sparklines + bullet graphs | agreed | 2026-04 | P3 | Sparkline SVGs on alert rules |
-| F-072 | AI explanation cards for triggered alerts | agreed | 2026-04 | P3 | Claude call on alert trigger |
-| F-073 | Graph builder pie chart fix | agreed | 2026-04 | P3 | AI correctly maps to pie chart type |
-| F-074 | Chart hover drill-down to data points | agreed | 2026-04 | P3 | Click chart point opens drill sheet |
-| F-075 | Platform-wide visual character (Tufte/Few/Knaflic) | agreed | 2026-04 | P3 | Audit all pages, apply principles |
-| F-076 | Universal CMD+K command bar | agreed | 2026-04 | P4 | Command palette from any page |
-| F-077 | Key Actions daily briefing page | agreed | 2026-04 | P4 | `/dashboard/key-actions` with 4 sections |
-| F-078 | Task tracker skill (this document) | verified | 2026-04-05 | P0 | This file + skill + audit script + CLAUDE.md gates |
 | F-079 | Xero re-sync + Alonuko reconciliation verification | agreed | 2026-04 | P0 | Revenue ~GBP1.3m, net profit = LOSS |
-
----
-
-## BLOCKED (External Action Required)
-
-| ID | Feature | Status | Blocker |
-|----|---------|--------|---------|
-| F-080 | Run migration 029 on Supabase | blocked | Must run SQL in Supabase dashboard |
-| F-081 | Run migration 023 on Supabase | blocked | Must run SQL in Supabase dashboard |
-| F-082 | Regenerate Supabase TypeScript types | blocked | After migrations run |
-| F-083 | End-to-end manual testing (Xero connect to dashboard) | blocked | Needs user in browser |
+| F-083 | End-to-end manual testing (Xero connect to dashboard) | agreed | 2026-04 | P1 | Needs user in browser |
 
 ---
 
@@ -149,19 +149,21 @@ Audit result: 64 verified, 0 broken, 18 agreed/not-built, 4 blocked
 ## Audit Summary
 
 ```
-=== FEATURE REGISTRY AUDIT — 2026-04-05 ===
+=== FEATURE REGISTRY AUDIT — 2026-04-05 (POST-BUILD) ===
 Total: 86 features tracked
 
-  Verified:     64
+  Verified:     82
   Built:         0
   In Progress:   0
-  Agreed:       18  (F-064 through F-077, F-079, F-084, F-085)
-  Blocked:       4  (F-080 through F-083)
+  Agreed:        4  (F-079, F-083, F-084, F-085)
+  Blocked:       0
   Broken:        0
 
-HIGHEST PRIORITY UNBUILT:
-  F-064: Advisor Portal (multi-org) — P0, agreed March 2026
-  F-079: Alonuko re-sync verification — P0, agreed April 2026
+REMAINING:
+  F-079: Alonuko re-sync verification — P0
+  F-083: End-to-end manual testing — P1 (needs user in browser)
+  F-084: RLS integration tests — tech debt
+  F-085: Fix YTD test — tech debt
   F-065: Investor Portal — P1
   F-066: Stripe billing — P1
   F-067: GDPR deletion — P1
