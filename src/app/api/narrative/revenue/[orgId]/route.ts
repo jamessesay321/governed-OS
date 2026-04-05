@@ -114,7 +114,9 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Narrative Task — Revenue Analysis
-This is a UK-based business. Use GBP. Reference UK tax rules (Corporation Tax, VAT) where relevant.
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Use GBP. Reference UK tax rules (Corporation Tax with marginal relief, VAT) where relevant.
 
 Generate a concise revenue narrative (3-5 sentences) providing a deep-dive into revenue performance.
 

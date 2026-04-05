@@ -115,7 +115,10 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Narrative Task — Income Statement Analysis
-This is a UK-based business. Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Reference ISA 570 going concern indicators where relevant.
+Use GBP. Reference UK tax rules (Corporation Tax with marginal relief, VAT, PAYE, Employer NI, Employer Pension) where relevant.
 
 Generate a concise income statement narrative (3-5 sentences) that analyses the profit and loss performance.
 

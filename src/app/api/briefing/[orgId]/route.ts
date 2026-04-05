@@ -182,6 +182,9 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Daily Briefing Task
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Reference ISA 570 going concern indicators where relevant.
 Generate a structured daily briefing for a UK-based SME business owner.
 Use GBP currency formatting. Be concise, actionable, and data-driven.
 

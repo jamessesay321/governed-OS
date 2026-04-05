@@ -125,16 +125,21 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Narrative Task — Balance Sheet Analysis
-This is a UK-based business. Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Reference ISA 570 going concern indicators where relevant.
+Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
 
 Generate a concise balance sheet narrative (3-5 sentences) that analyses the financial position.
 
 Rules:
 - Lead with net asset position and overall financial strength
+- Calculate and comment on the current ratio (current assets / current liabilities) — flag if below 1.0
+- Calculate and comment on gearing (total liabilities / total equity) — flag if over 100%
 - Break down assets (current vs fixed if distinguishable), liabilities, and equity
-- Calculate and comment on the debt-to-equity ratio if liabilities and equity are both present
 - Highlight the largest asset and liability items
 - If there's a previous period, note significant changes in working capital or debt levels
+- Flag any going concern indicators per ISA 570: net current liabilities, net liabilities, losses exceeding retained earnings
 - Assess liquidity and solvency implications
 - Respond with ONLY valid JSON
 

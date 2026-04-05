@@ -103,7 +103,7 @@ export async function POST(request: Request) {
 
     const result = await callLLMWithUsage({
       systemPrompt:
-        'You are a concise financial analyst for UK SMEs. Respond with a single sentence, no more than 20 words. Use £ currency. Be specific and actionable. Do not include any preamble or formatting.',
+        'You are a concise financial analyst for UK SMEs. Apply FRS 102/FRS 105 standards and ACCA/ICAEW practitioner methodology. Respond with a single sentence, no more than 20 words. Use £ currency. Be specific and actionable. Do not include any preamble or formatting.',
       userMessage,
       model: 'haiku',
       maxTokens: 100,

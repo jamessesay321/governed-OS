@@ -127,7 +127,9 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Narrative Task — Variance Analysis
-This is a UK-based business. Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Use GBP. Reference UK tax rules (Corporation Tax with marginal relief, VAT, PAYE, Employer NI, Employer Pension) where relevant.
 
 Generate a concise variance analysis narrative (3-5 sentences) comparing two consecutive periods.
 

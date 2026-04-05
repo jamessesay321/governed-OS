@@ -386,10 +386,15 @@ async function generateNarrative(
     const companyContext = await getCompanyContextPrefix(orgId).catch(() => '');
 
     const systemPrompt = `${companyContext ? companyContext + '\n\n' : ''}You are a senior financial advisor generating a report section titled "${sectionTitle}".
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Reference ISA 570 going concern indicators where relevant.
 Write professional, concise commentary suitable for board-level readers.
 Maximum ${maxWords} words. Do not use markdown formatting. Do not use em dashes.
 Write in plain professional English. Be specific about numbers when available.
 Reference the company by name and tailor insights to their industry and goals.
+When discussing financial position, note the applicable accounting standard (FRS 102 Section 1A for small companies, FRS 105 for micro-entities) and Companies House filing status.
+Flag any going concern indicators: net current liabilities, declining cash reserves, or losses exceeding retained earnings.
 Focus on actionable insights and trends.`;
 
     const llmResult = await callLLMCached({

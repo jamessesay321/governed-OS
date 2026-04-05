@@ -1,4 +1,5 @@
 import { createUntypedServiceClient } from '@/lib/supabase/server';
+import { calculateCorporationTax } from '@/lib/financial/uk-tax';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -272,7 +273,12 @@ export async function generateForecast(input: ForecastInput): Promise<ForecastRe
     const headcountCost = round2(headcount * avgSalary);
     const totalOpex = round2(baseOpex + headcountCost);
     const opProfit = round2(grossProfit - totalOpex);
-    const netP = round2(opProfit + otherIncome - otherExpenses);
+    const profitBeforeTax = round2(opProfit + otherIncome - otherExpenses);
+    // Apply UK Corporation Tax with marginal relief (FY2023+: 19% up to £50k, 25% over £250k)
+    // Annualise the monthly profit for rate banding, then divide back to monthly CT
+    const annualisedProfit = profitBeforeTax * 12;
+    const monthlyCT = annualisedProfit > 0 ? round2(calculateCorporationTax(annualisedProfit) / 12) : 0;
+    const netP = round2(profitBeforeTax - monthlyCT);
 
     pnl.revenue.push(revenue);
     pnl.costOfSales.push(cogs);

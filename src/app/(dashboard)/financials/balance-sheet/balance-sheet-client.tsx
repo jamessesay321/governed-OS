@@ -526,51 +526,76 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
         </table>
       </div>
 
-      {/* Key Ratios */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {[
-          {
-            label: 'Total Assets',
-            value: formatCurrency(totalAssets),
-            good: true,
-            change: priorPeriod ? totalAssets - priorTotalAssets : null,
-          },
-          {
-            label: 'Total Liabilities',
-            value: formatCurrency(totalLiabilities),
-            good: totalLiabilities < totalAssets,
-            change: priorPeriod ? totalLiabilities - priorTotalLiabilities : null,
-          },
-          {
-            label: 'Working Capital',
-            value: formatCurrency(workingCapital),
-            good: workingCapital > 0,
-            change: priorPeriod ? workingCapital - priorWorkingCapital : null,
-          },
-          {
-            label: 'Total Equity',
-            value: formatCurrency(totalEquity),
-            good: totalEquity > 0,
-            change: priorPeriod ? totalEquity - priorTotalEquity : null,
-          },
-          {
-            label: 'Net Assets',
-            value: formatCurrency(netAssets),
-            good: netAssets > 0,
-            change: priorPeriod ? netAssets - priorNetAssets : null,
-          },
-        ].map((card, i) => (
-          <div key={i} className="rounded-lg border bg-card p-4">
-            <p className="text-xs text-muted-foreground font-medium">{card.label}</p>
-            <p className={`text-xl font-bold mt-1 ${card.good ? 'text-emerald-600' : 'text-red-600'}`}>{card.value}</p>
-            {card.change !== null && card.change !== 0 && (
-              <p className={`text-[11px] mt-0.5 ${card.change > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {card.change > 0 ? '+' : ''}{formatCurrency(card.change)} vs prior
-              </p>
-            )}
+      {/* Key Ratios & Health Indicators */}
+      {(() => {
+        const currentRatio = currentLiabilitiesTotal !== 0
+          ? currentAssetsTotal / Math.abs(currentLiabilitiesTotal)
+          : currentAssetsTotal > 0 ? 999 : 0;
+        const gearing = totalEquity !== 0
+          ? (Math.abs(totalLiabilities) / Math.abs(totalEquity)) * 100
+          : 0;
+        const priorCurrentRatio = priorCurrentLiabilitiesTotal !== 0
+          ? priorCurrentAssetsTotal / Math.abs(priorCurrentLiabilitiesTotal)
+          : priorCurrentAssetsTotal > 0 ? 999 : 0;
+        const priorGearing = priorTotalEquity !== 0
+          ? (Math.abs(priorTotalLiabilities) / Math.abs(priorTotalEquity)) * 100
+          : 0;
+
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {[
+              {
+                label: 'Current Ratio',
+                value: currentRatio >= 999 ? 'N/A' : `${currentRatio.toFixed(2)}x`,
+                good: currentRatio >= 1,
+                change: priorPeriod && priorCurrentRatio < 999 ? currentRatio - priorCurrentRatio : null,
+                suffix: currentRatio < 1 ? 'Below 1.0 — potential liquidity risk' : currentRatio > 2 ? 'Strong liquidity' : 'Adequate liquidity',
+              },
+              {
+                label: 'Gearing (D/E)',
+                value: `${gearing.toFixed(1)}%`,
+                good: gearing < 100,
+                change: priorPeriod ? gearing - priorGearing : null,
+                suffix: gearing > 200 ? 'High leverage — monitor closely' : gearing > 100 ? 'Moderate leverage' : 'Low leverage',
+              },
+              {
+                label: 'Working Capital',
+                value: formatCurrency(workingCapital),
+                good: workingCapital > 0,
+                change: priorPeriod ? workingCapital - priorWorkingCapital : null,
+                suffix: workingCapital < 0 ? 'Net current liabilities — ISA 570 indicator' : undefined,
+              },
+              {
+                label: 'Total Equity',
+                value: formatCurrency(totalEquity),
+                good: totalEquity > 0,
+                change: priorPeriod ? totalEquity - priorTotalEquity : null,
+                suffix: totalEquity < 0 ? 'Negative equity — going concern risk' : undefined,
+              },
+              {
+                label: 'Net Assets',
+                value: formatCurrency(netAssets),
+                good: netAssets > 0,
+                change: priorPeriod ? netAssets - priorNetAssets : null,
+                suffix: undefined,
+              },
+            ].map((card, i) => (
+              <div key={i} className="rounded-lg border bg-card p-4">
+                <p className="text-xs text-muted-foreground font-medium">{card.label}</p>
+                <p className={`text-xl font-bold mt-1 ${card.good ? 'text-emerald-600' : 'text-red-600'}`}>{card.value}</p>
+                {card.change !== null && card.change !== 0 && (
+                  <p className={`text-[11px] mt-0.5 ${(card.label === 'Gearing (D/E)' ? card.change < 0 : card.change > 0) ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {card.change > 0 ? '+' : ''}{card.label === 'Current Ratio' ? `${card.change.toFixed(2)}x` : card.label === 'Gearing (D/E)' ? `${card.change.toFixed(1)}pp` : formatCurrency(card.change)} vs prior
+                  </p>
+                )}
+                {card.suffix && (
+                  <p className="text-[10px] mt-0.5 text-muted-foreground">{card.suffix}</p>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        );
+      })()}
 
       {/* Accounting equation check */}
       <div className="rounded-lg border bg-muted/20 px-4 py-3 text-xs text-muted-foreground">

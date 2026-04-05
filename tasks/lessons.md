@@ -188,3 +188,15 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Fix:** Created a persistent Feature Registry (`tasks/feature-registry.md`) that tracks every agreed feature with status, date, and verification criteria. Added a mandatory session-start audit that reads the registry and flags overdue items. Added a pre-compaction capture step. Created `.claude/skills/task-tracker.md` with the full protocol.
 
 **Preventative rule:** The MOMENT a user agrees to build something, add it to `/tasks/feature-registry.md` with status `agreed`. Never rely on conversation context alone. The registry survives compactions; conversation memory doesn't. Run `bash scripts/audit-features.sh` to verify built features still exist.
+
+---
+
+## Lesson 17: OTHERINCOME classification miss and encoding accounting standards
+
+**Mistake:** Xero's OTHERINCOME account class was initially unhandled in financial aggregation, causing "other income" (e.g. interest received, sundry income) to be silently dropped from P&L reports. Revenue was understated and the income statement didn't reconcile with Xero's own reports. Additionally, AI prompts and calculation engines referenced a flat 25% Corporation Tax rate instead of the marginal relief system (19% small profits, marginal relief band, 25% main rate).
+
+**Root cause:** Two gaps: (1) The Xero account class taxonomy wasn't fully enumerated — OTHERINCOME, DIRECTCOSTS, OVERHEADS are valid classes that differ from the generic REVENUE/EXPENSE used in most tutorials. (2) UK Corporation Tax is not a flat rate — the marginal relief system (FY2023+) means effective rates range from 19% to 25% depending on profit level. Using a flat rate miscalculates tax provisions for companies in the £50k-£250k profit band.
+
+**Fix:** Added OTHERINCOME handling to all aggregation paths (scenario pipeline, forecast engine, financial aggregation). Built `uk-tax.ts` with proper marginal relief calculation. Updated scenario and forecast engines to use `calculateCorporationTax()` with annualised profit banding. Added FRS 102/105, ACCA/ICAEW, and ISA 570 references to all AI system prompts.
+
+**Preventative rule:** (1) When integrating with any accounting platform, enumerate ALL account classes from the API documentation — do not assume a generic REVENUE/EXPENSE/ASSET/LIABILITY taxonomy. Test with real client data that includes edge-case classes. (2) Always encode UK tax rules as deterministic functions with proper banding, not flat rates. Reference HMRC publications for current rates and thresholds. (3) All AI system prompts for financial analysis must reference the applicable accounting framework (FRS 102/105), practitioner body methodology (ACCA/ICAEW), and audit standards (ISA 570) — generic "financial analysis" prompts produce generic output that doesn't meet UK compliance expectations.

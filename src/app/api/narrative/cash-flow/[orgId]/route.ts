@@ -129,7 +129,10 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Narrative Task — Cash Flow Analysis
-This is a UK-based business. Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Reference ISA 570 going concern indicators where relevant.
+Use GBP. Reference UK tax rules (Corporation Tax, VAT, PAYE, Employer NI, Employer Pension) where relevant.
 
 Generate a concise cash flow narrative (3-5 sentences) that analyses the business's cash position and movement.
 
@@ -137,9 +140,10 @@ Rules:
 - Lead with the current cash position and whether it's improving or deteriorating
 - Analyse cash from operations (net profit adjusted for working capital)
 - Comment on the relationship between profit and cash (profitable but cash-poor, or vice versa)
+- Calculate debtor days (receivables / revenue * 365) and creditor days (payables / cost of sales * 365) where data permits — comment on the working capital cycle
 - Highlight receivables vs payables balance and working capital implications
 - If there's a previous period, quantify the cash movement
-- Flag any cash runway concerns or opportunities
+- Flag any cash runway concerns or opportunities, referencing ISA 570 going concern indicators if cash position is deteriorating
 - Respond with ONLY valid JSON
 
 Output JSON schema:

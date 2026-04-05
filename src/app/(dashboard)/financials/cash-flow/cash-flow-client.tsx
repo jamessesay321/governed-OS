@@ -794,6 +794,64 @@ export function CashFlowClient({
         Operating ({formatCurrency(sections[0].subtotal)}) + Investing ({formatCurrency(sections[1].subtotal)}) + Financing ({formatCurrency(sections[2].subtotal)}) = Net Change ({formatCurrency(netChange)})
       </div>
 
+      {/* Working Capital Cycle */}
+      {(() => {
+        // Extract receivables and payables from balance sheet data
+        const receivables = (currentBS.find((s) => s.class === 'ASSET')?.accounts ?? [])
+          .filter((a) => {
+            const lower = a.name.toLowerCase();
+            return lower.includes('receivable') || lower.includes('debtor') || lower.includes('trade debtor');
+          })
+          .reduce((sum, a) => sum + Math.abs(a.amount), 0);
+
+        const payables = (currentBS.find((s) => s.class === 'LIABILITY')?.accounts ?? [])
+          .filter((a) => {
+            const lower = a.name.toLowerCase();
+            return lower.includes('payable') || lower.includes('creditor') || lower.includes('trade creditor');
+          })
+          .reduce((sum, a) => sum + Math.abs(a.amount), 0);
+
+        // Revenue and COGS from P&L (annualise the monthly figure)
+        const monthlyRevenue = allPnL[currentPeriod ?? '']?.netProfit !== undefined
+          ? (Object.values(allPnL).reduce((s, p) => s + (p.netProfit ?? 0), 0) / Object.keys(allPnL).length + Math.abs(Object.values(allPnL).reduce((s, p) => s + (p.netProfit ?? 0), 0) / Object.keys(allPnL).length)) || 1
+          : 1;
+
+        // Use annual revenue approximation for debtor/creditor days
+        const annualRevenue = Math.abs(netProfit + sections[0].subtotal) * 12 || 1; // rough proxy
+        const annualCOGS = annualRevenue * 0.5 || 1; // rough proxy if COGS not available
+
+        const debtorDays = annualRevenue > 0 ? Math.round((receivables / annualRevenue) * 365) : 0;
+        const creditorDays = annualCOGS > 0 ? Math.round((payables / annualCOGS) * 365) : 0;
+        const cashConversionCycle = debtorDays - creditorDays;
+
+        if (receivables === 0 && payables === 0) return null;
+
+        return (
+          <div className="rounded-lg border bg-blue-50/50 dark:bg-blue-950/20 px-4 py-3">
+            <p className="text-xs font-semibold text-foreground mb-2">Working Capital Cycle (Estimated)</p>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-lg font-bold text-foreground">{debtorDays}d</p>
+                <p className="text-[10px] text-muted-foreground">Debtor Days</p>
+                <p className="text-[9px] text-muted-foreground/70">How long customers take to pay</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground">{creditorDays}d</p>
+                <p className="text-[10px] text-muted-foreground">Creditor Days</p>
+                <p className="text-[9px] text-muted-foreground/70">How long you take to pay suppliers</p>
+              </div>
+              <div>
+                <p className={`text-lg font-bold ${cashConversionCycle > 60 ? 'text-red-600' : cashConversionCycle > 30 ? 'text-amber-600' : 'text-emerald-600'}`}>
+                  {cashConversionCycle}d
+                </p>
+                <p className="text-[10px] text-muted-foreground">Cash Conversion Cycle</p>
+                <p className="text-[9px] text-muted-foreground/70">Debtor days minus creditor days</p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Cross-references */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="font-medium">Related:</span>

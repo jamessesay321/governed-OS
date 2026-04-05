@@ -1,4 +1,5 @@
 import { roundCurrency } from '@/lib/financial/normalise';
+import { calculateCorporationTax } from '@/lib/financial/uk-tax';
 import { resolveAssumptionsForPeriod } from './assumptions';
 import type { AssumptionInput, ResolvedAssumptions } from './assumptions';
 
@@ -234,7 +235,11 @@ export function generateFullProjection(
 
     const grossProfit = roundCurrency(revenue - costOfSales);
     const grossMarginPct = calcGrossMargin(revenue, costOfSales);
-    const netProfit = roundCurrency(grossProfit - operatingExpenses);
+    const profitBeforeTax = roundCurrency(grossProfit - operatingExpenses);
+    // Apply UK Corporation Tax with marginal relief (FY2023+: 19% up to £50k, 25% over £250k)
+    const associatedCompanies = Number(resolved.get('associated_companies') ?? 0);
+    const corporationTax = actual ? 0 : calculateCorporationTax(Math.max(0, profitBeforeTax * 12), associatedCompanies) / 12;
+    const netProfit = roundCurrency(profitBeforeTax - corporationTax);
     const netMarginPct = revenue === 0 ? 0 : roundCurrency(netProfit / revenue * 10000) / 10000;
 
     const cashFlow = projectCashFlow({

@@ -114,6 +114,10 @@ export async function GET(
     const systemPrompt = `${companySystemPrompt}
 
 ## Narrative Task
+This is a UK company. Apply FRS 102/FRS 105 standards as appropriate.
+Use ACCA/ICAEW practitioner methodology for ratio analysis.
+Reference ISA 570 going concern indicators where relevant.
+
 Generate a concise dashboard narrative summary (2-4 sentences).
 
 Rules:
