@@ -13,6 +13,8 @@ type Props = {
   existingMessages: { role: 'user' | 'assistant'; content: string; stage: string }[];
   currentInterviewId: string | null;
   currentStage: string;
+  initialContext?: Record<string, unknown> | null;
+  existingProfile?: Record<string, unknown> | null;
 };
 
 export function OnboardingInterviewClient({
@@ -20,10 +22,18 @@ export function OnboardingInterviewClient({
   existingMessages,
   currentInterviewId,
   currentStage,
+  initialContext,
+  existingProfile,
 }: Props) {
   const router = useRouter();
   const [showCompletion, setShowCompletion] = useState(false);
   const [activeInterviewId, setActiveInterviewId] = useState(currentInterviewId);
+
+  // Build business context from scan data and existing profile for pre-population
+  const businessContext: Record<string, unknown> = {
+    ...(initialContext || {}),
+    ...(existingProfile || {}),
+  };
 
   const STAGE_ORDER: InterviewStage[] = [
     'business_model_confirmation',
@@ -80,6 +90,7 @@ export function OnboardingInterviewClient({
             initialStage={currentStage as InterviewStage}
             initialStageIndex={stageIndex >= 0 ? stageIndex : 0}
             interviewId={currentInterviewId ?? undefined}
+            businessContext={Object.keys(businessContext).length > 0 ? businessContext : null}
             onComplete={() => {
               setTimeout(() => {
                 setShowCompletion(true);

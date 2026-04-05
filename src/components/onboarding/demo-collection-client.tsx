@@ -12,6 +12,11 @@ type Props = {
   displayName: string;
   orgName: string;
   orgId: string;
+  savedIndustry?: string;
+  savedWebsite?: string;
+  savedSocial?: string;
+  savedRevenue?: string;
+  savedTeamSize?: string;
 };
 
 const INDUSTRIES = [
@@ -53,14 +58,23 @@ const LOADING_STEPS = [
   'Preparing your dashboard...',
 ];
 
-export function DemoCollectionClient({ displayName, orgName, orgId }: Props) {
+export function DemoCollectionClient({
+  displayName,
+  orgName,
+  orgId,
+  savedIndustry,
+  savedWebsite,
+  savedSocial,
+  savedRevenue,
+  savedTeamSize,
+}: Props) {
   const router = useRouter();
   const [companyName, setCompanyName] = useState(orgName || '');
-  const [industry, setIndustry] = useState('');
-  const [teamSize, setTeamSize] = useState('');
-  const [websiteUrl, setWebsiteUrl] = useState('');
-  const [socialUrl, setSocialUrl] = useState('');
-  const [revenueRange, setRevenueRange] = useState('');
+  const [industry, setIndustry] = useState(savedIndustry || '');
+  const [teamSize, setTeamSize] = useState(savedTeamSize || '');
+  const [websiteUrl, setWebsiteUrl] = useState(savedWebsite || '');
+  const [socialUrl, setSocialUrl] = useState(savedSocial || '');
+  const [revenueRange, setRevenueRange] = useState(savedRevenue || '');
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [error, setError] = useState<string | null>(null);

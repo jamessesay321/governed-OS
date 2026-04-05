@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 
 /* ------------------------------------------------------------------ */
@@ -102,7 +102,7 @@ export function InterviewPageClient({
   const [saved, setSaved] = useState(interviewCompleted);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
 
-  const [form, setForm] = useState<FormData>({
+  const initialForm: FormData = {
     companyName: (existingProfile?.company_name as string) || '',
     website: (existingProfile?.website as string) || '',
     linkedIn: (existingProfile?.linkedin as string) || '',
@@ -119,7 +119,45 @@ export function InterviewPageClient({
     description: (existingProfile?.description as string) || '',
     goals: (existingProfile?.goals as string) || '',
     challenges: (existingProfile?.challenges as string) || '',
-  });
+  };
+
+  const [form, setForm] = useState<FormData>(initialForm);
+  const lastSavedForm = useRef<string>(JSON.stringify(initialForm));
+
+  const hasUnsavedChanges = JSON.stringify(form) !== lastSavedForm.current;
+
+  const autoSave = useCallback(async () => {
+    if (!hasUnsavedChanges) return;
+    try {
+      await fetch(`/api/interview/${orgId}/profile`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      lastSavedForm.current = JSON.stringify(form);
+    } catch {} // silent auto-save
+  }, [form, orgId, hasUnsavedChanges]);
+
+  // Auto-save when step changes
+  const prevStep = useRef(currentStep);
+  useEffect(() => {
+    if (prevStep.current !== currentStep) {
+      prevStep.current = currentStep;
+      autoSave();
+    }
+  }, [currentStep, autoSave]);
+
+  // Warn user before navigating away with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasUnsavedChanges]);
 
   const update = (field: keyof FormData, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -139,6 +177,7 @@ export function InterviewPageClient({
       });
       if (res.ok) {
         setSaved(true);
+        lastSavedForm.current = JSON.stringify(form);
       }
     } catch {
       // silent fail: log server-side

@@ -75,12 +75,28 @@ export function WelcomeClient({ displayName, orgName }: Props) {
           router.push('/welcome/connect');
         }, 2500);
       } else {
+        // Save input even when scan response fails (best-effort)
+        try {
+          await fetch('/api/onboarding/save-basics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ websiteUrl, businessDescription }),
+          });
+        } catch {} // best-effort
         setScanError(data.error || 'Scan failed. Continuing to interview');
         setTimeout(() => {
           router.push('/welcome/connect');
         }, 2000);
       }
     } catch {
+      // Save input even on scan failure (best-effort)
+      try {
+        await fetch('/api/onboarding/save-basics', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ websiteUrl, businessDescription }),
+        });
+      } catch {} // best-effort
       router.push('/welcome/connect');
     }
   }

@@ -100,12 +100,12 @@ export default async function InterviewPage() {
     try {
       const { data: orgData } = await untyped
         .from('organisations')
-        .select('website, industry')
+        .select('website_url, industry')
         .eq('id', orgId)
         .maybeSingle();
 
       if (orgData) {
-        if ((orgData as any).website && !fallback.website) fallback.website = (orgData as any).website;
+        if ((orgData as any).website_url && !fallback.website) fallback.website = (orgData as any).website_url;
         if ((orgData as any).industry && !fallback.industry) fallback.industry = (orgData as any).industry;
       }
     } catch {

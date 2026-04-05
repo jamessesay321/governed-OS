@@ -584,7 +584,7 @@ export async function generateAllDemoData(input: DemoInput): Promise<void> {
       .from('business_context_profiles')
       .upsert({
         org_id: orgId,
-        interview_status: 'completed',
+        status: 'completed',
         business_model: input.industry,
         industry: input.industry,
         stage: guessStage(input.revenueRange, input.teamSize),
@@ -757,6 +757,8 @@ export async function generateAllDemoData(input: DemoInput): Promise<void> {
       onboarding_mode: 'demo',
       demo_company_name: input.companyName,
       demo_industry: input.industry,
+      industry: input.industry,
+      website_url: input.websiteUrl || null,
     })
     .eq('id', orgId);
 }

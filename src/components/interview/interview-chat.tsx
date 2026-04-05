@@ -25,6 +25,7 @@ type Props = {
   initialStageIndex?: number;
   interviewId?: string;
   onComplete?: () => void;
+  businessContext?: Record<string, unknown> | null;
 };
 
 const STAGE_LABELS: StageInfo[] = [
@@ -68,6 +69,7 @@ export function InterviewChat({
   initialStageIndex = 0,
   interviewId: initialInterviewId,
   onComplete,
+  businessContext,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
@@ -95,7 +97,7 @@ export function InterviewChat({
       const res = await fetch(`/api/interview/${orgId}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'start' }),
+        body: JSON.stringify({ action: 'start', businessContext: businessContext || undefined }),
       });
 
       const data = await res.json();

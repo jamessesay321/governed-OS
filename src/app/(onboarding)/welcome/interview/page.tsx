@@ -48,6 +48,40 @@ export default async function OnboardingInterviewPage() {
     return redirect('/welcome/connect');
   }
 
+  // Fetch org-level scan data to pre-populate interview context
+  let initialContext: Record<string, unknown> | null = null;
+  try {
+    const { data: orgData } = await service
+      .from('organisations' as any)
+      .select('website_url, industry, business_scan, demo_company_name, demo_industry')
+      .eq('id', profile.org_id)
+      .single();
+
+    if (orgData) {
+      initialContext = orgData as unknown as Record<string, unknown>;
+    }
+  } catch {
+    // Organisation may not have scan data yet
+  }
+
+  // Fetch any existing profile data from business_context_profiles
+  let existingProfileData: Record<string, unknown> | null = null;
+  try {
+    const { data: profileData } = await service
+      .from('business_context_profiles' as any)
+      .select('*')
+      .eq('org_id', profile.org_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (profileData) {
+      existingProfileData = profileData as unknown as Record<string, unknown>;
+    }
+  } catch {
+    // No existing profile data
+  }
+
   // Check for in-progress interview with existing messages
   let existingMessages: { role: 'user' | 'assistant'; content: string; stage: string }[] = [];
   let currentInterviewId: string | null = null;
@@ -88,6 +122,8 @@ export default async function OnboardingInterviewPage() {
       existingMessages={existingMessages}
       currentInterviewId={currentInterviewId}
       currentStage={currentStage}
+      initialContext={initialContext}
+      existingProfile={existingProfileData}
     />
   );
 }
