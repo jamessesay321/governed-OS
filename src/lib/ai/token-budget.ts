@@ -11,9 +11,9 @@ type Plan = 'free' | 'starter' | 'growth' | 'enterprise';
 
 /** Monthly token limits per plan. -1 means unlimited. */
 const PLAN_LIMITS: Record<Plan, number> = {
-  free: 10_000,
-  starter: 50_000,
-  growth: 200_000,
+  free: 100_000,
+  starter: 500_000,
+  growth: 2_000_000,
   enterprise: -1, // unlimited
 };
 

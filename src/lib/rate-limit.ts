@@ -97,7 +97,7 @@ export function createRateLimiter(config: RateLimitConfig) {
 
 // Pre-configured limiters for different endpoint types
 // LLM endpoints: expensive Claude API calls — 10 req/min
-export const llmLimiter = createRateLimiter({ windowMs: 60_000, max: 10 });
+export const llmLimiter = createRateLimiter({ windowMs: 60_000, max: 30 });
 
 // Sync endpoints: expensive Xero API calls — 3 req/min
 export const syncLimiter = createRateLimiter({ windowMs: 60_000, max: 3 });

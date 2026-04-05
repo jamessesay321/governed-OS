@@ -148,7 +148,7 @@ function BriefingSkeleton() {
 export function DailyBriefing({ orgId, period }: DailyBriefingProps) {
   const [data, setData] = useState<BriefingData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | false>(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchBriefing = useCallback(
@@ -168,10 +168,18 @@ export function DailyBriefing({ orgId, period }: DailyBriefingProps) {
           const json = await res.json();
           setData(json);
         } else {
-          setError(true);
+          if (res.status === 429) {
+            setError('rate_limited');
+          } else if (res.status === 402) {
+            setError('budget_exceeded');
+          } else if (res.status === 401 || res.status === 403) {
+            setError('auth_error');
+          } else {
+            setError('generic');
+          }
         }
       } catch {
-        setError(true);
+        setError('generic');
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -189,7 +197,26 @@ export function DailyBriefing({ orgId, period }: DailyBriefingProps) {
   }
 
   if (error || !data) {
-    return null; // Graceful degradation — home page works without briefing
+    return (
+      <Card className="border-l-4 border-l-amber-400">
+        <CardContent className="py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Sparkles className="h-4 w-4" />
+              <span>Daily briefing unavailable — {error === 'rate_limited' ? 'too many requests, try again shortly' : error === 'budget_exceeded' ? 'monthly AI budget reached' : error === 'auth_error' ? 'authentication issue' : 'could not load briefing'}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => fetchBriefing(false)}
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Retry
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

@@ -22,7 +22,7 @@ export function NarrativeSummary({ orgId, period, narrativeEndpoint = 'narrative
   const [data, setData] = useState<NarrativeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showReasoning, setShowReasoning] = useState(false);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | false>(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,15 +31,27 @@ export function NarrativeSummary({ orgId, period, narrativeEndpoint = 'narrative
       setLoading(true);
       setError(false);
       try {
+        // Stagger requests to avoid rate limit spike from multiple narrative components
+        await new Promise(r => setTimeout(r, Math.random() * 2000));
+        if (cancelled) return;
+
         const res = await fetch(`/api/${narrativeEndpoint}/${orgId}?period=${period}`);
         if (res.ok && !cancelled) {
           const json = await res.json();
           setData(json);
         } else if (!cancelled) {
-          setError(true);
+          if (res.status === 429) {
+            setError('rate_limited');
+          } else if (res.status === 402) {
+            setError('budget_exceeded');
+          } else if (res.status === 401 || res.status === 403) {
+            setError('auth_error');
+          } else {
+            setError('generic');
+          }
         }
       } catch {
-        if (!cancelled) setError(true);
+        if (!cancelled) setError('generic');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -63,7 +75,14 @@ export function NarrativeSummary({ orgId, period, narrativeEndpoint = 'narrative
   }
 
   if (error || !data) {
-    return null; // Graceful degradation — dashboard works without narrative
+    return (
+      <div className="rounded-lg border border-dashed border-muted-foreground/25 p-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4" />
+          <span>AI narrative unavailable — {error === 'rate_limited' ? 'too many requests, try again shortly' : error === 'budget_exceeded' ? 'monthly AI budget reached' : error === 'auth_error' ? 'authentication issue' : 'loading insights...'}</span>
+        </div>
+      </div>
+    );
   }
 
   return (
