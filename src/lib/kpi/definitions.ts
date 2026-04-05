@@ -4,7 +4,7 @@
  */
 
 export type KPIFormat = 'currency' | 'percentage' | 'months' | 'ratio' | 'number' | 'days';
-export type BusinessType = 'universal' | 'saas' | 'ecommerce' | 'services';
+export type BusinessType = 'universal' | 'saas' | 'ecommerce' | 'services' | 'fashion';
 
 export type KPIDefinition = {
   key: string;
@@ -556,6 +556,48 @@ const servicesKPIs: KPIDefinition[] = [
   },
 ];
 
+// === Fashion / Luxury KPIs ===
+// These are placeholder definitions for the KPI engine; actual product-level
+// KPIs are calculated by the Product Intelligence layer (industry-kpis.ts)
+// using line-item data. These definitions allow the engine to include
+// fashion-specific financial ratios that don't require line-item parsing.
+
+const fashionKPIs: KPIDefinition[] = [
+  {
+    key: 'cogs_material_ratio',
+    label: 'Material Cost Ratio',
+    description: 'Cost of sales (materials) as a percentage of revenue',
+    plainEnglish: 'How much of each pound goes to fabrics, materials, and direct costs',
+    formula: (d) => round4(safeDivide(d.cost_of_sales, d.revenue)),
+    format: 'percentage',
+    business_types: ['fashion'],
+    higher_is_better: false,
+  },
+  {
+    key: 'opex_to_revenue',
+    label: 'Studio Cost Ratio',
+    description: 'Operating expenses as a percentage of revenue',
+    plainEnglish: 'How much of your revenue goes to running the studio and business',
+    formula: (d) => round4(safeDivide(d.operating_expenses, d.revenue)),
+    format: 'percentage',
+    business_types: ['fashion'],
+    higher_is_better: false,
+  },
+  {
+    key: 'revenue_per_head',
+    label: 'Revenue per Team Member',
+    description: 'Revenue divided by employee count',
+    plainEnglish: 'How much revenue each team member generates',
+    formula: (d) => {
+      if (d.employee_count === 0) return null;
+      return round4(safeDivide(d.revenue, d.employee_count));
+    },
+    format: 'currency',
+    business_types: ['fashion'],
+    higher_is_better: true,
+  },
+];
+
 /**
  * All KPI definitions combined.
  */
@@ -564,6 +606,7 @@ export const ALL_KPI_DEFINITIONS: KPIDefinition[] = [
   ...saasKPIs,
   ...ecommerceKPIs,
   ...servicesKPIs,
+  ...fashionKPIs,
 ];
 
 /**

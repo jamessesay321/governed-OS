@@ -14,6 +14,7 @@ import {
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { useChallenge } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { ProductIntelligence } from '@/components/dashboard/product-intelligence';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -549,6 +550,9 @@ export function ExecutiveSummaryClient({
           </CardContent>
         </Card>
       )}
+
+      {/* Product Intelligence */}
+      <ProductIntelligence orgId={orgId} period={currentPeriod} />
 
       {/* Cross-references */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">

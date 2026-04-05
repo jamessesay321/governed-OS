@@ -2,6 +2,8 @@ import { createServiceClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { roundCurrency } from '@/lib/financial/normalise';
 import { getKPIsForBusinessType, emptyKPIInputData } from './definitions';
+import { parseLineItems, getPeriodDateRange } from '@/lib/intelligence/line-item-parser';
+import { calculateIndustryKPIs } from '@/lib/intelligence/industry-kpis';
 import type { BusinessType, KPIFormat } from './definitions';
 import type {
   NormalisedFinancial,
@@ -205,6 +207,45 @@ export async function calculateKPIs(
       benchmark_status: benchmarkResult.status,
       higher_is_better: def.higher_is_better,
     });
+  }
+
+  // ─── Product Intelligence KPIs (best-effort) ─────────────────────
+  try {
+    const { data: orgData } = await supabase
+      .from('organisations' as any)
+      .select('industry')
+      .eq('id', orgId)
+      .single();
+
+    const industry = ((orgData as unknown as Record<string, unknown>)?.industry as string) ?? '';
+    const { startDate, endDate } = getPeriodDateRange(period);
+    const productResult = await parseLineItems(orgId, startDate, endDate, industry);
+
+    if (productResult.totalRevenue > 0) {
+      const productKPIs = calculateIndustryKPIs(productResult, industry);
+
+      for (const pk of productKPIs) {
+        // Skip product mix KPIs from the main engine output (they show in the product dashboard)
+        if (pk.key.startsWith('product_mix_')) continue;
+
+        results.push({
+          key: pk.key,
+          label: pk.label,
+          description: pk.description,
+          plainEnglish: pk.plainEnglish,
+          value: pk.value,
+          formatted_value: pk.formattedValue,
+          format: pk.format as KPIFormat,
+          trend_direction: 'flat',
+          trend_percentage: 0,
+          benchmark_value: null,
+          benchmark_status: 'none',
+          higher_is_better: pk.higherIsBetter,
+        });
+      }
+    }
+  } catch {
+    // Product intelligence is optional — graceful degradation
   }
 
   return results;
