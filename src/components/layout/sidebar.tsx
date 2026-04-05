@@ -202,6 +202,48 @@ const navigation: NavGroup[] = [
       { href: '/storefront/analytics', label: 'Sales Analytics' },
     ],
   },
+  {
+    group: 'Sales CRM',
+    icon: 'Briefcase',
+    href: '/crm',
+    children: [
+      { href: '/crm', label: 'Pipeline' },
+      { href: '/crm/contacts', label: 'Contacts' },
+      { href: '/crm/deals', label: 'Deals' },
+      { href: '/crm/activity', label: 'Activity' },
+    ],
+  },
+  {
+    group: 'Email & Retention',
+    icon: 'Megaphone',
+    href: '/retention',
+    children: [
+      { href: '/retention', label: 'Overview' },
+      { href: '/retention/campaigns', label: 'Campaigns' },
+      { href: '/retention/flows', label: 'Flows' },
+      { href: '/retention/segments', label: 'Segments' },
+    ],
+  },
+  {
+    group: 'Scheduling',
+    icon: 'Activity',
+    href: '/scheduling',
+    children: [
+      { href: '/scheduling', label: 'Calendar' },
+      { href: '/scheduling/bookings', label: 'Bookings' },
+      { href: '/scheduling/availability', label: 'Availability' },
+    ],
+  },
+  {
+    group: 'Team Comms',
+    icon: 'MessageSquare',
+    href: '/comms',
+    children: [
+      { href: '/comms', label: 'Overview' },
+      { href: '/comms/channels', label: 'Channels' },
+      { href: '/comms/alerts', label: 'Alert Rules' },
+    ],
+  },
 
   // ══════════════════════════════════════════════════════════════════
   //  STRATEGY
@@ -609,12 +651,12 @@ const icons: Record<string, React.ReactNode> = {
 const sectionBreaks: Record<number, string> = {
   0: 'OVERVIEW',              // Dashboard, Business Profile
   2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions
-  10: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront
-  14: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
-  17: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
-  20: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
-  24: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
-  28: 'ADMIN',                // Billing & Plans, Settings, Help & Support
+  10: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
+  19: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
+  22: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
+  25: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
+  29: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
+  33: 'ADMIN',                // Billing & Plans, Settings, Help & Support
 };
 
 /* ------------------------------------------------------------------ */
