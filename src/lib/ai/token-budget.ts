@@ -7,10 +7,10 @@ type TokenBudget = {
   resetDate: Date;
 };
 
-type Plan = 'free' | 'starter' | 'growth' | 'enterprise';
+export type Plan = 'free' | 'starter' | 'growth' | 'enterprise';
 
 /** Monthly token limits per plan. -1 means unlimited. */
-const PLAN_LIMITS: Record<Plan, number> = {
+export const PLAN_LIMITS: Record<Plan, number> = {
   free: 100_000,
   starter: 500_000,
   growth: 2_000_000,
@@ -36,7 +36,7 @@ function nextMonthStart(): Date {
 /**
  * Resolve the plan for an org. Falls back to 'free' if unrecognised.
  */
-async function getOrgPlan(orgId: string): Promise<Plan> {
+export async function getOrgPlan(orgId: string): Promise<Plan> {
   const supabase = await createUntypedServiceClient();
 
   const { data } = await supabase
@@ -49,14 +49,47 @@ async function getOrgPlan(orgId: string): Promise<Plan> {
   return plan && plan in PLAN_LIMITS ? plan : 'free';
 }
 
+// ---------------------------------------------------------------------------
+// Model pricing (per million tokens, USD)
+// ---------------------------------------------------------------------------
+
+const MODEL_PRICING: Record<string, { input: number; output: number; cacheRead: number }> = {
+  'sonnet': { input: 3, output: 15, cacheRead: 0.3 },
+  'haiku': { input: 0.25, output: 1.25, cacheRead: 0.03 },
+  'opus': { input: 15, output: 75, cacheRead: 1.5 },
+};
+
+export function estimateCostUsd(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadTokens: number = 0
+): number {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING['sonnet'];
+  return (
+    (inputTokens * pricing.input +
+      outputTokens * pricing.output +
+      cacheReadTokens * pricing.cacheRead) / 1_000_000
+  );
+}
+
 /**
  * Record token usage for an org + endpoint.
- * Inserts a row into `ai_token_usage`.
+ * Inserts a row into `ai_token_usage` with optional granular breakdown.
  */
 export async function trackTokenUsage(
   orgId: string,
   tokens: number,
-  endpoint: string
+  endpoint: string,
+  details?: {
+    userId?: string;
+    model?: string;
+    inputTokens?: number;
+    outputTokens?: number;
+    cacheReadTokens?: number;
+    cacheCreationTokens?: number;
+    estimatedCostUsd?: number;
+  }
 ): Promise<void> {
   const supabase = await createUntypedServiceClient();
 
@@ -65,6 +98,14 @@ export async function trackTokenUsage(
     endpoint,
     tokens_used: tokens,
     created_at: new Date().toISOString(),
+    // Granular fields — Supabase will silently ignore if columns don't exist yet
+    user_id: details?.userId ?? null,
+    model: details?.model ?? null,
+    input_tokens: details?.inputTokens ?? 0,
+    output_tokens: details?.outputTokens ?? 0,
+    cache_read_tokens: details?.cacheReadTokens ?? 0,
+    cache_creation_tokens: details?.cacheCreationTokens ?? 0,
+    estimated_cost_usd: details?.estimatedCostUsd ?? 0,
   });
 
   if (error) {

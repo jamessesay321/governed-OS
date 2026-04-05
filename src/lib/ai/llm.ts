@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { trackTokenUsage, estimateCostUsd } from '@/lib/ai/token-budget';
 
 let client: Anthropic | null = null;
 
@@ -60,6 +61,12 @@ type CallLLMInput = {
    * Use when the same system prompt is sent multiple times (e.g. company skill).
    */
   cacheSystemPrompt?: boolean;
+  /** Org ID — if provided, granular usage is tracked automatically. */
+  orgId?: string;
+  /** User ID — passed through to token tracking for per-user analytics. */
+  userId?: string;
+  /** Endpoint name — identifies the feature consuming tokens (e.g. 'explain', 'narrative'). */
+  endpoint?: string;
 };
 
 type ConversationMessage = {
@@ -146,6 +153,9 @@ export async function callLLMWithUsage({
   model = 'sonnet',
   maxTokens = 2048,
   cacheSystemPrompt = false,
+  orgId,
+  userId,
+  endpoint,
 }: CallLLMInput): Promise<LLMResponse> {
   const anthropic = getClient();
 
@@ -174,12 +184,31 @@ export async function callLLMWithUsage({
 
   const usage = response.usage as unknown as Record<string, number>;
 
+  const inputTokens = usage.input_tokens ?? 0;
+  const outputTokens = usage.output_tokens ?? 0;
+  const cacheReadTokens = usage.cache_read_input_tokens ?? 0;
+  const cacheCreationTokens = usage.cache_creation_input_tokens ?? 0;
+  const totalTokens = inputTokens + outputTokens;
+
+  // Track granular usage if orgId is provided
+  if (orgId && endpoint) {
+    await trackTokenUsage(orgId, totalTokens, endpoint, {
+      userId,
+      model,
+      inputTokens,
+      outputTokens,
+      cacheReadTokens,
+      cacheCreationTokens,
+      estimatedCostUsd: estimateCostUsd(model, inputTokens, outputTokens, cacheReadTokens),
+    });
+  }
+
   return {
     text: textBlock.text,
-    inputTokens: usage.input_tokens ?? 0,
-    outputTokens: usage.output_tokens ?? 0,
-    cacheReadTokens: usage.cache_read_input_tokens ?? 0,
-    cacheCreationTokens: usage.cache_creation_input_tokens ?? 0,
+    inputTokens,
+    outputTokens,
+    cacheReadTokens,
+    cacheCreationTokens,
   };
 }
 
