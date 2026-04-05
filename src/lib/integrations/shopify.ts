@@ -352,6 +352,182 @@ export async function syncShopifyCustomers(
 }
 
 // ---------------------------------------------------------------------------
+// Storefront query functions (used by /storefront dashboard)
+// ---------------------------------------------------------------------------
+
+export interface FetchOrdersParams {
+  shopDomain: string;
+  accessToken: string;
+  status?: 'any' | 'open' | 'closed' | 'cancelled';
+  limit?: number;
+  sinceId?: number;
+  createdAtMin?: string;
+  createdAtMax?: string;
+  page_info?: string;
+}
+
+/**
+ * Fetch orders from Shopify Admin REST API with filtering/pagination.
+ */
+export async function fetchOrders(params: FetchOrdersParams): Promise<{
+  orders: ShopifyOrder[];
+  hasNextPage: boolean;
+  nextPageInfo: string | null;
+}> {
+  const {
+    shopDomain,
+    accessToken,
+    status = 'any',
+    limit = 50,
+    sinceId,
+    createdAtMin,
+    createdAtMax,
+    page_info,
+  } = params;
+
+  const qs = new URLSearchParams();
+  qs.set('status', status);
+  qs.set('limit', String(limit));
+  if (sinceId) qs.set('since_id', String(sinceId));
+  if (createdAtMin) qs.set('created_at_min', createdAtMin);
+  if (createdAtMax) qs.set('created_at_max', createdAtMax);
+  if (page_info) qs.set('page_info', page_info);
+
+  const url = `https://${shopDomain}/admin/api/2024-01/orders.json?${qs.toString()}`;
+  const resp = await fetch(url, {
+    headers: {
+      'X-Shopify-Access-Token': accessToken,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!resp.ok) {
+    const text = await resp.text();
+    throw new Error(`Shopify orders fetch failed: ${resp.status} ${text}`);
+  }
+
+  const data = await resp.json();
+  const orders = (data.orders ?? []) as ShopifyOrder[];
+
+  // Parse Link header for cursor-based pagination
+  let hasNextPage = false;
+  let nextPageInfo: string | null = null;
+  const linkHeader = resp.headers.get('Link');
+  if (linkHeader) {
+    const nextMatch = linkHeader.match(/<[^>]+page_info=([^&>]+)[^>]*>;\s*rel="next"/);
+    if (nextMatch) {
+      hasNextPage = true;
+      nextPageInfo = nextMatch[1];
+    }
+  }
+
+  return { orders, hasNextPage, nextPageInfo };
+}
+
+/**
+ * Fetch all products from Shopify.
+ */
+export async function fetchProducts(
+  shopDomain: string,
+  accessToken: string
+): Promise<ShopifyProduct[]> {
+  return shopifyFetchAll<ShopifyProduct>(
+    shopDomain,
+    accessToken,
+    'products.json?limit=250',
+    'products'
+  );
+}
+
+/**
+ * Fetch all customers from Shopify.
+ */
+export async function fetchCustomers(
+  shopDomain: string,
+  accessToken: string
+): Promise<ShopifyCustomer[]> {
+  return shopifyFetchAll<ShopifyCustomer>(
+    shopDomain,
+    accessToken,
+    'customers.json?limit=250',
+    'customers'
+  );
+}
+
+/**
+ * Get the total count of orders from Shopify.
+ */
+export async function fetchOrderCount(
+  shopDomain: string,
+  accessToken: string,
+  status: string = 'any'
+): Promise<number> {
+  const data = await shopifyFetch<{ count: number }>(
+    shopDomain,
+    accessToken,
+    `orders/count.json?status=${status}`
+  );
+  return data.count;
+}
+
+/**
+ * Compute revenue by period (monthly) from an array of orders.
+ * Accepts pre-fetched orders to avoid redundant API calls.
+ */
+export function getRevenueByPeriod(
+  orders: ShopifyOrder[]
+): { period: string; revenue: number; orderCount: number }[] {
+  const map = new Map<string, { revenue: number; orderCount: number }>();
+
+  for (const order of orders) {
+    if (order.financial_status === 'voided' || order.financial_status === 'refunded') continue;
+    const d = new Date(order.created_at);
+    const period = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const existing = map.get(period) ?? { revenue: 0, orderCount: 0 };
+    existing.revenue += parseFloat(order.total_price);
+    existing.orderCount += 1;
+    map.set(period, existing);
+  }
+
+  return Array.from(map.entries())
+    .map(([period, data]) => ({
+      period,
+      revenue: Math.round(data.revenue * 100) / 100,
+      orderCount: data.orderCount,
+    }))
+    .sort((a, b) => a.period.localeCompare(b.period));
+}
+
+/**
+ * Get top products by revenue from an array of orders.
+ */
+export function getTopProducts(
+  orders: ShopifyOrder[],
+  limit: number = 10
+): { title: string; revenue: number; unitsSold: number }[] {
+  const map = new Map<string, { revenue: number; unitsSold: number }>();
+
+  for (const order of orders) {
+    if (order.financial_status === 'voided' || order.financial_status === 'refunded') continue;
+    for (const li of order.line_items) {
+      const existing = map.get(li.title) ?? { revenue: 0, unitsSold: 0 };
+      existing.revenue += parseFloat(li.price) * li.quantity;
+      existing.unitsSold += li.quantity;
+      map.set(li.title, existing);
+    }
+  }
+
+  return Array.from(map.entries())
+    .map(([title, data]) => ({
+      title,
+      revenue: Math.round(data.revenue * 100) / 100,
+      unitsSold: data.unitsSold,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, limit);
+}
+
+// ---------------------------------------------------------------------------
 // Cross-reference helpers
 // ---------------------------------------------------------------------------
 
