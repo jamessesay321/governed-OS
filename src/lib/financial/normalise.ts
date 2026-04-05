@@ -30,17 +30,39 @@ export async function normaliseTransactions(orgId: string): Promise<number> {
 
   // Fetch only invoices and bills — NOT bank transactions
   // Bank transactions duplicate P&L entries from invoices/bills
-  const { data: transactions, error: txError } = await supabase
-    .from('raw_transactions')
-    .select('*')
-    .eq('org_id', orgId)
-    .in('type', ['invoice', 'bill']);
+  // IMPORTANT: Paginate to fetch ALL rows (Supabase default limit is 1000)
+  const transactions: Record<string, unknown>[] = [];
+  const PAGE_SIZE = 1000;
+  let offset = 0;
+  let hasMore = true;
 
-  if (txError || !transactions) {
-    throw new Error(`Failed to fetch transactions: ${txError?.message}`);
+  while (hasMore) {
+    const { data: page, error: txError } = await supabase
+      .from('raw_transactions')
+      .select('*')
+      .eq('org_id', orgId)
+      .in('type', ['invoice', 'bill'])
+      .range(offset, offset + PAGE_SIZE - 1);
+
+    if (txError) {
+      throw new Error(`Failed to fetch transactions at offset ${offset}: ${txError.message}`);
+    }
+
+    if (!page || page.length === 0) {
+      hasMore = false;
+    } else {
+      transactions.push(...page);
+      offset += PAGE_SIZE;
+      if (page.length < PAGE_SIZE) hasMore = false;
+    }
   }
 
-  console.log(`[NORMALISE] ${transactions.length} raw transactions to process`);
+  if (transactions.length === 0) {
+    console.log('[NORMALISE] No transactions found');
+    return 0;
+  }
+
+  console.log(`[NORMALISE] ${transactions.length} raw transactions to process (fetched in ${Math.ceil(transactions.length / PAGE_SIZE)} pages)`);
 
   // Fetch chart of accounts for mapping
   const { data: accounts, error: accError } = await supabase
@@ -54,15 +76,41 @@ export async function normaliseTransactions(orgId: string): Promise<number> {
 
   console.log(`[NORMALISE] ${accounts.length} chart of accounts entries`);
 
-  // Build code → account ID lookup (skip seed accounts and empty codes)
+  // Build code → account ID lookup
+  // Skip seed/demo accounts and empty codes.
+  // When duplicate codes exist (e.g. code "210" has both a seed and real account),
+  // prefer the real Xero account (has a UUID xero_account_id) over seed/demo ones.
   const accountByCode = new Map<string, string>();
+  const accountPriority = new Map<string, boolean>(); // true = real Xero account
+
   for (const acc of accounts) {
-    if (acc.code && !acc.xero_account_id?.startsWith('SEED-')) {
+    if (!acc.code) continue;
+
+    const xeroId = acc.xero_account_id ?? '';
+    const isSeedOrDemo =
+      xeroId.startsWith('SEED-') ||
+      xeroId.startsWith('demo-') ||
+      xeroId.startsWith('DEMO-') ||
+      xeroId === '';
+
+    // Skip pure seed accounts if a real account already has this code
+    if (isSeedOrDemo && accountPriority.get(acc.code) === true) {
+      continue;
+    }
+
+    // If this is a real Xero account, always overwrite any seed mapping
+    if (!isSeedOrDemo) {
       accountByCode.set(acc.code, acc.id);
+      accountPriority.set(acc.code, true);
+    } else if (!accountByCode.has(acc.code)) {
+      // Only use seed account as fallback if no mapping exists yet
+      accountByCode.set(acc.code, acc.id);
+      accountPriority.set(acc.code, false);
     }
   }
 
-  console.log(`[NORMALISE] ${accountByCode.size} account codes mapped (excluding seed)`);
+  const realCount = [...accountPriority.values()].filter(Boolean).length;
+  console.log(`[NORMALISE] ${accountByCode.size} account codes mapped (${realCount} real Xero, ${accountByCode.size - realCount} seed/demo fallback)`);
 
   // Clear existing normalised data for this org before rebuilding.
   // This ensures stale records (e.g. from previously-included bank transactions)
@@ -91,7 +139,7 @@ export async function normaliseTransactions(orgId: string): Promise<number> {
   const unmatchedCodes = new Set<string>();
 
   for (const tx of transactions) {
-    const period = toMonthStart(tx.date);
+    const period = toMonthStart(tx.date as string);
 
     // Validate period is sensible (not NaN from bad date parsing)
     if (period.includes('NaN')) {
@@ -99,7 +147,7 @@ export async function normaliseTransactions(orgId: string): Promise<number> {
       continue;
     }
 
-    const lineItems = (tx.line_items || []) as LineItem[];
+    const lineItems = ((tx.line_items as unknown[]) || []) as LineItem[];
 
     for (const line of lineItems) {
       totalLineItems++;
