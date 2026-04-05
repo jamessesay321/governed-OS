@@ -153,7 +153,8 @@ export async function generateCommentary(
 
   // Top revenue lines with refs
   const topRevLines = currentPnL.sections
-    .find((s) => s.class === 'REVENUE')?.rows
+    .filter((s) => s.class === 'REVENUE' || s.class === 'OTHERINCOME')
+    .flatMap((s) => s.rows)
     .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
     .slice(0, 5)
     .map((r) => {

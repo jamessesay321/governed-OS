@@ -1,6 +1,10 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import {
+  checkVATRegistration,
+  calculateFilingDeadlines,
+} from '@/lib/compliance/uk-company-classification';
 import type { AccountMapping } from '@/types';
 import { ExecutiveSummaryClient } from './executive-summary-client';
 
@@ -29,7 +33,7 @@ export default async function ExecutiveSummaryPage() {
         .maybeSingle(),
       supabase
         .from('organisations' as any)
-        .select('industry, description, name')
+        .select('industry, description, name, company_number, year_end_date, last_confirmation_statement_date')
         .eq('id', orgId)
         .single(),
       svc.from('account_mappings').select('*').eq('org_id', orgId),
@@ -50,6 +54,41 @@ export default async function ExecutiveSummaryPage() {
   const orgName = (orgData?.name as string) ?? '';
   const industry = (orgData?.industry as string) ?? '';
 
+  // ── Compliance data (best-effort) ──────────────────────────────
+  const companyNumber = (orgData?.company_number as string) ?? '';
+  const yearEndStr = orgData?.year_end_date as string | undefined;
+  const confirmStr = orgData?.last_confirmation_statement_date as string | undefined;
+
+  type ComplianceAlert = { label: string; status: 'ok' | 'warning' | 'critical'; detail: string };
+  const complianceAlerts: ComplianceAlert[] = [];
+
+  // Filing deadlines
+  if (yearEndStr && confirmStr) {
+    try {
+      const deadlines = calculateFilingDeadlines({
+        yearEndDate: new Date(yearEndStr),
+        lastConfirmationStatementDate: new Date(confirmStr),
+      });
+      if (deadlines.isOverdue.accounts) {
+        complianceAlerts.push({ label: 'Annual Accounts', status: 'critical', detail: `Overdue since ${deadlines.accountsDeadline.toLocaleDateString('en-GB')}` });
+      } else if (deadlines.daysUntil.accounts <= 90) {
+        complianceAlerts.push({ label: 'Annual Accounts', status: 'warning', detail: `Due in ${deadlines.daysUntil.accounts} days` });
+      }
+      if (deadlines.isOverdue.confirmationStatement) {
+        complianceAlerts.push({ label: 'Confirmation Statement', status: 'critical', detail: `Overdue since ${deadlines.confirmationStatementDeadline.toLocaleDateString('en-GB')}` });
+      } else if (deadlines.daysUntil.confirmationStatement <= 90) {
+        complianceAlerts.push({ label: 'Confirmation Statement', status: 'warning', detail: `Due in ${deadlines.daysUntil.confirmationStatement} days` });
+      }
+      if (deadlines.isOverdue.corporationTaxPayment) {
+        complianceAlerts.push({ label: 'CT Payment', status: 'critical', detail: 'Overdue' });
+      } else if (deadlines.daysUntil.corporationTaxPayment <= 90) {
+        complianceAlerts.push({ label: 'CT Payment', status: 'warning', detail: `Due in ${deadlines.daysUntil.corporationTaxPayment} days` });
+      }
+    } catch {
+      // Non-critical
+    }
+  }
+
   const periods = getAvailablePeriods(financials);
 
   if (periods.length === 0) {
@@ -67,6 +106,8 @@ export default async function ExecutiveSummaryPage() {
         cashPosition={0}
         totalAssets={0}
         totalLiabilities={0}
+        companyNumber={companyNumber}
+        complianceAlerts={complianceAlerts}
       />
     );
   }
@@ -127,6 +168,18 @@ export default async function ExecutiveSummaryPage() {
     }
   }
 
+  // VAT threshold check based on latest period revenue (annualised)
+  const latestRevenue = pnlByPeriod[latestPeriod]?.revenue ?? 0;
+  const annualisedRevenue = latestRevenue * 12;
+  if (annualisedRevenue > 0) {
+    const vatCheck = checkVATRegistration(annualisedRevenue);
+    if (vatCheck.mustRegister) {
+      complianceAlerts.push({ label: 'VAT Registration', status: 'critical', detail: 'Revenue exceeds £90,000 threshold — registration mandatory' });
+    } else if (annualisedRevenue >= 75_000) {
+      complianceAlerts.push({ label: 'VAT Threshold', status: 'warning', detail: `Annualised revenue £${Math.round(annualisedRevenue).toLocaleString()} — approaching £90k threshold` });
+    }
+  }
+
   return (
     <ExecutiveSummaryClient
       orgId={orgId}
@@ -141,6 +194,8 @@ export default async function ExecutiveSummaryPage() {
       cashPosition={cashPosition}
       totalAssets={totalAssets}
       totalLiabilities={totalLiabilities}
+      companyNumber={companyNumber}
+      complianceAlerts={complianceAlerts}
     />
   );
 }

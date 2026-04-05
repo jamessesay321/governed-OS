@@ -7,6 +7,10 @@ import { logAudit } from '@/lib/audit/log';
 const schema = z.object({
   websiteUrl: z.string().optional(),
   businessDescription: z.string().optional(),
+  companyNumber: z
+    .string()
+    .regex(/^[A-Z0-9]{6,8}$/i, 'Invalid Companies House number format')
+    .optional(),
 });
 
 /**
@@ -24,9 +28,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
     }
 
-    const { websiteUrl, businessDescription } = parsed.data;
+    const { websiteUrl, businessDescription, companyNumber } = parsed.data;
 
-    if (!websiteUrl && !businessDescription) {
+    if (!websiteUrl && !businessDescription && !companyNumber) {
       return NextResponse.json({ success: true }); // nothing to save
     }
 
@@ -35,6 +39,7 @@ export async function POST(req: NextRequest) {
     const updatePayload: Record<string, string> = {};
     if (websiteUrl) updatePayload.website_url = websiteUrl;
     if (businessDescription) updatePayload.business_description = businessDescription;
+    if (companyNumber) updatePayload.company_number = companyNumber.toUpperCase();
 
     const { error } = await supabase
       .from('organisations')
@@ -52,7 +57,7 @@ export async function POST(req: NextRequest) {
       action: 'onboarding.save_basics',
       entityType: 'organisation',
       entityId: profile.org_id,
-      metadata: { websiteUrl: !!websiteUrl, businessDescription: !!businessDescription },
+      metadata: { websiteUrl: !!websiteUrl, businessDescription: !!businessDescription, companyNumber: !!companyNumber },
     });
 
     return NextResponse.json({ success: true });

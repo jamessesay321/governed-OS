@@ -3,21 +3,85 @@
  * All financial math is pure TypeScript, no AI involved.
  *
  * From competitive audit: Kevin Steel / Inflectiv Intelligence pattern.
- * Corporation Tax, VAT, PAYE, Employer NI, Employer Pension.
+ * Corporation Tax (with marginal relief), VAT, PAYE, Employer NI, Employer Pension.
+ *
+ * Corporation Tax rates (FY2023 onwards):
+ * - 19% on profits up to £50,000 (small profits rate)
+ * - 25% on profits over £250,000 (main rate)
+ * - Marginal relief (fraction 3/200) between £50k-£250k
+ * Limits are divided by (1 + number of associated companies).
  */
 
 import type { TaxSettings } from '@/types';
 
+/** UK Corporation Tax constants — FY2023 onwards */
+const CT_SMALL_PROFITS_RATE = 0.19;
+const CT_MAIN_RATE = 0.25;
+const CT_SMALL_PROFITS_LIMIT = 50_000;
+const CT_UPPER_LIMIT = 250_000;
+const CT_MARGINAL_RELIEF_FRACTION = 3 / 200;
+
 /**
- * Calculate Corporation Tax for a given Profit Before Tax.
+ * Calculate Corporation Tax for a given Profit Before Tax using marginal relief.
  * DETERMINISTIC — pure function.
+ *
+ * @param profitBeforeTax — taxable profit in GBP
+ * @param associatedCompanies — number of associated companies (divides the limits)
  */
 export function calculateCorporationTax(
   profitBeforeTax: number,
-  taxRate: number = 0.25
+  associatedCompanies: number = 0
 ): number {
   if (profitBeforeTax <= 0) return 0;
-  return roundCurrency(profitBeforeTax * taxRate);
+
+  const divisor = 1 + associatedCompanies;
+  const smallLimit = CT_SMALL_PROFITS_LIMIT / divisor;
+  const upperLimit = CT_UPPER_LIMIT / divisor;
+
+  // Small profits rate
+  if (profitBeforeTax <= smallLimit) {
+    return roundCurrency(profitBeforeTax * CT_SMALL_PROFITS_RATE);
+  }
+
+  // Main rate
+  if (profitBeforeTax >= upperLimit) {
+    return roundCurrency(profitBeforeTax * CT_MAIN_RATE);
+  }
+
+  // Marginal relief band: tax at main rate minus relief
+  const mainTax = profitBeforeTax * CT_MAIN_RATE;
+  const marginalRelief = CT_MARGINAL_RELIEF_FRACTION * (upperLimit - profitBeforeTax);
+  return roundCurrency(mainTax - marginalRelief);
+}
+
+/**
+ * Get the effective Corporation Tax rate for a given profit level.
+ * DETERMINISTIC — pure function.
+ */
+export function getCorporationTaxEffectiveRate(
+  profitBeforeTax: number,
+  associatedCompanies: number = 0
+): number {
+  if (profitBeforeTax <= 0) return 0;
+  const tax = calculateCorporationTax(profitBeforeTax, associatedCompanies);
+  return roundCurrency(tax / profitBeforeTax);
+}
+
+/**
+ * Get the Corporation Tax band label for a given profit level.
+ * DETERMINISTIC — pure function.
+ */
+export function getCorporationTaxBand(
+  profitBeforeTax: number,
+  associatedCompanies: number = 0
+): 'small_profits' | 'marginal_relief' | 'main_rate' | 'nil' {
+  if (profitBeforeTax <= 0) return 'nil';
+  const divisor = 1 + associatedCompanies;
+  const smallLimit = CT_SMALL_PROFITS_LIMIT / divisor;
+  const upperLimit = CT_UPPER_LIMIT / divisor;
+  if (profitBeforeTax <= smallLimit) return 'small_profits';
+  if (profitBeforeTax >= upperLimit) return 'main_rate';
+  return 'marginal_relief';
 }
 
 /**
@@ -26,9 +90,9 @@ export function calculateCorporationTax(
  */
 export function calculatePAT(
   profitBeforeTax: number,
-  taxRate: number = 0.25
+  associatedCompanies: number = 0
 ): number {
-  const tax = calculateCorporationTax(profitBeforeTax, taxRate);
+  const tax = calculateCorporationTax(profitBeforeTax, associatedCompanies);
   return roundCurrency(profitBeforeTax - tax);
 }
 

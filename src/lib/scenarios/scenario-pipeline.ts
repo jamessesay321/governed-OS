@@ -340,7 +340,7 @@ export async function runModelPipeline(
     const accountClass = (fin.chart_of_accounts as Record<string, string>)?.class?.toUpperCase();
     const amount = Number(fin.amount);
 
-    if (accountClass === 'REVENUE') {
+    if (accountClass === 'REVENUE' || accountClass === 'OTHERINCOME') {
       existing.revenue += amount;
     } else if (accountClass === 'DIRECTCOSTS') {
       existing.cost_of_sales += amount;

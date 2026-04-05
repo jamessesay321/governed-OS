@@ -137,7 +137,7 @@ async function fetchRecentFinancials(orgId: string): Promise<PeriodSnapshot[]> {
       const accountClass = ((fin.chart_of_accounts as Record<string, string>)?.class ?? '').toUpperCase();
       const amount = Number(fin.amount);
 
-      if (accountClass === 'REVENUE') {
+      if (accountClass === 'REVENUE' || accountClass === 'OTHERINCOME') {
         existing.revenue += amount;
       } else if (accountClass === 'DIRECTCOSTS') {
         existing.costOfSales += amount;

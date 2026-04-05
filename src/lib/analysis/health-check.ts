@@ -367,10 +367,12 @@ export async function runHealthCheck(orgId: string): Promise<HealthCheckResult> 
   // -----------------------------------------------------------------------
   // 8. Revenue Concentration (proxy: check if one account dominates)
   // -----------------------------------------------------------------------
-  const revenueSection = current.sections.find((s) => s.class === 'REVENUE');
-  if (revenueSection && revenueSection.rows.length > 1) {
-    const totalRev = revenueSection.total;
-    const sorted = [...revenueSection.rows].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  const revenueSections = current.sections.filter((s) => s.class === 'REVENUE' || s.class === 'OTHERINCOME');
+  const allRevenueRows = revenueSections.flatMap((s) => s.rows);
+  const totalRevForConcentration = revenueSections.reduce((sum, s) => sum + s.total, 0);
+  if (allRevenueRows.length > 1) {
+    const totalRev = totalRevForConcentration;
+    const sorted = [...allRevenueRows].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
     const topAccount = sorted[0];
     const topAccountPct = pct(Math.abs(topAccount.amount), Math.abs(totalRev));
 

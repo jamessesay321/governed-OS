@@ -75,6 +75,52 @@ const SEED_EVENTS: SeedEvent[] = [
     countries_affected: ['GB'],
     published_at: new Date(Date.now() - 432000000).toISOString(),
   },
+
+  // ── UK Compliance Events ────────────────────────────────────────
+  {
+    event_type: 'regulation',
+    title: 'UK VAT registration threshold remains at £90,000',
+    summary:
+      'The VAT registration threshold is £90,000 (from 1 April 2024). Businesses whose taxable turnover exceeds this in any rolling 12-month period must register for VAT. The deregistration threshold is £88,000. Monitor your rolling 12-month turnover closely as you approach the threshold.',
+    source: 'HMRC',
+    severity: 'medium',
+    sectors_affected: ['all'],
+    countries_affected: ['GB'],
+    published_at: new Date(Date.now() - 518400000).toISOString(),
+  },
+  {
+    event_type: 'regulation',
+    title: 'Corporation Tax: marginal relief applies between £50k–£250k profits',
+    summary:
+      'The main rate of Corporation Tax is 25% for profits above £250,000. The small profits rate of 19% applies to profits up to £50,000. Between these limits, marginal relief applies (fraction 3/200). Limits are divided by the number of associated companies. Ensure your tax provision uses the correct rate for your profit level.',
+    source: 'HMRC',
+    severity: 'medium',
+    sectors_affected: ['all'],
+    countries_affected: ['GB'],
+    published_at: new Date(Date.now() - 604800000).toISOString(),
+  },
+  {
+    event_type: 'regulation',
+    title: 'Confirmation Statement due annually at Companies House',
+    summary:
+      'Every UK company must file a Confirmation Statement at least once every 12 months. The deadline is 14 days after the review period ends. Failure to file is a criminal offence and Companies House may begin strike-off proceedings. The fee is £13 online or £40 by post.',
+    source: 'Companies House',
+    severity: 'medium',
+    sectors_affected: ['all'],
+    countries_affected: ['GB'],
+    published_at: new Date(Date.now() - 691200000).toISOString(),
+  },
+  {
+    event_type: 'regulation',
+    title: 'Making Tax Digital for Income Tax delayed to April 2026',
+    summary:
+      'HMRC has confirmed that MTD for Income Tax Self Assessment will be mandatory from April 2026 for self-employed individuals and landlords with income over £50,000. Those with income over £30,000 will follow from April 2027. All VAT-registered businesses must already use MTD-compatible software for quarterly VAT returns.',
+    source: 'HMRC',
+    severity: 'low',
+    sectors_affected: ['all'],
+    countries_affected: ['GB'],
+    published_at: new Date(Date.now() - 777600000).toISOString(),
+  },
 ];
 
 /**

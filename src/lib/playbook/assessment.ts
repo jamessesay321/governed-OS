@@ -104,13 +104,13 @@ async function extractOrgKPIs(orgId: string): Promise<OrgKPIs> {
 
     for (const f of latestFinancials) {
       const acc = f.chart_of_accounts as { name: string; type: string; class: string } | null;
-      if (acc?.class === 'REVENUE') totalRevenue += f.amount;
-      if (acc?.class === 'EXPENSE') totalCosts += f.amount;
+      if (acc?.class === 'REVENUE' || acc?.class === 'OTHERINCOME') totalRevenue += f.amount;
+      if (acc?.class === 'EXPENSE' || acc?.class === 'OVERHEADS' || acc?.class === 'DIRECTCOSTS') totalCosts += f.amount;
     }
 
     for (const f of prevFinancials) {
       const acc = f.chart_of_accounts as { name: string; type: string; class: string } | null;
-      if (acc?.class === 'REVENUE') prevTotalRevenue += f.amount;
+      if (acc?.class === 'REVENUE' || acc?.class === 'OTHERINCOME') prevTotalRevenue += f.amount;
     }
 
     kpis.gross_margin_pct =

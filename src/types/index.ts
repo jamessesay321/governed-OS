@@ -1002,6 +1002,19 @@ export type Database = {
         Update: Record<string, unknown>;
         Relationships: [];
       };
+      // === New tables (036 migration) — Client identity tracking ===
+      clients: {
+        Row: Record<string, unknown>;
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
+      client_transactions: {
+        Row: Record<string, unknown>;
+        Insert: Record<string, unknown>;
+        Update: Record<string, unknown>;
+        Relationships: [];
+      };
     };
     Views: {};
     Functions: {};

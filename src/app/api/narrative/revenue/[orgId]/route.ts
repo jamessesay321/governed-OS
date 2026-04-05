@@ -82,7 +82,7 @@ export async function GET(
       .filter((f) => f.period === period)
       .filter((f) => {
         const acc = accountMap.get(f.account_id);
-        return acc && acc.class === 'REVENUE';
+        return acc && (acc.class === 'REVENUE' || acc.class === 'OTHERINCOME');
       })
       .map((f) => ({
         name: accountMap.get(f.account_id)?.name ?? f.account_id,

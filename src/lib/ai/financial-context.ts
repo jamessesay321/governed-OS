@@ -151,7 +151,7 @@ export async function buildFinancialContext(
   }
 
   const topRevenueAccounts = [...accountTotals.values()]
-    .filter((a) => a.class === 'REVENUE')
+    .filter((a) => a.class === 'REVENUE' || a.class === 'OTHERINCOME')
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 5)
     .map(({ name, code, amount }) => ({ name, code, amount: roundCurrency(amount) }));

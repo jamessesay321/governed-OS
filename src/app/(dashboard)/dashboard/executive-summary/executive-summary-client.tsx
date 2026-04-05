@@ -9,7 +9,7 @@ import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { formatCurrency, formatPercent, formatCurrencyCompact } from '@/lib/formatting/currency';
 import {
   TrendingUp, TrendingDown, Minus, ArrowLeft,
-  Sparkles, DollarSign, BarChart3, PieChart, Wallet, Flag,
+  Sparkles, DollarSign, BarChart3, PieChart, Wallet, Flag, ShieldAlert,
 } from 'lucide-react';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { useChallenge } from '@/components/shared/challenge-panel';
@@ -26,6 +26,12 @@ type PnLData = {
   netProfit: number;
 };
 
+type ComplianceAlert = {
+  label: string;
+  status: 'ok' | 'warning' | 'critical';
+  detail: string;
+};
+
 interface ExecutiveSummaryClientProps {
   orgId: string;
   orgName: string;
@@ -39,6 +45,8 @@ interface ExecutiveSummaryClientProps {
   cashPosition: number;
   totalAssets: number;
   totalLiabilities: number;
+  companyNumber?: string;
+  complianceAlerts?: ComplianceAlert[];
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────
@@ -157,6 +165,8 @@ export function ExecutiveSummaryClient({
   cashPosition,
   totalAssets,
   totalLiabilities,
+  companyNumber = '',
+  complianceAlerts = [],
 }: ExecutiveSummaryClientProps) {
   const { period: globalPeriod } = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
@@ -553,6 +563,48 @@ export function ExecutiveSummaryClient({
 
       {/* Product Intelligence */}
       <ProductIntelligence orgId={orgId} period={currentPeriod} />
+
+      {/* UK Compliance Status */}
+      {complianceAlerts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+              Compliance Status
+              {companyNumber && (
+                <span className="ml-auto text-xs font-normal text-muted-foreground">
+                  Company #{companyNumber}
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {complianceAlerts.map((alert, i) => (
+                <div
+                  key={i}
+                  className={`flex items-center justify-between rounded-lg border px-3 py-2 text-sm ${
+                    alert.status === 'critical'
+                      ? 'border-red-200 bg-red-50 text-red-800'
+                      : alert.status === 'warning'
+                        ? 'border-amber-200 bg-amber-50 text-amber-800'
+                        : 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  }`}
+                >
+                  <span className="font-medium">{alert.label}</span>
+                  <span className="text-xs">{alert.detail}</span>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              Filing deadlines based on Companies House records.{' '}
+              <Link href="/settings" className="underline hover:text-foreground">
+                Update company details
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Cross-references */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">

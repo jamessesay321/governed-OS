@@ -167,7 +167,7 @@ async function fetchBaseRates(orgId: string): Promise<BaseRates> {
       periodData.set(row.period, { revenue: 0, cogs: 0, opex: 0 });
     }
     const pd = periodData.get(row.period)!;
-    if (cls === 'REVENUE') pd.revenue += Number(row.amount);
+    if (cls === 'REVENUE' || cls === 'OTHERINCOME') pd.revenue += Number(row.amount);
     else if (cls === 'DIRECTCOSTS') pd.cogs += Number(row.amount);
     else if (cls === 'EXPENSE' || cls === 'OVERHEADS') pd.opex += Number(row.amount);
   }

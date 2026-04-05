@@ -127,6 +127,30 @@ Audit result: 82 verified, 0 broken, 4 remaining (F-079, F-083, F-084, F-085)
 
 ---
 
+## UK Compliance Engine — 2026-04-05
+
+| ID | Feature | Status | Date Built | Verification |
+|----|---------|--------|-----------|-------------|
+| F-087 | UK company size classification (Companies Act 2006, SI 2024/686) | verified | 2026-04-05 | `src/lib/compliance/uk-company-classification.ts` |
+| F-088 | Companies House API integration | verified | 2026-04-05 | `src/lib/compliance/companies-house.ts` |
+| F-089 | Balance sheet health ratios (ACCA/ICAEW standard) | verified | 2026-04-05 | `src/lib/compliance/balance-sheet-health.ts` |
+| F-090 | Compliance check API endpoint | verified | 2026-04-05 | `/api/compliance/check/[orgId]` |
+| F-091 | Client identity tracking (cross-year deferred revenue) | verified | 2026-04-05 | `clients` + `client_transactions` tables, migration 036 |
+| F-092 | Client resolver service + API | verified | 2026-04-05 | `src/lib/clients/identity-resolver.ts` + `/api/clients/resolve/[orgId]` |
+| F-093 | Client analytics API | verified | 2026-04-05 | `/api/clients/analytics/[orgId]` |
+| F-094 | OTHERINCOME revenue fix (12 files) | verified | 2026-04-05 | All revenue filters include OTHERINCOME class |
+| F-095 | Corporation Tax marginal relief (19%/25% with 3/200 fraction) | verified | 2026-04-05 | `src/lib/financial/uk-tax.ts` updated |
+| F-096 | VAT threshold + going concern KPIs | verified | 2026-04-05 | `src/lib/kpi/definitions.ts` |
+| F-097 | Filing deadline alerts in daily briefing | verified | 2026-04-05 | Risk section of key-actions briefing |
+| F-098 | UK compliance events in intelligence scanner | verified | 2026-04-05 | 4 new seed events |
+| F-099 | Company number capture in onboarding | verified | 2026-04-05 | `save-basics` route updated |
+| F-100 | Compliance status card on executive summary | verified | 2026-04-05 | executive-summary page |
+| F-101 | UK compliance skill file | verified | 2026-04-05 | `.claude/skills/uk-compliance-accounting.md` |
+| F-102 | Going concern assessment engine (ISA 570) | verified | 2026-04-05 | `assessGoingConcern()` in classification engine |
+| F-103 | Filing deadline calculator | verified | 2026-04-05 | `calculateFilingDeadlines()` |
+
+---
+
 ## AGREED — NOT YET BUILT
 
 | ID | Feature | Status | Date Agreed | Priority | Verification Criteria |
@@ -149,28 +173,32 @@ Audit result: 82 verified, 0 broken, 4 remaining (F-079, F-083, F-084, F-085)
 ## Audit Summary
 
 ```
-=== FEATURE REGISTRY AUDIT — 2026-04-05 (POST-BUILD) ===
-Total: 86 features tracked
+=== FEATURE REGISTRY AUDIT — 2026-04-05 (POST-BUILD #3) ===
+Total: 103 features tracked
 
-  Verified:     82
+  Verified:     99
   Built:         0
   In Progress:   0
   Agreed:        4  (F-079, F-083, F-084, F-085)
   Blocked:       0
   Broken:        0
 
+NEW THIS SESSION:
+  F-087 to F-103: UK Compliance Engine (17 features)
+  - Company classification (micro/small/medium/large)
+  - Companies House API integration
+  - Balance sheet health ratios
+  - Client identity tracking + cross-year deferred revenue
+  - OTHERINCOME revenue fix across 12 files
+  - Corporation Tax marginal relief
+  - Going concern assessment (ISA 570)
+  - Filing deadline calculator + alerts
+  - Compliance status on executive summary
+
 REMAINING:
   F-079: Alonuko re-sync verification — P0
   F-083: End-to-end manual testing — P1 (needs user in browser)
   F-084: RLS integration tests — tech debt
   F-085: Fix YTD test — tech debt
-  F-065: Investor Portal — P1
-  F-066: Stripe billing — P1
-  F-067: GDPR deletion — P1
-  F-068: Hover AI tooltip — P1
-
-BLOCKED (needs user action):
-  F-080: Run migration 029 SQL in Supabase dashboard
-  F-081: Run migration 023 SQL in Supabase dashboard
 ===
 ```

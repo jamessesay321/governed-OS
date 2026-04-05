@@ -62,7 +62,7 @@ export default async function RevenuePage() {
   for (const period of sortedPeriods) {
     const pnl = buildPnL(financials, accounts, period);
     for (const section of pnl.sections) {
-      if (section.class === 'REVENUE') {
+      if (section.class === 'REVENUE' || section.class === 'OTHERINCOME') {
         for (const row of section.rows) {
           const existing = revenueAccountMap.get(row.accountName);
           revenueAccountMap.set(row.accountName, {

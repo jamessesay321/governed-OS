@@ -122,6 +122,7 @@ export async function GET(
       anomaliesResult,
       challengesResult,
       companySystemPrompt,
+      orgResult,
     ] = await Promise.all([
       supabase.from('normalised_financials').select('*').eq('org_id', orgId),
       supabase.from('chart_of_accounts').select('*').eq('org_id', orgId),
@@ -139,12 +140,57 @@ export async function GET(
         .order('created_at', { ascending: false })
         .limit(10),
       getSkillAsSystemPrompt(orgId),
+      untypedDb
+        .from('organisations')
+        .select('company_number, year_end_date, last_confirmation_statement_date')
+        .eq('id', orgId)
+        .single(),
     ]);
 
     const fins = (financialsResult.data ?? []) as NormalisedFinancial[];
     const accs = (accountsResult.data ?? []) as ChartOfAccount[];
     const anomalies = (anomaliesResult.data ?? []) as Record<string, unknown>[];
     const challenges = (challengesResult.data ?? []) as Record<string, unknown>[];
+    const orgInfo = (orgResult.data ?? {}) as Record<string, unknown>;
+
+    // ── Filing deadline context (best-effort) ──────────────────────
+    let filingDeadlineContext = '';
+    try {
+      const yearEndStr = orgInfo.year_end_date as string | undefined;
+      const confirmStr = orgInfo.last_confirmation_statement_date as string | undefined;
+      const companyNumber = orgInfo.company_number as string | undefined;
+
+      if (yearEndStr && confirmStr) {
+        const { calculateFilingDeadlines } = await import('@/lib/compliance/uk-company-classification');
+        const deadlines = calculateFilingDeadlines({
+          yearEndDate: new Date(yearEndStr),
+          lastConfirmationStatementDate: new Date(confirmStr),
+        });
+
+        const overdueItems: string[] = [];
+        const upcomingItems: string[] = [];
+
+        if (deadlines.isOverdue.accounts) overdueItems.push(`Annual accounts OVERDUE (was due ${deadlines.accountsDeadline.toLocaleDateString('en-GB')})`);
+        else if (deadlines.daysUntil.accounts <= 90) upcomingItems.push(`Annual accounts due in ${deadlines.daysUntil.accounts} days (${deadlines.accountsDeadline.toLocaleDateString('en-GB')})`);
+
+        if (deadlines.isOverdue.confirmationStatement) overdueItems.push(`Confirmation statement OVERDUE (was due ${deadlines.confirmationStatementDeadline.toLocaleDateString('en-GB')})`);
+        else if (deadlines.daysUntil.confirmationStatement <= 90) upcomingItems.push(`Confirmation statement due in ${deadlines.daysUntil.confirmationStatement} days`);
+
+        if (deadlines.isOverdue.corporationTaxReturn) overdueItems.push(`Corporation tax return OVERDUE`);
+        else if (deadlines.daysUntil.corporationTaxReturn <= 90) upcomingItems.push(`CT return due in ${deadlines.daysUntil.corporationTaxReturn} days`);
+
+        if (deadlines.isOverdue.corporationTaxPayment) overdueItems.push(`Corporation tax payment OVERDUE`);
+        else if (deadlines.daysUntil.corporationTaxPayment <= 90) upcomingItems.push(`CT payment due in ${deadlines.daysUntil.corporationTaxPayment} days`);
+
+        if (overdueItems.length > 0 || upcomingItems.length > 0) {
+          filingDeadlineContext = `\nCompanies House Filing Deadlines${companyNumber ? ` (Company #${companyNumber})` : ''}:\n`;
+          if (overdueItems.length > 0) filingDeadlineContext += `OVERDUE: ${overdueItems.join('; ')}\n`;
+          if (upcomingItems.length > 0) filingDeadlineContext += `Upcoming: ${upcomingItems.join('; ')}\n`;
+        }
+      }
+    } catch {
+      // Filing deadline data may not be available — non-critical
+    }
 
     const periods = getAvailablePeriods(fins);
     if (periods.length === 0) {
@@ -223,7 +269,7 @@ Rules:
 - Reference specific GBP amounts and percentages from the data
 - highlight_value should be the most important number for that section
 - trend should reflect the direction vs previous period (if available)
-- For risk section, combine anomalies, challenges, and at-risk KPIs`;
+- For risk section, combine anomalies, challenges, at-risk KPIs, and Companies House filing deadlines (if provided). Flag any OVERDUE filings as critical alerts with source_ref to /settings`;
 
     const userMessage = `Current period: ${latestPeriod}
 P&L Summary:
@@ -243,7 +289,8 @@ KPIs: ${kpiData.length > 0 ? kpiData.map((k) => `${k.label}: ${k.formatted_value
 
 Anomalies: ${anomalies.length > 0 ? anomalies.map((a) => `[${a.severity}] ${a.title}`).join('; ') : 'None'}
 
-Open challenges: ${challenges.length > 0 ? challenges.map((c) => `[${c.severity}] ${c.metric_label}: ${c.reason}`).join('; ') : 'None'}`;
+Open challenges: ${challenges.length > 0 ? challenges.map((c) => `[${c.severity}] ${c.metric_label}: ${c.reason}`).join('; ') : 'None'}
+${filingDeadlineContext}`;
 
     const llmResult = await callLLMWithUsage({
       systemPrompt,

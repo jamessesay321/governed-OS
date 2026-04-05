@@ -101,7 +101,8 @@ export function buildPnL(
   // Revenue is already positive. CostOfSales/Expenses/Overheads stored
   // as negative by Xero — take absolute values so downstream consumers
   // can use simple subtraction: grossProfit = revenue - costOfSales.
-  const revenue = sections.find((s) => s.class === 'REVENUE')?.total || 0;
+  const revenue = (sections.find((s) => s.class === 'REVENUE')?.total || 0) +
+    (sections.find((s) => s.class === 'OTHERINCOME')?.total || 0);
   const costOfSales = Math.abs(
     sections.find((s) => s.class === 'DIRECTCOSTS')?.total || 0
   );

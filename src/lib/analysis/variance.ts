@@ -49,13 +49,13 @@ function resolveMetric(metric: string): {
 } | null {
   const lower = metric.toLowerCase().replace(/[\s_-]+/g, '');
   if (lower.includes('revenue') || lower.includes('sales') || lower.includes('income')) {
-    return { field: 'revenue', classes: ['REVENUE'] };
+    return { field: 'revenue', classes: ['REVENUE', 'OTHERINCOME'] };
   }
   if (lower.includes('grossprofit') || lower.includes('grossmargin')) {
-    return { field: 'grossProfit', classes: ['REVENUE', 'DIRECTCOSTS'] };
+    return { field: 'grossProfit', classes: ['REVENUE', 'OTHERINCOME', 'DIRECTCOSTS'] };
   }
   if (lower.includes('netprofit') || lower.includes('operatingprofit') || lower.includes('bottomline')) {
-    return { field: 'netProfit', classes: ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'] };
+    return { field: 'netProfit', classes: ['REVENUE', 'OTHERINCOME', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'] };
   }
   if (lower.includes('expense') || lower.includes('opex') || lower.includes('overhead')) {
     return { field: 'expenses', classes: ['EXPENSE', 'OVERHEADS'] };

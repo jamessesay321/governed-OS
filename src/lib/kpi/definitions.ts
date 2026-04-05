@@ -359,6 +359,37 @@ const universalKPIs: KPIDefinition[] = [
     business_types: ['universal'],
     higher_is_better: false,
   },
+
+  // ── UK Compliance-Aware KPIs ──────────────────────────────────────
+
+  {
+    key: 'vat_threshold_proximity',
+    label: 'VAT Threshold Proximity',
+    description: 'Annualised revenue vs the £90,000 UK VAT registration threshold. Returns 1.0 when at threshold.',
+    plainEnglish: 'How close you are to needing to register for VAT (1.0 = at threshold, above = must register)',
+    formula: (d) => {
+      // Revenue values are in pence, threshold in pounds
+      const annualisedRevenue = (d.revenue * 12) / 100;
+      if (annualisedRevenue <= 0) return null;
+      return round4(safeDivide(annualisedRevenue, 90_000));
+    },
+    format: 'ratio',
+    business_types: ['universal'],
+    higher_is_better: false,
+  },
+  {
+    key: 'going_concern_ratio',
+    label: 'Going Concern Ratio',
+    description: 'Current ratio as a going concern indicator (ISA 570). Below 1.0 signals liquidity risk.',
+    plainEnglish: 'Can the business pay its short-term bills? Below 1.0 is a red flag for going concern',
+    formula: (d) => {
+      if (d.current_liabilities <= 0) return null;
+      return round4(safeDivide(d.current_assets, d.current_liabilities));
+    },
+    format: 'ratio',
+    business_types: ['universal'],
+    higher_is_better: true,
+  },
 ];
 
 // === SaaS KPIs ===
