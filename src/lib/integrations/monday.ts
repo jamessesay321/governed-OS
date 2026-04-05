@@ -19,10 +19,14 @@ export interface MondayColumn {
 
 export interface MondayColumnValue {
   id: string;
-  title: string;
   type: string;
   text: string;
   value: string | null;
+  column?: {
+    title: string;
+  };
+  /** Derived title from column.title */
+  title?: string;
 }
 
 export interface MondayUpdate {
@@ -118,6 +122,17 @@ async function mondayQuery<T = Record<string, unknown>>(
   return json.data as T;
 }
 
+/** Normalise column_values: lift column.title to top-level title */
+function normaliseItems(items: MondayItem[]): MondayItem[] {
+  return items.map((item) => ({
+    ...item,
+    column_values: (item.column_values ?? []).map((cv) => ({
+      ...cv,
+      title: cv.column?.title ?? cv.title ?? cv.id,
+    })),
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Public Functions
 // ---------------------------------------------------------------------------
@@ -176,10 +191,12 @@ export async function fetchBoardItems(
             }
             column_values {
               id
-              title
               type
               text
               value
+              column {
+                title
+              }
             }
           }
         }
@@ -202,10 +219,12 @@ export async function fetchBoardItems(
               }
               column_values {
                 id
-                title
                 type
                 text
                 value
+                column {
+                  title
+                }
               }
             }
           }
@@ -218,7 +237,7 @@ export async function fetchBoardItems(
       next_items_page: { cursor: string | null; items: MondayItem[] };
     }>(apiKey, query, { cursor });
     return {
-      items: data.next_items_page?.items ?? [],
+      items: normaliseItems(data.next_items_page?.items ?? []),
       cursor: data.next_items_page?.cursor ?? null,
     };
   }
@@ -231,7 +250,7 @@ export async function fetchBoardItems(
 
   const board = data.boards?.[0];
   return {
-    items: board?.items_page?.items ?? [],
+    items: normaliseItems(board?.items_page?.items ?? []),
     cursor: board?.items_page?.cursor ?? null,
   };
 }
@@ -292,10 +311,12 @@ export async function searchItems(
           }
           column_values {
             id
-            title
             type
             text
             value
+            column {
+              title
+            }
           }
         }
       }

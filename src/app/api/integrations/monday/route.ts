@@ -54,21 +54,27 @@ export async function GET() {
 
     const boards = await fetchBoards(apiKey);
 
-    // Fetch last sync info
-    const supabase = await createUntypedServiceClient();
-    const { data: lastSync } = await supabase
-      .from('integration_syncs')
-      .select('*')
-      .eq('org_id', orgId)
-      .eq('integration_id', 'monday')
-      .order('synced_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // Fetch last sync info (table may not exist yet)
+    let lastSync = null;
+    try {
+      const supabase = await createUntypedServiceClient();
+      const { data: syncData } = await supabase
+        .from('integration_syncs')
+        .select('*')
+        .eq('org_id', orgId)
+        .eq('integration_id', 'monday')
+        .order('synced_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      lastSync = syncData;
+    } catch {
+      // Table may not exist yet
+    }
 
     return NextResponse.json({
       configured: true,
       boards,
-      lastSync: lastSync ?? null,
+      lastSync,
     });
   } catch (err) {
     if (err instanceof Error && err.name === 'AuthorizationError') {

@@ -6,28 +6,38 @@ export default async function ErpPage() {
   const { orgId } = await getUserProfile();
 
   // Check if Monday.com is configured (org-level or env)
-  const supabase = await createUntypedServiceClient();
-  const { data: connection } = await supabase
-    .from('integration_connections')
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('integration_id', 'monday')
-    .eq('status', 'active')
-    .maybeSingle();
+  let hasOrgKey = false;
+  let lastSync = null;
 
-  const hasOrgKey = !!(connection?.credentials as Record<string, unknown>)?.api_key;
+  try {
+    const supabase = await createUntypedServiceClient();
+    const { data: connection } = await supabase
+      .from('integration_connections')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('integration_id', 'monday')
+      .eq('status', 'active')
+      .maybeSingle();
+
+    hasOrgKey = !!(connection?.credentials as Record<string, unknown>)?.api_key;
+
+    // Fetch last sync info (table may not exist yet)
+    const { data: syncData } = await supabase
+      .from('integration_syncs')
+      .select('*')
+      .eq('org_id', orgId)
+      .eq('integration_id', 'monday')
+      .order('synced_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    lastSync = syncData;
+  } catch {
+    // Tables may not exist yet — continue with env-only config
+  }
+
   const hasEnvKey = !!process.env.MONDAY_API_KEY;
   const isConfigured = hasOrgKey || hasEnvKey;
-
-  // Fetch last sync info
-  const { data: lastSync } = await supabase
-    .from('integration_syncs')
-    .select('*')
-    .eq('org_id', orgId)
-    .eq('integration_id', 'monday')
-    .order('synced_at', { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
   return (
     <ErpClient
