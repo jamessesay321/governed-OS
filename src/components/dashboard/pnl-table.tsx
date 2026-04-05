@@ -16,9 +16,10 @@ import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 interface PnLTableProps {
   pnl: PnLSummary;
   onSectionClick?: (section: PnLSection) => void;
+  onAccountClick?: (accountId: string, accountCode: string, accountName: string, sectionClass: string, amount: number) => void;
 }
 
-export function PnLTable({ pnl, onSectionClick }: PnLTableProps) {
+export function PnLTable({ pnl, onSectionClick, onAccountClick }: PnLTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -51,13 +52,22 @@ export function PnLTable({ pnl, onSectionClick }: PnLTableProps) {
             </TableRow>
             {/* Account rows */}
             {section.rows.map((row) => (
-              <TableRow key={row.accountId}>
+              <TableRow
+                key={row.accountId}
+                className={onAccountClick ? 'cursor-pointer hover:bg-muted/50' : ''}
+                onClick={() => onAccountClick?.(row.accountId, row.accountCode, row.accountName, section.class, row.amount)}
+              >
                 <TableCell className="text-muted-foreground">
                   {row.accountCode}
                 </TableCell>
                 <TableCell>{row.accountName}</TableCell>
                 <TableCell className="text-right">
-                  {formatCurrency(row.amount)}
+                  <span className="flex items-center justify-end gap-1">
+                    {formatCurrency(row.amount)}
+                    {onAccountClick && (
+                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                    )}
+                  </span>
                 </TableCell>
               </TableRow>
             ))}

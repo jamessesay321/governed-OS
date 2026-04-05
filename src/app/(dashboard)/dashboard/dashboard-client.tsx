@@ -387,7 +387,20 @@ export function DashboardClient({
               <CardTitle>Profit & Loss</CardTitle>
             </CardHeader>
             <CardContent>
-              <PnLTable pnl={pnl} onSectionClick={handleSectionClick} />
+              <PnLTable
+                pnl={pnl}
+                onSectionClick={handleSectionClick}
+                onAccountClick={(accountId, accountCode, accountName, _sectionClass, amount) => {
+                  openDrill({
+                    type: 'account',
+                    accountId,
+                    accountCode,
+                    accountName,
+                    amount,
+                    period: selectedPeriod,
+                  });
+                }}
+              />
             </CardContent>
           </Card>
         )}
