@@ -176,3 +176,15 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Fix:** Created `.claude/skills/narrative-financial-reporting.md` with the full standard and page-by-page checklist. Every financial page must include: `NarrativeSummary` at top, `DataFreshness` badge, `FinancialTooltip` on terms, `DrillableNumber` on figures, `ChallengeButton`, `CrossRef` links, and contextual comparisons on every number.
 
 **Preventative rule:** Before marking ANY financial page as "done", answer: "Would a non-accountant understand what this page is telling them?" If the answer is no, the page is not done. The Executive Summary page is the benchmark — every other page must match its level of narrative, context, and visual communication. Reference the skill at `.claude/skills/narrative-financial-reporting.md` for the full checklist.
+
+---
+
+## Lesson 16: Agreed features lost across session compactions
+
+**Mistake:** The Semantic Intelligence Layer (Phases B+C) was discussed, agreed upon, and documented in `SEMANTIC_INTELLIGENCE_LAYER_SPRINT.md` during a session. When the context window compacted, the agreement was lost. The user discovered weeks later that something they explicitly approved was never built.
+
+**Root cause:** Session compaction summaries don't preserve every agreed-upon feature with enough specificity. A summary like "discussed semantic intelligence" doesn't capture "Phase B (Semantic Mapping) and Phase C (Business Context Intelligence) are NOT YET BUILT." The todo.md also didn't have these as explicit line items.
+
+**Fix:** Created a persistent Feature Registry (`tasks/feature-registry.md`) that tracks every agreed feature with status, date, and verification criteria. Added a mandatory session-start audit that reads the registry and flags overdue items. Added a pre-compaction capture step. Created `.claude/skills/task-tracker.md` with the full protocol.
+
+**Preventative rule:** The MOMENT a user agrees to build something, add it to `/tasks/feature-registry.md` with status `agreed`. Never rely on conversation context alone. The registry survives compactions; conversation memory doesn't. Run `bash scripts/audit-features.sh` to verify built features still exist.

@@ -37,8 +37,26 @@ After building or modifying any significant feature in Grove, check `~/research-
 At the start of every session:
 1. Read `/tasks/lessons.md` — do not repeat past mistakes
 2. Read `/tasks/todo.md` — understand what's in progress and remaining
-3. Run `python3 ~/.claude/skills/hash-verifier/scripts/verify_hashes.py` to check skill integrity
-4. Ask: "What is the user's goal this session?" before writing code
+3. Read `/tasks/feature-registry.md` — audit all features by status. Flag any `agreed` items older than 1 session and any `broken` items as P0. Print the audit summary.
+4. Run `python3 ~/.claude/skills/hash-verifier/scripts/verify_hashes.py` to check skill integrity
+5. Ask: "What is the user's goal this session?" before writing code
+
+---
+
+## Feature Registry Gate (MANDATORY)
+
+When the user agrees to build something new:
+1. **Immediately** add it to `/tasks/feature-registry.md` with status `agreed`
+2. Include verification criteria (files, endpoints, UI elements that confirm it works)
+3. After building, update status to `built` with commit SHA
+4. After verifying, update status to `verified`
+
+Before ending any session or when context is running low:
+1. Scan the conversation for any agreed features not yet in the registry
+2. Add them before the session ends
+3. Update status of any items worked on this session
+
+Skill reference: `.claude/skills/task-tracker.md`
 
 ---
 
