@@ -49,7 +49,7 @@ interface CampaignROI {
 const campaigns: CampaignROI[] = [
   { name: 'Spring Trunk Show Email', spend: 45000, revenue: 1250000, roi: 2678, status: 'active' },
   { name: 'Instagram Celestial Collection', spend: 85000, revenue: 340000, roi: 300, status: 'active' },
-  { name: 'Google Ads — Bespoke Bridal', spend: 120000, revenue: 480000, roi: 300, status: 'active' },
+  { name: 'Google Ads: Bespoke Bridal', spend: 120000, revenue: 480000, roi: 300, status: 'active' },
   { name: 'Pinterest Bridal Boards', spend: 35000, revenue: 95000, roi: 171, status: 'active' },
   { name: 'Bridal Fashion Week PR', spend: 200000, revenue: 620000, roi: 210, status: 'completed' },
 ];

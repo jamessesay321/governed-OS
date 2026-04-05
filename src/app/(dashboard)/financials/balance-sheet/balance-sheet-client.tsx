@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useCurrency } from '@/components/providers/currency-context';
@@ -19,7 +19,8 @@ import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
-type BSSection = { class: string; accounts: AccountEntry[]; total: number };
+type SubGroup = { label: string; accounts: AccountEntry[]; total: number };
+type BSSection = { class: string; subGroups: SubGroup[]; total: number };
 
 type Props = {
   connected: boolean;
@@ -95,7 +96,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
     };
   }, [controls.selectedPeriods, allPeriodsData]);
 
-  const hasData = currentData.some((s) => s.accounts.length > 0);
+  const hasData = currentData.some((s) => s.subGroups.some((sg) => sg.accounts.length > 0));
 
   if (!connected) {
     return (
@@ -143,26 +144,39 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
   const priorLookup = new Map<string, Map<string, number>>();
   for (const section of priorData) {
     const accMap = new Map<string, number>();
-    for (const acc of section.accounts) accMap.set(acc.name, acc.amount);
+    for (const sg of section.subGroups) {
+      for (const acc of sg.accounts) accMap.set(acc.name, acc.amount);
+    }
     priorLookup.set(section.class, accMap);
+  }
+
+  // Build prior sub-group totals lookup: class -> subGroup label -> total
+  const priorSubGroupLookup = new Map<string, Map<string, number>>();
+  for (const section of priorData) {
+    const sgMap = new Map<string, number>();
+    for (const sg of section.subGroups) sgMap.set(sg.label, sg.total);
+    priorSubGroupLookup.set(section.class, sgMap);
   }
 
   // Build CSV export data
   const csvData: Record<string, unknown>[] = currentData.flatMap((section) => {
     const rows: Record<string, unknown>[] = [];
-    for (const acc of section.accounts) {
-      const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
-      const row: Record<string, unknown> = {
-        Class: CLASS_LABELS[section.class] ?? section.class,
-        Account: acc.name,
-        Code: acc.code,
-        [formatPeriodLabel(currentPeriod)]: acc.amount,
-      };
-      if (priorPeriod) {
-        row[formatPeriodLabel(priorPeriod)] = priorAmount;
-        row['Change'] = acc.amount - priorAmount;
+    for (const sg of section.subGroups) {
+      for (const acc of sg.accounts) {
+        const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
+        const row: Record<string, unknown> = {
+          Class: CLASS_LABELS[section.class] ?? section.class,
+          SubGroup: sg.label,
+          Account: acc.name,
+          Code: acc.code,
+          [formatPeriodLabel(currentPeriod)]: acc.amount,
+        };
+        if (priorPeriod) {
+          row[formatPeriodLabel(priorPeriod)] = priorAmount;
+          row['Change'] = acc.amount - priorAmount;
+        }
+        rows.push(row);
       }
-      rows.push(row);
     }
     return rows;
   });
@@ -173,11 +187,25 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
   const totalEquity = currentData.find((s) => s.class === 'EQUITY')?.total ?? 0;
   const netAssets = totalAssets - totalLiabilities;
 
+  // Current sub-group totals for Working Capital
+  const assetSection = currentData.find((s) => s.class === 'ASSET');
+  const liabilitySection = currentData.find((s) => s.class === 'LIABILITY');
+  const currentAssetsTotal = assetSection?.subGroups.find((sg) => sg.label === 'Current Assets')?.total ?? 0;
+  const currentLiabilitiesTotal = liabilitySection?.subGroups.find((sg) => sg.label === 'Current Liabilities')?.total ?? 0;
+  const workingCapital = currentAssetsTotal - currentLiabilitiesTotal;
+
   // Prior totals
   const priorTotalAssets = priorData.find((s) => s.class === 'ASSET')?.total ?? 0;
   const priorTotalLiabilities = priorData.find((s) => s.class === 'LIABILITY')?.total ?? 0;
   const priorTotalEquity = priorData.find((s) => s.class === 'EQUITY')?.total ?? 0;
   const priorNetAssets = priorTotalAssets - priorTotalLiabilities;
+
+  // Prior Working Capital
+  const priorAssetSection = priorData.find((s) => s.class === 'ASSET');
+  const priorLiabilitySection = priorData.find((s) => s.class === 'LIABILITY');
+  const priorCurrentAssetsTotal = priorAssetSection?.subGroups.find((sg) => sg.label === 'Current Assets')?.total ?? 0;
+  const priorCurrentLiabilitiesTotal = priorLiabilitySection?.subGroups.find((sg) => sg.label === 'Current Liabilities')?.total ?? 0;
+  const priorWorkingCapital = priorCurrentAssetsTotal - priorCurrentLiabilitiesTotal;
 
   // Column count for colSpan calculations
   const colCount = priorPeriod ? 5 : 3; // Account, Current, % | + Prior, Change
@@ -244,6 +272,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
               const sectionChange = section.total - priorSectionTotal;
               const sectionChangePct = priorSectionTotal !== 0 ? ((sectionChange / Math.abs(priorSectionTotal)) * 100) : 0;
               const refTotal = section.class === 'ASSET' ? totalAssets : section.class === 'LIABILITY' ? totalLiabilities : totalEquity;
+              const totalAccountCount = section.subGroups.reduce((s, sg) => s + sg.accounts.length, 0);
 
               return (
                 <tbody key={section.class}>
@@ -266,7 +295,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
                           </FinancialTooltip>
                         </span>
                           <span className="block text-[10px] text-muted-foreground font-normal mt-0.5">
-                            {CLASS_DESCRIPTIONS[section.class]} ({section.accounts.length} accounts)
+                            {CLASS_DESCRIPTIONS[section.class]} ({totalAccountCount} accounts)
                           </span>
                         </div>
                       </div>
@@ -296,59 +325,170 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
                     )}
                   </tr>
 
-                  {/* Account rows — only shown when expanded */}
-                  {isExpanded && section.accounts.map((acc) => {
-                    const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
-                    const change = acc.amount - priorAmount;
-                    const changePct = priorAmount !== 0 ? ((change / Math.abs(priorAmount)) * 100) : 0;
-                    const pctOfSection = refTotal !== 0 ? ((Math.abs(acc.amount) / Math.abs(refTotal)) * 100) : 0;
+                  {/* Sub-groups and account rows — only shown when expanded */}
+                  {isExpanded && section.subGroups.map((subGroup) => {
+                    const priorSgTotal = priorSubGroupLookup.get(section.class)?.get(subGroup.label) ?? 0;
+                    const sgChange = subGroup.total - priorSgTotal;
+                    const sgChangePct = priorSgTotal !== 0 ? ((sgChange / Math.abs(priorSgTotal)) * 100) : 0;
+                    // For EQUITY (single subgroup), skip sub-header
+                    const showSubHeader = section.class !== 'EQUITY' && section.subGroups.length > 0;
 
                     return (
-                      <tr
-                        key={`${section.class}-${acc.name}`}
-                        className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
-                        onClick={() => {
-                          if (currentPeriod && acc.accountId) {
-                            openDrill({
-                              type: 'account',
-                              accountId: acc.accountId,
-                              accountName: acc.name,
-                              accountCode: acc.code,
-                              amount: acc.amount,
-                              period: currentPeriod,
-                            });
-                          }
-                        }}
-                      >
-                        <td className="px-4 py-2.5 pl-10">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-muted-foreground">{acc.name}</span>
-                            <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                          </div>
-                          {acc.code && (
-                            <span className="text-[10px] text-muted-foreground/60 font-mono">{acc.code}</span>
-                          )}
-                        </td>
-                        <td className="text-right px-4 py-2.5 font-mono text-xs">{formatCurrency(acc.amount)}</td>
-                        <td className="text-right px-4 py-2.5 text-[11px] text-muted-foreground">
-                          {pctOfSection.toFixed(1)}%
-                        </td>
-                        {priorPeriod && (
-                          <td className="text-right px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatCurrency(priorAmount)}</td>
+                      <React.Fragment key={`${section.class}-${subGroup.label}`}>
+                        {/* Sub-group header */}
+                        {showSubHeader && (
+                          <tr className="border-b bg-muted/10">
+                            <td className="px-4 py-2 pl-8 font-medium text-xs text-foreground/80">
+                              {subGroup.label}
+                              <span className="text-[10px] text-muted-foreground font-normal ml-2">
+                                ({subGroup.accounts.length} accounts)
+                              </span>
+                            </td>
+                            <td className="text-right px-4 py-2 font-mono text-xs font-medium text-foreground/80">
+                              {formatCurrency(subGroup.total)}
+                            </td>
+                            <td className="text-right px-4 py-2 text-[11px] text-muted-foreground">
+                              {refTotal !== 0 ? ((Math.abs(subGroup.total) / Math.abs(refTotal)) * 100).toFixed(1) : '0.0'}%
+                            </td>
+                            {priorPeriod && (
+                              <td className="text-right px-4 py-2 font-mono text-xs text-muted-foreground">
+                                {formatCurrency(priorSgTotal)}
+                              </td>
+                            )}
+                            {priorPeriod && (
+                              <td className={`text-right px-4 py-2 font-mono text-xs ${
+                                sgChange > 0 ? 'text-emerald-600' : sgChange < 0 ? 'text-red-600' : 'text-muted-foreground'
+                              }`}>
+                                {sgChange !== 0 ? (
+                                  <div>
+                                    <div>{sgChange > 0 ? '+' : ''}{formatCurrency(sgChange)}</div>
+                                    <div className="text-[10px] font-normal">{sgChangePct > 0 ? '+' : ''}{sgChangePct.toFixed(1)}%</div>
+                                  </div>
+                                ) : '-'}
+                              </td>
+                            )}
+                          </tr>
                         )}
-                        {priorPeriod && (
-                          <td className={`text-right px-4 py-2.5 font-mono text-xs ${change > 0 ? 'text-emerald-600' : change < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
-                            {change !== 0 ? (
-                              <div>
-                                <div>{change > 0 ? '+' : ''}{formatCurrency(change)}</div>
-                                <div className="text-[10px] font-normal">{changePct > 0 ? '+' : ''}{changePct.toFixed(1)}%</div>
-                              </div>
-                            ) : '-'}
-                          </td>
-                        )}
-                      </tr>
+
+                        {/* Account rows */}
+                        {subGroup.accounts.map((acc) => {
+                          const priorAmount = priorLookup.get(section.class)?.get(acc.name) ?? 0;
+                          const change = acc.amount - priorAmount;
+                          const changePct = priorAmount !== 0 ? ((change / Math.abs(priorAmount)) * 100) : 0;
+                          const pctOfSection = refTotal !== 0 ? ((Math.abs(acc.amount) / Math.abs(refTotal)) * 100) : 0;
+
+                          return (
+                            <tr
+                              key={`${section.class}-${subGroup.label}-${acc.name}`}
+                              className="border-b hover:bg-muted/50 transition-colors cursor-pointer"
+                              onClick={() => {
+                                if (currentPeriod && acc.accountId) {
+                                  openDrill({
+                                    type: 'account',
+                                    accountId: acc.accountId,
+                                    accountName: acc.name,
+                                    accountCode: acc.code,
+                                    amount: acc.amount,
+                                    period: currentPeriod,
+                                  });
+                                }
+                              }}
+                            >
+                              <td className={`px-4 py-2.5 ${showSubHeader ? 'pl-14' : 'pl-10'}`}>
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-muted-foreground">{acc.name}</span>
+                                  <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+                                </div>
+                                {acc.code && (
+                                  <span className="text-[10px] text-muted-foreground/60 font-mono">{acc.code}</span>
+                                )}
+                              </td>
+                              <td className="text-right px-4 py-2.5 font-mono text-xs">{formatCurrency(acc.amount)}</td>
+                              <td className="text-right px-4 py-2.5 text-[11px] text-muted-foreground">
+                                {pctOfSection.toFixed(1)}%
+                              </td>
+                              {priorPeriod && (
+                                <td className="text-right px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatCurrency(priorAmount)}</td>
+                              )}
+                              {priorPeriod && (
+                                <td className={`text-right px-4 py-2.5 font-mono text-xs ${change > 0 ? 'text-emerald-600' : change < 0 ? 'text-red-600' : 'text-muted-foreground'}`}>
+                                  {change !== 0 ? (
+                                    <div>
+                                      <div>{change > 0 ? '+' : ''}{formatCurrency(change)}</div>
+                                      <div className="text-[10px] font-normal">{changePct > 0 ? '+' : ''}{changePct.toFixed(1)}%</div>
+                                    </div>
+                                  ) : '-'}
+                                </td>
+                              )}
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
+
+                  {/* Section total row (for ASSET and LIABILITY with sub-groups) */}
+                  {isExpanded && section.class !== 'EQUITY' && section.subGroups.length > 1 && (
+                    <tr className="border-b bg-muted/20">
+                      <td className="px-4 py-2 pl-8 font-semibold text-xs">
+                        Total {CLASS_LABELS[section.class]}
+                      </td>
+                      <td className="text-right px-4 py-2 font-mono text-xs font-semibold">
+                        {formatCurrency(section.total)}
+                      </td>
+                      <td className="text-right px-4 py-2 text-xs text-muted-foreground">100%</td>
+                      {priorPeriod && (
+                        <td className="text-right px-4 py-2 font-mono text-xs font-semibold text-muted-foreground">
+                          {formatCurrency(priorSectionTotal)}
+                        </td>
+                      )}
+                      {priorPeriod && (
+                        <td className={`text-right px-4 py-2 font-mono text-xs font-semibold ${
+                          sectionChange > 0 ? 'text-emerald-600' : sectionChange < 0 ? 'text-red-600' : 'text-muted-foreground'
+                        }`}>
+                          {sectionChange !== 0 ? `${sectionChange > 0 ? '+' : ''}${formatCurrency(sectionChange)}` : '-'}
+                        </td>
+                      )}
+                    </tr>
+                  )}
+
+                  {/* Working Capital row — shown after LIABILITY section */}
+                  {section.class === 'LIABILITY' && isExpanded && (
+                    <tr className="border-b border-t bg-blue-50/50 dark:bg-blue-950/20">
+                      <td className="px-4 py-2.5 pl-4 font-semibold text-xs">
+                        <FinancialTooltip term="Working Capital" orgId={orgId}>
+                          Working Capital
+                        </FinancialTooltip>
+                        {' '}
+                        <span className="font-normal text-muted-foreground">(Current Assets - Current Liabilities)</span>
+                      </td>
+                      <td className={`text-right px-4 py-2.5 font-mono text-xs font-semibold ${
+                        workingCapital > 0 ? 'text-emerald-600' : workingCapital < 0 ? 'text-red-600' : 'text-muted-foreground'
+                      }`}>
+                        {formatCurrency(workingCapital)}
+                      </td>
+                      <td />
+                      {priorPeriod && (
+                        <td className={`text-right px-4 py-2.5 font-mono text-xs font-semibold ${
+                          priorWorkingCapital > 0 ? 'text-emerald-600/70' : priorWorkingCapital < 0 ? 'text-red-600/70' : 'text-muted-foreground'
+                        }`}>
+                          {formatCurrency(priorWorkingCapital)}
+                        </td>
+                      )}
+                      {priorPeriod && (() => {
+                        const wcChange = workingCapital - priorWorkingCapital;
+                        return (
+                          <td className={`text-right px-4 py-2.5 font-mono text-xs font-semibold ${
+                            wcChange > 0 ? 'text-emerald-600' : wcChange < 0 ? 'text-red-600' : 'text-muted-foreground'
+                          }`}>
+                            {wcChange !== 0
+                              ? `${wcChange > 0 ? '+' : ''}${formatCurrency(wcChange)}`
+                              : '-'}
+                          </td>
+                        );
+                      })()}
+                    </tr>
+                  )}
                 </tbody>
               );
             })}
@@ -387,7 +527,7 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
       </div>
 
       {/* Key Ratios */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {[
           {
             label: 'Total Assets',
@@ -400,6 +540,12 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
             value: formatCurrency(totalLiabilities),
             good: totalLiabilities < totalAssets,
             change: priorPeriod ? totalLiabilities - priorTotalLiabilities : null,
+          },
+          {
+            label: 'Working Capital',
+            value: formatCurrency(workingCapital),
+            good: workingCapital > 0,
+            change: priorPeriod ? workingCapital - priorWorkingCapital : null,
           },
           {
             label: 'Total Equity',

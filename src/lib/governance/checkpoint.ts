@@ -36,7 +36,8 @@ export type OutputType =
   | 'interview_recommendation'
   | 'report_section'
   | 'company_skill'
-  | 'intelligence_query';
+  | 'intelligence_query'
+  | 'daily_briefing';
 
 export type GovernanceStatus =
   | 'auto_approved'
@@ -128,6 +129,7 @@ const DEFAULT_GOVERNANCE: Record<OutputType, GovernanceConfig> = {
   interview_recommendation: { autoApprove: true, approverRole: 'advisor', persist: false },
   company_skill:            { autoApprove: true, approverRole: 'advisor', persist: false },
   intelligence_query:       { autoApprove: true, approverRole: 'viewer',  persist: false },
+  daily_briefing:           { autoApprove: true, approverRole: 'advisor', persist: true },
 };
 
 // ---------------------------------------------------------------------------

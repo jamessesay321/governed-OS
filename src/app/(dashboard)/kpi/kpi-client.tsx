@@ -15,6 +15,8 @@ import { ROLE_HIERARCHY } from '@/types';
 import { NumberLegend } from '@/components/data-primitives';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 
 interface KPIDashboardClientProps {
   orgId: string;
@@ -149,6 +151,10 @@ export function KPIDashboardClient({
 
   return (
     <div className="space-y-6">
+      <Link href="/home" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <ArrowLeft className="h-4 w-4" /> Home
+      </Link>
+
       <NumberLegend />
 
       <div className="flex items-center justify-between">

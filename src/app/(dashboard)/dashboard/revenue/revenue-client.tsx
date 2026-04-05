@@ -19,6 +19,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { DollarSign, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -309,7 +310,7 @@ export default function RevenueClient({
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => format(Number(v ?? 0))} />
+                    <Tooltip content={<SmartChartTooltip chartData={revenueByAccount} valueKey="value" formatValue={format} />} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -329,7 +330,7 @@ export default function RevenueClient({
                       tickFormatter={(v) => format(Number(v ?? 0))}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip formatter={(v) => format(Number(v ?? 0))} />
+                    <Tooltip content={<SmartChartTooltip chartData={revenueTrendData} valueKey="revenue" formatValue={format} />} />
                     <Line
                       type="monotone"
                       dataKey="revenue"
@@ -357,7 +358,7 @@ export default function RevenueClient({
                       tickFormatter={(v) => `${Number(v ?? 0)}%`}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip formatter={(v) => `${Number(v ?? 0).toFixed(1)}%`} />
+                    <Tooltip content={<SmartChartTooltip chartData={growthRateData} valueKey="rate" isPercentage />} />
                     <Line
                       type="monotone"
                       dataKey="rate"

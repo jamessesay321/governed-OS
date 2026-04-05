@@ -140,7 +140,7 @@ export function DrillableNumber({
                 style={{ backgroundColor: style.color }}
               />
               <span className="font-medium">{style.label}</span>
-              {data.label && <span className="text-slate-400">— {data.label}</span>}
+              {data.label && <span className="text-slate-400">– {data.label}</span>}
             </div>
             {data.source && (
               <div className="text-slate-400 space-y-0.5">

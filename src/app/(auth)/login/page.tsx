@@ -105,7 +105,7 @@ export default function LoginPage() {
             businesses
           </h1>
           <p className="text-lg mb-12" style={{ color: 'rgba(245,240,235,0.6)' }}>
-            AI-powered financial intelligence, governance, and strategic planning — all in one place
+            AI-powered financial intelligence, governance, and strategic planning, all in one place
           </p>
 
           {/* Feature list */}

@@ -441,7 +441,7 @@ function ContextContent({
             <p className="text-lg font-bold">{formatCurrency(context.amount)}</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            {formatPeriodLabel(context.period)} — Transactions loaded below
+            {formatPeriodLabel(context.period)} – Transactions loaded below
           </p>
         </div>
       );

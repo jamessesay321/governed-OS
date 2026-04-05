@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { IntelligenceFeed } from '@/components/intelligence/intelligence-feed';
@@ -82,6 +84,10 @@ export function IntelligenceClient({
 
   return (
     <div className="space-y-6">
+      <Link href="/home" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <ArrowLeft className="h-4 w-4" /> Home
+      </Link>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Intelligence</h2>

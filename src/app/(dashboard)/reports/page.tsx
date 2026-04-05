@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 import { ReportList } from '@/components/reports/report-list';
 
 export default async function ReportsPage() {
@@ -15,6 +16,10 @@ export default async function ReportsPage() {
 
   return (
     <div className="space-y-6">
+      <Link href="/home" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <ArrowLeft className="h-4 w-4" /> Home
+      </Link>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Reports</h1>

@@ -3,6 +3,16 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { DollarSign, TrendingUp, Receipt, PiggyBank } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from 'recharts';
 import { VisualiseButton } from '@/components/ui/visualise-button';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -16,6 +26,8 @@ import {
 } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
+import { DataFreshness } from '@/components/dashboard/data-freshness';
 
 type PeriodSummary = {
   period: string;
@@ -67,6 +79,8 @@ type Props = {
   connected: boolean;
   role: string;
   senseCheckFlags?: SenseCheckFlag[];
+  orgId: string;
+  lastSyncAt: string | null;
   lastSync: {
     status: string;
     recordsSynced: number;
@@ -97,7 +111,7 @@ const CLASS_LABELS: Record<string, string> = {
   EQUITY: 'Equity',
 };
 
-export function FinancialsClient({ periods, accounts, financials, rawTransactionCount, connected, role, senseCheckFlags = [], lastSync }: Props) {
+export function FinancialsClient({ periods, accounts, financials, rawTransactionCount, connected, role, senseCheckFlags = [], orgId, lastSyncAt, lastSync }: Props) {
   const router = useRouter();
   const { format: formatCurrency } = useCurrency();
   const [tab, setTab] = useState<Tab>('overview');
@@ -189,7 +203,10 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
 
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Financial Data</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-2xl font-bold">Financial Data</h2>
+            <DataFreshness lastSyncAt={lastSyncAt} />
+          </div>
           <p className="text-sm text-muted-foreground mt-1">
             {rawTransactionCount > 0
               ? `${rawTransactionCount.toLocaleString()} raw transactions across ${periods.length} periods`
@@ -312,6 +329,24 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
             </div>
           )}
         </div>
+      )}
+
+      {/* AI Narrative Summary */}
+      {periods.length > 0 && (
+        <NarrativeSummary
+          orgId={orgId}
+          period={controls.selectedPeriods[controls.selectedPeriods.length - 1] ?? ''}
+        />
+      )}
+
+      {/* KPI Summary Cards */}
+      {filteredPeriods.length > 0 && (
+        <KpiSummaryCards periods={filteredPeriods} formatCurrency={formatCurrency} />
+      )}
+
+      {/* Revenue vs Net Profit Mini Chart */}
+      {filteredPeriods.length > 1 && (
+        <MiniTrendChart periods={filteredPeriods} formatCurrency={formatCurrency} />
       )}
 
       {/* Report Controls — period filtering */}
@@ -518,6 +553,162 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
           )}
         </>
       )}
+    </div>
+  );
+}
+
+/* ─── KPI Summary Cards ─── */
+
+function KpiSummaryCards({
+  periods,
+  formatCurrency,
+}: {
+  periods: PeriodSummary[];
+  formatCurrency: (n: number) => string;
+}) {
+  const current = periods[0];
+  const prior = periods.length > 1 ? periods[1] : null;
+
+  const grossProfit = current.revenue - current.costs;
+  const grossMargin = current.revenue !== 0 ? (grossProfit / current.revenue) * 100 : 0;
+  const netMargin = current.revenue !== 0 ? (current.netProfit / current.revenue) * 100 : 0;
+
+  function pctChange(curr: number, prev: number | undefined): number | null {
+    if (prev == null || prev === 0) return null;
+    return ((curr - prev) / Math.abs(prev)) * 100;
+  }
+
+  const revenueChange = prior ? pctChange(current.revenue, prior.revenue) : null;
+  const priorGross = prior ? prior.revenue - prior.costs : null;
+  const grossChange = prior && priorGross != null ? pctChange(grossProfit, priorGross) : null;
+  const expenseChange = prior ? pctChange(current.expenses, prior.expenses) : null;
+  const netChange = prior ? pctChange(current.netProfit, prior.netProfit) : null;
+
+  const cards = [
+    {
+      label: 'Total Revenue',
+      value: formatCurrency(current.revenue),
+      change: revenueChange,
+      sub: null,
+      icon: DollarSign,
+      iconBg: 'bg-blue-100 dark:bg-blue-950',
+      iconColor: 'text-blue-600',
+    },
+    {
+      label: 'Gross Profit',
+      value: formatCurrency(grossProfit),
+      change: grossChange,
+      sub: `${grossMargin.toFixed(1)}% margin`,
+      icon: TrendingUp,
+      iconBg: 'bg-green-100 dark:bg-green-950',
+      iconColor: 'text-green-600',
+    },
+    {
+      label: 'Operating Expenses',
+      value: formatCurrency(current.expenses),
+      change: expenseChange,
+      sub: null,
+      icon: Receipt,
+      iconBg: 'bg-amber-100 dark:bg-amber-950',
+      iconColor: 'text-amber-600',
+    },
+    {
+      label: 'Net Profit',
+      value: formatCurrency(current.netProfit),
+      change: netChange,
+      sub: `${netMargin.toFixed(1)}% margin`,
+      icon: PiggyBank,
+      iconBg: current.netProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-red-100 dark:bg-red-950',
+      iconColor: current.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {cards.map((c) => {
+        const Icon = c.icon;
+        // For expenses, rising is bad; for others, rising is good
+        const isExpenseCard = c.label === 'Operating Expenses';
+        const changeColor =
+          c.change == null
+            ? ''
+            : isExpenseCard
+            ? c.change > 0
+              ? 'text-red-600'
+              : 'text-green-600'
+            : c.change > 0
+            ? 'text-green-600'
+            : 'text-red-600';
+
+        return (
+          <div key={c.label} className="rounded-lg border p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-medium text-muted-foreground">{c.label}</span>
+              <div className={`rounded-md p-1.5 ${c.iconBg}`}>
+                <Icon className={`h-4 w-4 ${c.iconColor}`} />
+              </div>
+            </div>
+            <div className="text-xl font-bold">{c.value}</div>
+            <div className="flex items-center gap-2 text-xs">
+              {c.change != null && (
+                <span className={changeColor}>
+                  {c.change > 0 ? '+' : ''}
+                  {c.change.toFixed(1)}% vs prior
+                </span>
+              )}
+              {c.sub && (
+                <span className="text-muted-foreground">{c.sub}</span>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ─── Mini Revenue vs Net Profit Chart ─── */
+
+function MiniTrendChart({
+  periods,
+  formatCurrency,
+}: {
+  periods: PeriodSummary[];
+  formatCurrency: (n: number) => string;
+}) {
+  // Reverse so chronological order (periods come sorted descending)
+  const chartData = [...periods].reverse().map((p) => ({
+    period: new Date(p.period).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }),
+    Revenue: p.revenue,
+    'Net Profit': p.netProfit,
+  }));
+
+  return (
+    <div className="rounded-lg border p-4">
+      <h3 className="text-sm font-medium mb-3">Revenue vs Net Profit</h3>
+      <div style={{ width: '100%', height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis dataKey="period" tick={{ fontSize: 11 }} className="text-muted-foreground" />
+            <YAxis
+              tick={{ fontSize: 11 }}
+              className="text-muted-foreground"
+              tickFormatter={(v: number) => {
+                if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+                if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+                return String(v);
+              }}
+            />
+            <Tooltip
+              formatter={(value) => typeof value === 'number' ? formatCurrency(value) : String(value ?? '')}
+              contentStyle={{ fontSize: 12, borderRadius: 8 }}
+            />
+            <Bar dataKey="Revenue" fill="#3b82f6" radius={[2, 2, 0, 0]} />
+            <Bar dataKey="Net Profit" fill="#10b981" radius={[2, 2, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

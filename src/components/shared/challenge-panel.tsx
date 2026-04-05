@@ -206,7 +206,7 @@ export function ChallengePanel() {
                 <textarea
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
-                  placeholder="e.g. This revenue figure seems too high — we haven't invoiced that much this month"
+                  placeholder="e.g. This revenue figure seems too high. We haven't invoiced that much this month."
                   className="w-full rounded-lg border bg-background px-3 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                   rows={4}
                 />

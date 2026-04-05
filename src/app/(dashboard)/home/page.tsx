@@ -34,6 +34,7 @@ export default async function HomePage() {
 
   return (
     <HomeClient
+      orgId={orgId}
       displayName={displayName}
       profileComplete={profileComplete}
       integrationConnected={integrationConnected}

@@ -55,19 +55,31 @@ export default async function CashFlowPage() {
   // Get all unique periods sorted
   const availablePeriods = [...new Set(finData.map((f) => f.period))].sort();
 
-  // Build P&L for net profit figures — for ALL periods
-  type BSSection = { class: string; accounts: { name: string; amount: number; accountId: string; code: string }[]; total: number };
+  // Build P&L for net profit figures and depreciation — for ALL periods
+  type BSSection = { class: string; accounts: { name: string; amount: number; accountId: string; code: string; type: string }[]; total: number };
 
-  const allPnL: Record<string, { netProfit: number }> = {};
+  const allPnL: Record<string, { netProfit: number; depreciation: number }> = {};
   for (const period of availablePeriods) {
     const pnl = buildPnL(finData as NormalisedFinancial[], accData, period);
-    allPnL[period] = { netProfit: pnl?.netProfit ?? 0 };
+    // Sum depreciation/amortisation accounts from P&L sections (stored as negative in Xero)
+    let depreciation = 0;
+    if (pnl?.sections) {
+      for (const section of pnl.sections) {
+        for (const row of section.rows) {
+          const lower = row.accountName.toLowerCase();
+          if (lower.includes('depreciation') || lower.includes('amortisation') || lower.includes('amortization')) {
+            depreciation += Math.abs(row.amount);
+          }
+        }
+      }
+    }
+    allPnL[period] = { netProfit: pnl?.netProfit ?? 0, depreciation };
   }
 
   // Build balance sheet data for ALL periods
   function buildBS(data: typeof finData, period: string): BSSection[] {
     const periodData = data.filter((f) => f.period === period);
-    const groups = new Map<string, Map<string, { amount: number; accountId: string; code: string }>>();
+    const groups = new Map<string, Map<string, { amount: number; accountId: string; code: string; type: string }>>();
 
     for (const fin of periodData) {
       const account = fin.chart_of_accounts;
@@ -80,7 +92,7 @@ export default async function CashFlowPage() {
       if (existing) {
         existing.amount += Number(fin.amount);
       } else {
-        accMap.set(account.name, { amount: Number(fin.amount), accountId: account.id, code: account.code });
+        accMap.set(account.name, { amount: Number(fin.amount), accountId: account.id, code: account.code, type: account.type });
       }
     }
 
@@ -92,7 +104,7 @@ export default async function CashFlowPage() {
         continue;
       }
       const accs = Array.from(accMap.entries())
-        .map(([name, entry]) => ({ name, amount: entry.amount, accountId: entry.accountId, code: entry.code }))
+        .map(([name, entry]) => ({ name, amount: entry.amount, accountId: entry.accountId, code: entry.code, type: entry.type }))
         .sort((a, b) => a.name.localeCompare(b.name));
       const total = accs.reduce((s, a) => s + a.amount, 0);
       result.push({ class: cls, accounts: accs, total });

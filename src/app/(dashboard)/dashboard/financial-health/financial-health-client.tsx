@@ -25,6 +25,7 @@ import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { Scale, Building2, Wallet, Flame } from 'lucide-react';
+import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -314,7 +315,7 @@ export default function FinancialHealthClient({
                         tickFormatter={(v) => format(Number(v ?? 0))}
                         tick={{ fontSize: 12 }}
                       />
-                      <Tooltip formatter={(v) => [format(Number(v ?? 0)), 'Burn Rate']} />
+                      <Tooltip content={<SmartChartTooltip chartData={chartBurnRates} valueKey="burn" formatValue={format} />} />
                       <Line
                         type="monotone"
                         dataKey="burn"
@@ -348,7 +349,7 @@ export default function FinancialHealthClient({
                         tickFormatter={(v) => format(Number(v ?? 0))}
                         tick={{ fontSize: 12 }}
                       />
-                      <Tooltip formatter={(v) => [format(Number(v ?? 0)), 'Cash Balance']} />
+                      <Tooltip content={<SmartChartTooltip chartData={chartCashByPeriod} valueKey="cash" formatValue={format} />} />
                       <Area
                         type="monotone"
                         dataKey="cash"

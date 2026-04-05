@@ -48,7 +48,7 @@ interface Project {
 const projects: Project[] = [
   {
     id: 'proj-001',
-    name: 'US Expansion — Kleinfeld Partnership',
+    name: 'US Expansion: Kleinfeld Partnership',
     category: 'expansion',
     progress: 35,
     status: 'on-track',

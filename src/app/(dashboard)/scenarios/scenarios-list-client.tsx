@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
 import type { Scenario, Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
 import { ChatScenarioLauncher } from '@/components/scenarios/chat-scenario-launcher';
@@ -83,6 +84,10 @@ export function ScenariosListClient({ scenarios, role, availablePeriods = [] }: 
 
   return (
     <div className="space-y-6">
+      <Link href="/home" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <ArrowLeft className="h-4 w-4" /> Home
+      </Link>
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Scenarios</h2>

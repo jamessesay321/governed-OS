@@ -13,8 +13,10 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { EmptyStateIllustration } from '@/components/ui/illustrations';
+import { DailyBriefing } from '@/components/dashboard/daily-briefing';
 
 type Props = {
+  orgId: string;
   displayName: string;
   profileComplete: boolean;
   integrationConnected: boolean;
@@ -54,6 +56,7 @@ const quickLinks = [
 ];
 
 export function HomeClient({
+  orgId,
   displayName,
   profileComplete,
   integrationConnected,
@@ -165,6 +168,14 @@ export function HomeClient({
           </div>
         )}
       </div>
+
+      {/* Daily Briefing — AI-generated summary of financial position */}
+      {integrationConnected && (
+        <DailyBriefing
+          orgId={orgId}
+          period={new Date().toISOString().slice(0, 7)}
+        />
+      )}
 
       {/* Quick Links Grid */}
       <div>

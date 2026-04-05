@@ -44,6 +44,18 @@ export default async function FinancialsPage() {
     .limit(1)
     .single();
 
+  // Fetch last completed sync timestamp for DataFreshness
+  const { data: lastCompletedSync } = await supabase
+    .from('sync_log')
+    .select('completed_at')
+    .eq('org_id', orgId)
+    .eq('status', 'completed')
+    .order('completed_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastSyncAt = lastCompletedSync?.completed_at ?? null;
+
   // Build period summary
   const periodSummary = new Map<string, { revenue: number; costs: number; expenses: number; accounts: number }>();
 
@@ -96,6 +108,8 @@ export default async function FinancialsPage() {
       connected={!!xeroConnection}
       role={role}
       senseCheckFlags={senseCheckFlags}
+      orgId={orgId}
+      lastSyncAt={lastSyncAt}
       lastSync={lastSync ? {
         status: lastSync.status,
         recordsSynced: lastSync.records_synced,

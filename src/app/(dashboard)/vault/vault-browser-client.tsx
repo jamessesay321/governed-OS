@@ -275,7 +275,7 @@ function KpiSnapshotRenderer({ content }: { content: Record<string, unknown> }) 
                 {String(kpi.label ?? kpi.name ?? kpi.metric ?? `KPI ${i + 1}`)}
               </td>
               <td className="py-1 px-2 text-right text-gray-900 font-medium tabular-nums">
-                {String(kpi.value ?? '—')}
+                {String(kpi.value ?? 'N/A')}
               </td>
               <td className="py-1 pl-2 text-center">
                 <KpiStatusBadge status={kpi.status as string | undefined} />
@@ -289,7 +289,7 @@ function KpiSnapshotRenderer({ content }: { content: Record<string, unknown> }) 
 }
 
 function KpiStatusBadge({ status }: { status: string | undefined }) {
-  if (!status) return <span className="text-gray-400">—</span>;
+  if (!status) return <span className="text-gray-400">N/A</span>;
   const s = status.toLowerCase();
   const colours =
     s === 'green' || s === 'good' || s === 'favourable'
@@ -337,10 +337,10 @@ function VarianceRenderer({ content }: { content: Record<string, unknown> }) {
                   {String(row.label ?? row.metric ?? row.name ?? `Item ${i + 1}`)}
                 </td>
                 <td className="py-1 px-2 text-right tabular-nums">
-                  {String(row.actual ?? '—')}
+                  {String(row.actual ?? 'N/A')}
                 </td>
                 <td className="py-1 px-2 text-right tabular-nums">
-                  {String(row.budget ?? row.prior ?? '—')}
+                  {String(row.budget ?? row.prior ?? 'N/A')}
                 </td>
                 <td
                   className={`py-1 pl-2 text-right font-medium tabular-nums ${
@@ -351,7 +351,7 @@ function VarianceRenderer({ content }: { content: Record<string, unknown> }) {
                       : ''
                   }`}
                 >
-                  {variance !== undefined && variance !== null ? String(variance) : '—'}
+                  {variance !== undefined && variance !== null ? String(variance) : 'N/A'}
                 </td>
               </tr>
             );
@@ -424,7 +424,7 @@ function InterviewRenderer({ content }: { content: Record<string, unknown> }) {
             Q: {String(pair.question ?? pair.q ?? `Question ${i + 1}`)}
           </p>
           <p className="text-gray-800 pl-3">
-            {String(pair.answer ?? pair.a ?? pair.response ?? '—')}
+            {String(pair.answer ?? pair.a ?? pair.response ?? 'N/A')}
           </p>
         </div>
       ))}
@@ -466,7 +466,7 @@ function PlaybookRenderer({ content }: { content: Record<string, unknown> }) {
               </>
             )}
             {score === null && (
-              <span className="text-gray-500">{String(mod.score ?? mod.rating ?? '—')}</span>
+              <span className="text-gray-500">{String(mod.score ?? mod.rating ?? 'N/A')}</span>
             )}
           </div>
         );

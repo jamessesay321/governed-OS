@@ -44,13 +44,65 @@ export default async function BalanceSheetPage() {
   // Get all unique periods sorted
   const availablePeriods = [...new Set((financials ?? []).map((f) => f.period))].sort();
 
-  // Group by ASSET, LIABILITY, EQUITY for a given period
-  type BSSection = { class: string; accounts: { name: string; amount: number; accountId: string; code: string }[]; total: number };
+  // Sub-classification helper: infers Current vs Non-Current from account name and Xero type
+  type AccountEntry = { name: string; amount: number; accountId: string; code: string };
+  type SubGroup = { label: string; accounts: AccountEntry[]; total: number };
+  type BSSection = { class: string; subGroups: SubGroup[]; total: number };
+
+  const CURRENT_ASSET_PATTERNS = [
+    'bank', 'cash', 'petty cash', 'receivable', 'debtor', 'prepayment', 'prepaid',
+    'inventory', 'stock', 'trade receivable', 'accounts receivable', 'vat', 'tax refund', 'deposit',
+  ];
+  const NON_CURRENT_ASSET_PATTERNS = [
+    'equipment', 'property', 'plant', 'vehicle', 'furniture', 'computer', 'machinery',
+    'intangible', 'goodwill', 'investment', 'fixed asset', 'depreciation', 'accumulated',
+  ];
+  const CURRENT_LIABILITY_PATTERNS = [
+    'payable', 'creditor', 'trade payable', 'accounts payable', 'accrual', 'vat',
+    'tax payable', 'paye', 'nic', 'pension', 'overdraft', 'credit card',
+    'deferred income', 'deposit received', 'short-term',
+  ];
+  const NON_CURRENT_LIABILITY_PATTERNS = [
+    'loan', 'mortgage', 'long-term', 'hire purchase', 'lease liability',
+    'director loan', 'borrowing',
+  ];
+
+  function classifyAccount(name: string, type: string, cls: string): 'current' | 'non-current' {
+    const lower = `${name} ${type}`.toLowerCase();
+
+    if (cls === 'ASSET') {
+      // Check non-current first (more specific patterns like "fixed deposit")
+      if (NON_CURRENT_ASSET_PATTERNS.some((p) => lower.includes(p))) {
+        // Exception: "deposit" alone is current, but "fixed deposit" is non-current
+        // If it matched because of 'deposit' in non-current list — not applicable, deposit isn't there
+        return 'non-current';
+      }
+      if (CURRENT_ASSET_PATTERNS.some((p) => {
+        if (p === 'deposit') return lower.includes('deposit') && !lower.includes('fixed deposit');
+        return lower.includes(p);
+      })) {
+        return 'current';
+      }
+      return 'current'; // default for assets
+    }
+
+    if (cls === 'LIABILITY') {
+      if (NON_CURRENT_LIABILITY_PATTERNS.some((p) => lower.includes(p))) {
+        return 'non-current';
+      }
+      if (CURRENT_LIABILITY_PATTERNS.some((p) => lower.includes(p))) {
+        return 'current';
+      }
+      return 'current'; // default for liabilities
+    }
+
+    return 'current'; // EQUITY doesn't sub-classify — treated as single group
+  }
 
   function buildBalanceSheet(data: typeof financials, period: string): BSSection[] {
     if (!data) return [];
     const periodData = data.filter((f) => f.period === period);
-    const groups = new Map<string, Map<string, { amount: number; accountId: string; code: string }>>();
+    const groups = new Map<string, Map<string, { amount: number; accountId: string; code: string; xeroType: string }>>();
 
     for (const fin of periodData) {
       const account = fin.chart_of_accounts as { id: string; code: string; name: string; type: string; class: string };
@@ -63,7 +115,12 @@ export default async function BalanceSheetPage() {
       if (existing) {
         existing.amount += Number(fin.amount);
       } else {
-        accMap.set(account.name, { amount: Number(fin.amount), accountId: account.id, code: account.code });
+        accMap.set(account.name, {
+          amount: Number(fin.amount),
+          accountId: account.id,
+          code: account.code,
+          xeroType: account.type,
+        });
       }
     }
 
@@ -71,14 +128,46 @@ export default async function BalanceSheetPage() {
     for (const cls of ['ASSET', 'LIABILITY', 'EQUITY']) {
       const accMap = groups.get(cls);
       if (!accMap) {
-        result.push({ class: cls, accounts: [], total: 0 });
+        result.push({ class: cls, subGroups: [], total: 0 });
         continue;
       }
-      const accounts = Array.from(accMap.entries())
-        .map(([name, entry]) => ({ name, amount: entry.amount, accountId: entry.accountId, code: entry.code }))
+
+      const allAccounts = Array.from(accMap.entries())
+        .map(([name, entry]) => ({
+          name,
+          amount: entry.amount,
+          accountId: entry.accountId,
+          code: entry.code,
+          classification: classifyAccount(name, entry.xeroType, cls),
+        }))
         .sort((a, b) => a.name.localeCompare(b.name));
-      const total = accounts.reduce((s, a) => s + a.amount, 0);
-      result.push({ class: cls, accounts, total });
+
+      if (cls === 'EQUITY') {
+        // Equity has no sub-classification
+        const accounts = allAccounts.map(({ classification, ...rest }) => rest);
+        const total = accounts.reduce((s, a) => s + a.amount, 0);
+        result.push({ class: cls, subGroups: [{ label: 'Equity', accounts, total }], total });
+      } else {
+        const currentLabel = cls === 'ASSET' ? 'Current Assets' : 'Current Liabilities';
+        const nonCurrentLabel = cls === 'ASSET' ? 'Non-Current Assets' : 'Non-Current Liabilities';
+
+        const currentAccounts = allAccounts
+          .filter((a) => a.classification === 'current')
+          .map(({ classification, ...rest }) => rest);
+        const nonCurrentAccounts = allAccounts
+          .filter((a) => a.classification === 'non-current')
+          .map(({ classification, ...rest }) => rest);
+
+        const currentTotal = currentAccounts.reduce((s, a) => s + a.amount, 0);
+        const nonCurrentTotal = nonCurrentAccounts.reduce((s, a) => s + a.amount, 0);
+        const sectionTotal = currentTotal + nonCurrentTotal;
+
+        const subGroups: SubGroup[] = [];
+        if (currentAccounts.length > 0) subGroups.push({ label: currentLabel, accounts: currentAccounts, total: currentTotal });
+        if (nonCurrentAccounts.length > 0) subGroups.push({ label: nonCurrentLabel, accounts: nonCurrentAccounts, total: nonCurrentTotal });
+
+        result.push({ class: cls, subGroups, total: sectionTotal });
+      }
     }
     return result;
   }

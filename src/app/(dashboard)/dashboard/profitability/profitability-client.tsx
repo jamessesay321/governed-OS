@@ -18,6 +18,7 @@ import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { DollarSign, Percent, BarChart3, PiggyBank } from 'lucide-react';
+import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -304,7 +305,7 @@ export default function ProfitabilityClient({
                       tickFormatter={(v) => `${Number(v ?? 0)}%`}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip formatter={(v) => `${Number(v ?? 0).toFixed(1)}%`} />
+                    <Tooltip content={<SmartChartTooltip chartData={grossMarginData} valueKey="margin" isPercentage />} />
                     <Line
                       type="monotone"
                       dataKey="margin"
@@ -332,7 +333,7 @@ export default function ProfitabilityClient({
                       tickFormatter={(v) => `${Number(v ?? 0)}%`}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip formatter={(v) => `${Number(v ?? 0).toFixed(1)}%`} />
+                    <Tooltip content={<SmartChartTooltip chartData={operatingMarginData} valueKey="margin" isPercentage />} />
                     <Line
                       type="monotone"
                       dataKey="margin"
@@ -373,7 +374,7 @@ export default function ProfitabilityClient({
                         <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v) => format(Number(v ?? 0))} />
+                    <Tooltip content={<SmartChartTooltip chartData={expenseBreakdown} valueKey="value" formatValue={format} />} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
@@ -393,7 +394,7 @@ export default function ProfitabilityClient({
                       tickFormatter={(v) => format(Number(v ?? 0))}
                       tick={{ fontSize: 12 }}
                     />
-                    <Tooltip formatter={(v) => format(Number(v ?? 0))} />
+                    <Tooltip content={<SmartChartTooltip chartData={netProfitData} valueKey="profit" formatValue={format} />} />
                     <Area
                       type="monotone"
                       dataKey="profit"

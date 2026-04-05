@@ -182,7 +182,7 @@ export default function ReferralsPage() {
                       'px-4 py-3 text-right font-medium',
                       ref.creditAwarded > 0 ? 'text-emerald-600' : 'text-muted-foreground'
                     )}>
-                      {ref.creditAwarded > 0 ? `+${ref.creditAwarded}` : '—'}
+                      {ref.creditAwarded > 0 ? `+${ref.creditAwarded}` : 'N/A'}
                     </td>
                   </tr>
                 ))}

@@ -26,7 +26,7 @@ export function VarianceIndicator({
   if (previousValue === 0 && value === 0) {
     return (
       <span className={`inline-flex items-center gap-0.5 text-slate-400 ${SIZE_MAP[size].text} ${className}`}>
-        <span>—</span>
+        <span>N/A</span>
       </span>
     );
   }

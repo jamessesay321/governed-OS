@@ -268,7 +268,7 @@ export default function AuditLogClient({ logs, nameMap }: AuditLogClientProps) {
       actionCounts.set(log.action, (actionCounts.get(log.action) ?? 0) + 1);
     }
 
-    let mostCommonAction = '—';
+    let mostCommonAction = 'N/A';
     let maxCount = 0;
     for (const [action, count] of actionCounts) {
       if (count > maxCount) {
