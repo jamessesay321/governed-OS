@@ -123,11 +123,11 @@ export function VarianceDetail({ line, explanation, onExplain, onClose }: Varian
                 }
               />
               <Tooltip
-                formatter={(value: number | undefined) => [
+                formatter={(value: unknown) => [
                   new Intl.NumberFormat('en-GB', {
                     style: 'currency',
                     currency: 'GBP',
-                  }).format(value ?? 0),
+                  }).format(Number(value ?? 0)),
                 ]}
               />
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>

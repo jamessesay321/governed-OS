@@ -200,3 +200,36 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Fix:** Added OTHERINCOME handling to all aggregation paths (scenario pipeline, forecast engine, financial aggregation). Built `uk-tax.ts` with proper marginal relief calculation. Updated scenario and forecast engines to use `calculateCorporationTax()` with annualised profit banding. Added FRS 102/105, ACCA/ICAEW, and ISA 570 references to all AI system prompts.
 
 **Preventative rule:** (1) When integrating with any accounting platform, enumerate ALL account classes from the API documentation — do not assume a generic REVENUE/EXPENSE/ASSET/LIABILITY taxonomy. Test with real client data that includes edge-case classes. (2) Always encode UK tax rules as deterministic functions with proper banding, not flat rates. Reference HMRC publications for current rates and thresholds. (3) All AI system prompts for financial analysis must reference the applicable accounting framework (FRS 102/105), practitioner body methodology (ACCA/ICAEW), and audit standards (ISA 570) — generic "financial analysis" prompts produce generic output that doesn't meet UK compliance expectations.
+
+---
+
+## Lesson 18: Invoice contacts ≠ business clients — understand the business model before counting
+
+**Mistake:** Counted 590 unique Xero invoice contact names as "confirmed clients" for Alonuko in 2025. The actual number from the Confirmed Clients spreadsheet is 146. The error was 4x overcount.
+
+**Root cause:** Three compounding failures:
+1. **No business model understanding applied.** Alonuko is luxury bridal — each bride generates 3-5 invoices (consultation, deposit, balance payments, alterations). Counting invoice contacts = counting transactions, not customers.
+2. **No cross-reference with operational data.** Monday.com has the authoritative confirmed clients list. The platform should never report client counts from Xero alone without cross-referencing operational systems.
+3. **Revenue recognition not applied.** Reported £1.82M from invoice totals (which includes VAT, deposits that are liabilities not revenue, and voided invoices). The correct P&L revenue is £1.43M — a £390K overstatement.
+
+**Key data points that should have been sanity-checked:**
+- AOV from confirmed clients spreadsheet: £8,634 (not the ~£3K implied by 590 clients on £1.8M)
+- MTO vs Bespoke split: 129 MTO at £8,110 AOV vs 13 Bespoke at £16,398 AOV
+- Deposit % collected: 70.8% (£892K of £1.26M proforma value)
+- Wedding dates span 2025-2027 — deposits received ≠ revenue recognised
+
+**Preventative rule:** (1) NEVER report client counts from accounting data alone. Always cross-reference with operational/CRM source (Monday.com, HubSpot, Shopify). (2) For any business with deferred revenue (deposits, subscriptions, retainers), distinguish between "invoiced amount" and "recognised revenue". (3) Before reporting any financial metric, ask: "Does this match the business model?" — if AOV looks wrong for the industry, the count is probably wrong. (4) Apply FRS 102 Section 23 (Revenue Recognition) — revenue for made-to-order goods is recognised on delivery, not on deposit.
+
+**Generalised pattern:** This applies to ANY service/made-to-order business: law firms (retainers ≠ revenue), construction (stage payments), SaaS (annual upfront ≠ monthly revenue), events (ticket deposits). Always ask: "When does this business recognise revenue?"
+
+---
+
+## Lesson 19: Understand debt structure before financial health assessment
+
+**Mistake:** Presented P&L figures without analysing the debt structure. Alonuko has 13 debt facilities totalling £511K outstanding, with £55.7K/month in repayments (46.6% of monthly revenue) and £257K in annual interest (17.9% of revenue). This fundamentally changes the financial health picture from "loss-making" to "structurally drowning in debt service costs."
+
+**Root cause:** The platform has no debt/loan tracking capability. All debt appears as generic "Interest Expense" line items in the P&L with no visibility into: which lenders, what rates, when they mature, what the monthly cash drain is, or which are MCAs vs term loans vs government schemes.
+
+**Key insight:** 69% of monthly repayments (£38K/month) go to Merchant Cash Advances (MCAs) which are the most expensive form of debt. The Shopify/YouLend loan alone has a £186K balance. The BBL (Bounce Back Loan) at £233/month is the only "good" debt. A refinance strategy to consolidate MCA debt into a single term loan could save £150K+/year.
+
+**Preventative rule:** (1) For ANY business with debt, always build the full debt schedule before presenting P&L analysis. Interest expense alone tells you nothing — you need balance, rate, term, and type. (2) Classify debt: GOOD (low rate, long term, productive), OKAY (moderate, manageable), BAD (high rate, short term, MCA). (3) Always calculate debt service coverage ratio (DSCR) = operating profit / total debt service. Below 1.0 means the business cannot service its debt from operations. (4) MCAs are NEVER "good" debt regardless of what the user thinks — they have effective APRs of 30-100%+. Flag them prominently.

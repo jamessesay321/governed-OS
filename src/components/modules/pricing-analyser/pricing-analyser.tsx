@@ -152,8 +152,8 @@ export function PricingAnalyser({ orgId, initialData }: PricingAnalyserProps) {
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number | undefined, name: string | undefined) => [
-                    name === 'margin' ? `${value ?? 0}%` : formatCurrency(value ?? 0),
+                  formatter={(value: unknown, name: unknown) => [
+                    name === 'margin' ? `${Number(value ?? 0)}%` : formatCurrency(Number(value ?? 0)),
                     name === 'margin' ? 'Margin' : 'Revenue',
                   ]}
                 />
@@ -261,7 +261,7 @@ export function PricingAnalyser({ orgId, initialData }: PricingAnalyserProps) {
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number | undefined) => [`${(value ?? 0).toFixed(1)}%`, 'Margin']}
+                  formatter={(value: unknown) => [`${Number(value ?? 0).toFixed(1)}%`, 'Margin']}
                 />
                 <Line
                   type="monotone"

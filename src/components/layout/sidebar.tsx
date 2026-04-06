@@ -152,6 +152,14 @@ const navigation: NavGroup[] = [
     href: '/assumptions',
     children: [],
   },
+  {
+    group: 'Debt',
+    icon: 'Landmark',
+    href: '/debt',
+    children: [
+      { href: '/debt', label: 'Command Centre' },
+    ],
+  },
 
   // ══════════════════════════════════════════════════════════════════
   //  OPERATIONS
@@ -572,6 +580,11 @@ const icons: Record<string, React.ReactNode> = {
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M1 10h22" />
+    </svg>
+  ),
+  Landmark: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M8 10v11M12 10v11M16 10v11M20 10v11" />
     </svg>
   ),
   Help: (

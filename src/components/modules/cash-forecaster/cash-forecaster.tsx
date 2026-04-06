@@ -178,7 +178,7 @@ export function CashForecaster({ orgId }: CashForecasterProps) {
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number | undefined) => [formatCurrency(value ?? 0), '']}
+                  formatter={(value: unknown) => [formatCurrency(Number(value ?? 0)), '']}
                   labelFormatter={(label) => `Week of ${label}`}
                 />
                 <ReferenceLine

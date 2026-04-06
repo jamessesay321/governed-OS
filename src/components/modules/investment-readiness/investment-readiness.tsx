@@ -141,7 +141,7 @@ export function InvestmentReadiness({ orgId }: InvestmentReadinessProps) {
                     borderRadius: '8px',
                     fontSize: '12px',
                   }}
-                  formatter={(value: number | undefined) => [`${value ?? 0}%`, 'Score']}
+                  formatter={(value: unknown) => [`${Number(value ?? 0)}%`, 'Score']}
                 />
                 <Bar dataKey="pct" radius={[0, 4, 4, 0]} barSize={24}>
                   {chartData.map((entry, index) => (

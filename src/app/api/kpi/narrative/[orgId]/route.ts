@@ -48,7 +48,7 @@ export async function GET(
       .from('kpi_snapshots')
       .select('*')
       .eq('org_id', orgId)
-      .eq('type', 'universal');
+      .eq('type' as string, 'universal');
 
     if (period) {
       kpiQuery.eq('period', period);

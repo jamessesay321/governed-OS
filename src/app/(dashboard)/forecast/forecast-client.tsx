@@ -58,8 +58,8 @@ const DEFAULT_ASSUMPTIONS: AssumptionField[] = [
 // Helpers
 // ---------------------------------------------------------------------------
 
-function tooltipFormatter(value: number | undefined): string {
-  return chartTooltipFormatter()(value ?? 0);
+function tooltipFormatter(value: unknown): string {
+  return chartTooltipFormatter()(Number(value ?? 0));
 }
 
 function formatCurrency(value: number): string {

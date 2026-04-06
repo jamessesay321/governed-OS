@@ -408,8 +408,8 @@ export function DrillDownClient({
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip
-                    formatter={(value: number | undefined) => [
-                      formatCurrency(value ?? 0),
+                    formatter={(value: unknown) => [
+                      formatCurrency(Number(value ?? 0)),
                       'Variance',
                     ]}
                     labelFormatter={(label: React.ReactNode) => {

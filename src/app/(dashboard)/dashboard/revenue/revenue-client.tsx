@@ -293,7 +293,7 @@ export default function RevenueClient({
                         `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
                       }
                       labelLine={{ strokeWidth: 1 }}
-                      onClick={(data: Record<string, unknown>) => {
+                      onClick={(data: unknown) => {
                         const entry = data as { name: string; value: number; accountId: string; accountCode: string };
                         openDrill({
                           type: 'account',

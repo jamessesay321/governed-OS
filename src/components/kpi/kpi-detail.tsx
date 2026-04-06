@@ -139,8 +139,8 @@ export function KPIDetail({ kpi, history, period, onClose }: KPIDetailProps) {
                   width={80}
                 />
                 <Tooltip
-                  formatter={(value: number | undefined) => [
-                    formatKPIValue(value ?? 0, kpi.format),
+                  formatter={(value: unknown) => [
+                    formatKPIValue(Number(value ?? 0), kpi.format),
                     kpi.label,
                   ]}
                 />
