@@ -128,6 +128,10 @@ export default function StorefrontClient({
   const [syncing, setSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<{ success: boolean; synced: number; error?: string } | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'orders' | 'products' | 'reconciliation'>('overview');
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
+  const [shopDomain, setShopDomain] = useState('alonuko.myshopify.com');
+  const [accessToken, setAccessToken] = useState('');
 
   async function handleSync(action: string = 'full_sync') {
     setSyncing(true);
@@ -164,28 +168,104 @@ export default function StorefrontClient({
         </div>
 
         <div className="rounded-lg border">
-          <div className="p-8 text-center">
+          <div className="p-8">
             {/* Shopify icon */}
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-[#96bf48]/10">
               <svg viewBox="0 0 24 24" className="h-8 w-8 text-[#96bf48]" fill="currentColor">
                 <path d="M15.337 3.415c-.043-.18-.198-.28-.337-.297a3.6 3.6 0 0 0-.563-.005s-1.137.114-1.137.114a.37.37 0 0 1-.1-.02c-.2-.54-.558-1.036-1.182-1.036h-.084C11.59 1.727 11.148 1.5 10.773 1.5c-2.508.007-3.713 3.133-4.088 4.727l-1.762.546c-.546.172-.563.188-.635.706l-1.345 10.34L10.953 19.5l6.49-1.407s-2.063-14.496-2.106-14.678zM11.24 5.24c0 .063-.54.168-.54.168s-1.132.35-1.132.35c.316-1.218.912-1.81 1.432-2.033.15.39.24.905.24 1.515zm-.936-2.14c.095 0 .187.032.273.094-.682.32-1.41 1.136-1.72 2.762l-.896.278C8.383 4.785 9.263 3.1 10.304 3.1zm.364 7.75s-.475-.252-1.055-.252c-.852 0-.895.535-.895.67 0 .735 1.916 1.017 1.916 2.74 0 1.355-.858 2.228-2.017 2.228-1.39 0-2.1-.865-2.1-.865l.372-1.23s.73.627 1.346.627a.547.547 0 0 0 .568-.548c0-.96-1.572-1.003-1.572-2.58 0-1.327.952-2.612 2.877-2.612.74 0 1.107.213 1.107.213l-.547 1.61z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold mb-2">Connect Shopify</h3>
-            <p className="text-sm text-muted-foreground mb-6 max-w-sm mx-auto">
-              Link your Shopify store to automatically import orders, track revenue,
-              and reconcile against your accounting data in Xero.
+            <h3 className="text-lg font-semibold mb-2 text-center">Connect Shopify</h3>
+            <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto text-center">
+              Enter your Shopify Custom App admin API access token to import orders,
+              track revenue, and reconcile against Xero.
             </p>
-            <a
-              href="/api/integrations/shopify/auth"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#96bf48] px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#7da03e] transition-colors"
+
+            <form
+              className="max-w-md mx-auto space-y-4"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setConnecting(true);
+                setConnectError(null);
+                try {
+                  const res = await fetch('/api/integrations/shopify/connect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ shopDomain, accessToken }),
+                  });
+                  const data = await res.json();
+                  if (!res.ok) {
+                    setConnectError(data.error ?? 'Connection failed');
+                  } else {
+                    router.refresh();
+                  }
+                } catch {
+                  setConnectError('Network error');
+                } finally {
+                  setConnecting(false);
+                }
+              }}
             >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-              </svg>
-              Connect Shopify
-            </a>
-            <p className="text-xs text-muted-foreground mt-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Shop Domain</label>
+                <input
+                  type="text"
+                  value={shopDomain}
+                  onChange={(e) => setShopDomain(e.target.value)}
+                  placeholder="yourstore.myshopify.com"
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Admin API Access Token</label>
+                <input
+                  type="password"
+                  value={accessToken}
+                  onChange={(e) => setAccessToken(e.target.value)}
+                  placeholder="shpat_..."
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm font-mono"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Go to Shopify Admin → Settings → Apps → Develop apps → Create/select app → API credentials
+                </p>
+              </div>
+
+              {connectError && (
+                <div className="rounded-md bg-red-50 border border-red-200 p-3 text-sm text-red-700">
+                  {connectError}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={connecting || !accessToken}
+                className="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-[#96bf48] px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-[#7da03e] transition-colors disabled:opacity-50"
+              >
+                {connecting ? 'Connecting...' : 'Connect Shopify'}
+              </button>
+            </form>
+
+            <div className="max-w-md mx-auto mt-6">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+              <a
+                href="/api/integrations/shopify/auth"
+                className="mt-4 w-full inline-flex items-center justify-center gap-2 rounded-lg border border-[#96bf48] px-6 py-3 text-sm font-medium text-[#96bf48] hover:bg-[#96bf48]/10 transition-colors"
+              >
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                  <path d="M15.337 3.415c-.043-.18-.198-.28-.337-.297a3.6 3.6 0 0 0-.563-.005s-1.137.114-1.137.114a.37.37 0 0 1-.1-.02c-.2-.54-.558-1.036-1.182-1.036h-.084C11.59 1.727 11.148 1.5 10.773 1.5c-2.508.007-3.713 3.133-4.088 4.727l-1.762.546c-.546.172-.563.188-.635.706l-1.345 10.34L10.953 19.5l6.49-1.407s-2.063-14.496-2.106-14.678z" />
+                </svg>
+                Connect via Shopify OAuth
+              </a>
+            </div>
+
+            <p className="text-xs text-muted-foreground mt-4 text-center">
               Read-only access. We import order and product data but never modify your store.
             </p>
           </div>

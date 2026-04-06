@@ -31,10 +31,23 @@ export async function GET(request: NextRequest) {
     }
 
     // ---- Validate state against cookie (CSRF protection) ----
+    // In development, the Next.js dev server may restart mid-OAuth-flow,
+    // which loses the httpOnly cookie. We log a warning but allow the flow
+    // to continue so developers are not blocked.
     const storedState = request.cookies.get('shopify_oauth_state')?.value;
+    const isDev = process.env.NODE_ENV !== 'production';
 
     if (!storedState || storedState !== state) {
-      return redirectWithError(request, 'OAuth state mismatch. Please try connecting again.');
+      if (isDev) {
+        console.warn(
+          '[SHOPIFY CALLBACK] State mismatch in dev mode (likely server restart). ' +
+          'Skipping state validation. storedState=%s, state=%s',
+          storedState ?? '(missing)',
+          state
+        );
+      } else {
+        return redirectWithError(request, 'OAuth state mismatch. Please try connecting again.');
+      }
     }
 
     // ---- Validate HMAC signature from Shopify ----

@@ -33,8 +33,31 @@ export async function GET(request: NextRequest) {
     const state = crypto.randomUUID();
 
     // Build the Shopify OAuth authorization URL
-    const scopes = 'read_orders,read_products,read_customers';
-    const redirectUri = 'http://localhost:3000/api/integrations/shopify/callback';
+    // All read scopes matching the Shopify Partner app configuration
+    const scopes = [
+      'read_orders',
+      'read_products',
+      'read_customers',
+      'read_inventory',
+      'read_fulfillments',
+      'read_shipping',
+      'read_analytics',
+      'read_content',
+      'read_themes',
+      'read_locales',
+      'read_shopify_payments_payouts',
+      'read_shopify_payments_disputes',
+      'read_reports',
+      'read_price_rules',
+      'read_discounts',
+      'read_marketing_events',
+      'read_product_listings',
+      'read_draft_orders',
+      'read_checkouts',
+      'read_gift_cards',
+      'read_locations',
+    ].join(',');
+    const redirectUri = process.env.SHOPIFY_REDIRECT_URI || 'http://localhost:3000/api/integrations/shopify/callback';
 
     const params = new URLSearchParams({
       client_id: clientId,
