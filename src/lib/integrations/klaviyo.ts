@@ -171,8 +171,7 @@ export async function getCampaigns(
     '/campaigns',
     {
       'filter': 'equals(messages.channel,\'email\')',
-      'sort': '-send_time',
-      'page[size]': '50',
+      'sort': '-created_at',
     }
   );
   return response.data;
