@@ -11,7 +11,12 @@ export type FacilityType =
   | 'director_loan'
   | 'creditor_plan'
   | 'personal_loan'
+  | 'paye_plan'
+  | 'vat_liability'
+  | 'corp_tax'
   | 'other';
+
+export type DebtCategory = 'lender' | 'creditor' | 'director_loan' | 'tax_statutory';
 
 export type DebtClassification = 'good' | 'okay' | 'bad' | 'unclassified';
 
@@ -31,6 +36,7 @@ export interface DebtFacility {
   facility_name: string;
   lender: string;
   facility_type: FacilityType;
+  category: DebtCategory;
   classification: DebtClassification;
   original_amount: number;
   current_balance: number;
@@ -57,6 +63,12 @@ export interface DebtFacility {
   statement_access: string | null;
   portal_url: string | null;
   last_statement_date: string | null;
+  // New fields
+  missing_info: string[] | null;
+  action_required: string | null;
+  credit_impacting: boolean;
+  credit_impact_notes: string | null;
+  // Timestamps
   created_at: string;
   updated_at: string;
   // Joined data
@@ -118,6 +130,34 @@ export interface RefinanceAction {
   justification?: string;
 }
 
+export interface VATQuarter {
+  id: string;
+  org_id: string;
+  quarter_label: string;
+  period_start: string;
+  period_end: string;
+  output_vat: number;
+  input_vat: number;
+  net_vat: number;
+  status: 'pending' | 'filed' | 'paid' | 'refund_received' | 'refund_pending' | 'overdue' | 'payment_plan';
+  filed_date: string | null;
+  payment_date: string | null;
+  hmrc_ref: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Balance sheet liability from Xero (passed from server)
+export interface TaxLiabilityFromBS {
+  account_name: string;
+  account_code: string;
+  account_id: string;
+  balance: number;
+  period: string;
+  type: 'paye' | 'vat' | 'nic' | 'pension' | 'corp_tax' | 'other_tax';
+}
+
 // Summary stats for the dashboard header
 export interface DebtSummary {
   total_outstanding: number;
@@ -135,11 +175,25 @@ export interface DebtSummary {
   good_total: number;
   okay_total: number;
   bad_total: number;
-  // By type
+  // By category
+  lenders_total: number;
+  lenders_monthly: number;
+  creditors_total: number;
+  creditors_monthly: number;
+  director_loans_total: number;
+  director_loans_monthly: number;
+  tax_statutory_total: number;
+  // Legacy (kept for compatibility)
   business_loans_total: number;
   mca_total: number;
-  director_loans_total: number;
+  director_loans_total_legacy: number;
   creditor_plans_total: number;
+  // Missing info count
+  facilities_missing_info: number;
+  facilities_action_required: number;
+  // Credit-impacting DLAs
+  credit_impacting_total: number;
+  credit_impacting_count: number;
 }
 
 // Facility type display helpers
@@ -154,7 +208,17 @@ export const FACILITY_TYPE_LABELS: Record<FacilityType, string> = {
   director_loan: 'Director Loan',
   creditor_plan: 'Creditor Payment Plan',
   personal_loan: 'Personal Loan',
+  paye_plan: 'PAYE Payment Plan',
+  vat_liability: 'VAT Liability',
+  corp_tax: 'Corporation Tax',
   other: 'Other',
+};
+
+export const CATEGORY_LABELS: Record<DebtCategory, string> = {
+  lender: 'Financial Lenders',
+  creditor: 'Operational Creditors',
+  director_loan: 'Director Loans',
+  tax_statutory: 'Tax & Statutory',
 };
 
 export const CLASSIFICATION_CONFIG: Record<DebtClassification, {

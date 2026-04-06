@@ -23,40 +23,54 @@ import {
   Banknote,
   Loader2,
   RefreshCw,
+  AlertTriangle,
+  Receipt,
+  CircleDollarSign,
+  Info,
+  ExternalLink,
+  Clock,
 } from 'lucide-react';
 import type {
   DebtFacility,
   DebtSummary,
   DebtClassification,
   FacilityType,
+  TaxLiabilityFromBS,
+  VATQuarter,
 } from '@/types/debt';
 import { CLASSIFICATION_CONFIG, FACILITY_TYPE_LABELS } from '@/types/debt';
+
+/* ================================================================== */
+/*  Props                                                              */
+/* ================================================================== */
 
 interface DebtClientProps {
   facilities: DebtFacility[];
   summary: DebtSummary;
   hasData: boolean;
   orgId: string;
+  taxLiabilities: TaxLiabilityFromBS[];
+  vatQuarters: VATQuarter[];
+  latestPeriod: string | null;
 }
 
-type ViewTab = 'overview' | 'facilities' | 'timeline' | 'refinance';
-type FacilityFilter = 'all' | 'business' | 'director' | 'creditor' | 'mca';
+type ViewTab = 'overview' | 'lenders' | 'creditors' | 'directors' | 'tax' | 'refinance';
+
+/* ================================================================== */
+/*  Formatters                                                         */
+/* ================================================================== */
 
 function formatCurrency(amount: number): string {
   return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    style: 'currency', currency: 'GBP',
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(amount);
 }
 
 function formatCurrencyFull(amount: number): string {
   return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
+    style: 'currency', currency: 'GBP',
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -67,230 +81,100 @@ function formatRate(rate: number): string {
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '--';
   return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
+    day: 'numeric', month: 'short', year: 'numeric',
   });
 }
 
+/* ================================================================== */
+/*  Icons                                                              */
+/* ================================================================== */
+
 function ClassificationIcon({ classification }: { classification: DebtClassification }) {
   switch (classification) {
-    case 'good':
-      return <CheckCircle2 className="h-5 w-5 text-emerald-600" />;
-    case 'okay':
-      return <AlertCircle className="h-5 w-5 text-amber-600" />;
-    case 'bad':
-      return <XCircle className="h-5 w-5 text-red-600" />;
-    default:
-      return <HelpCircle className="h-5 w-5 text-gray-400" />;
+    case 'good': return <CheckCircle2 className="h-5 w-5 text-emerald-600" />;
+    case 'okay': return <AlertCircle className="h-5 w-5 text-amber-600" />;
+    case 'bad': return <XCircle className="h-5 w-5 text-red-600" />;
+    default: return <HelpCircle className="h-5 w-5 text-gray-400" />;
   }
 }
 
 function FacilityTypeIcon({ type }: { type: FacilityType }) {
   switch (type) {
-    case 'mca':
-      return <Zap className="h-4 w-4" />;
-    case 'credit_card':
-      return <CreditCard className="h-4 w-4" />;
-    case 'director_loan':
-      return <Users className="h-4 w-4" />;
-    case 'government_loan':
-      return <Landmark className="h-4 w-4" />;
-    case 'creditor_plan':
-      return <FileText className="h-4 w-4" />;
-    case 'secured_loan':
-      return <Shield className="h-4 w-4" />;
-    default:
-      return <Building2 className="h-4 w-4" />;
+    case 'mca': return <Zap className="h-4 w-4" />;
+    case 'credit_card': return <CreditCard className="h-4 w-4" />;
+    case 'director_loan': return <Users className="h-4 w-4" />;
+    case 'government_loan': return <Landmark className="h-4 w-4" />;
+    case 'creditor_plan': return <FileText className="h-4 w-4" />;
+    case 'secured_loan': return <Shield className="h-4 w-4" />;
+    case 'paye_plan': return <Receipt className="h-4 w-4" />;
+    case 'vat_liability': return <CircleDollarSign className="h-4 w-4" />;
+    case 'corp_tax': return <Landmark className="h-4 w-4" />;
+    default: return <Building2 className="h-4 w-4" />;
   }
 }
 
-// ============================================================
-// Summary Cards
-// ============================================================
-function SummaryCards({ summary }: { summary: DebtSummary }) {
-  return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Total Outstanding</p>
-        <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.total_outstanding)}</p>
-        <p className="mt-1 text-xs text-gray-500">{summary.active_count} active facilities</p>
-      </div>
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Monthly Repayments</p>
-        <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.total_monthly_repayment)}</p>
-        <p className="mt-1 text-xs text-gray-500">{formatCurrency(summary.total_annual_cost)}/year</p>
-      </div>
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Weighted Avg Rate</p>
-        <p className="mt-1 text-2xl font-bold text-gray-900">{formatRate(summary.weighted_average_rate)}</p>
-        <p className="mt-1 text-xs text-red-600">Highest: {summary.highest_rate_facility}</p>
-      </div>
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Next Maturity</p>
-        <p className="mt-1 text-2xl font-bold text-gray-900">
-          {summary.next_maturity ? formatDate(summary.next_maturity.date) : '--'}
-        </p>
-        <p className="mt-1 text-xs text-gray-500 truncate">
-          {summary.next_maturity?.facility ?? 'No maturities scheduled'}
-        </p>
-      </div>
-    </div>
-  );
-}
+/* ================================================================== */
+/*  Shared: Facility Card                                              */
+/* ================================================================== */
 
-// ============================================================
-// Classification Breakdown Bar
-// ============================================================
-function ClassificationBar({ summary }: { summary: DebtSummary }) {
-  const total = summary.good_total + summary.okay_total + summary.bad_total;
-  if (total === 0) return null;
-
-  const goodPct = (summary.good_total / total) * 100;
-  const okayPct = (summary.okay_total / total) * 100;
-  const badPct = (summary.bad_total / total) * 100;
-
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900">Debt Health Classification</h3>
-        <p className="text-xs text-gray-500">{formatCurrency(total)} total classified</p>
-      </div>
-      {/* Stacked bar */}
-      <div className="flex h-4 overflow-hidden rounded-full">
-        {goodPct > 0 && (
-          <div className="bg-emerald-500 transition-all" style={{ width: `${goodPct}%` }} />
-        )}
-        {okayPct > 0 && (
-          <div className="bg-amber-400 transition-all" style={{ width: `${okayPct}%` }} />
-        )}
-        {badPct > 0 && (
-          <div className="bg-red-500 transition-all" style={{ width: `${badPct}%` }} />
-        )}
-      </div>
-      <div className="mt-3 flex justify-between text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-          <span className="text-gray-600">Good {formatCurrency(summary.good_total)}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400" />
-          <span className="text-gray-600">Okay {formatCurrency(summary.okay_total)}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-          <span className="text-gray-600">Bad {formatCurrency(summary.bad_total)}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Debt Composition Split
-// ============================================================
-function DebtComposition({ summary }: { summary: DebtSummary }) {
-  const segments = [
-    { label: 'Business Loans', amount: summary.business_loans_total, color: 'bg-blue-500', icon: Building2 },
-    { label: 'MCAs', amount: summary.mca_total, color: 'bg-orange-500', icon: Zap },
-    { label: 'Director Loans', amount: summary.director_loans_total, color: 'bg-purple-500', icon: Users },
-    { label: 'Creditor Plans', amount: summary.creditor_plans_total, color: 'bg-gray-500', icon: FileText },
-  ].filter((s) => s.amount > 0);
-
-  const total = segments.reduce((s, seg) => s + seg.amount, 0);
-
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Debt Composition</h3>
-      <div className="space-y-3">
-        {segments.map((seg) => {
-          const pct = total > 0 ? (seg.amount / total) * 100 : 0;
-          const Icon = seg.icon;
-          return (
-            <div key={seg.label}>
-              <div className="flex items-center justify-between text-xs mb-1">
-                <div className="flex items-center gap-1.5 text-gray-700">
-                  <Icon className="h-3.5 w-3.5" />
-                  {seg.label}
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">{formatCurrency(seg.amount)}</span>
-                  <span className="text-gray-400">{pct.toFixed(0)}%</span>
-                </div>
-              </div>
-              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
-                <div className={cn('h-full rounded-full transition-all', seg.color)} style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Facility Card
-// ============================================================
-function FacilityCard({ facility }: { facility: DebtFacility }) {
+function FacilityCard({ facility, showCreditImpact }: { facility: DebtFacility; showCreditImpact?: boolean }) {
   const [expanded, setExpanded] = useState(false);
   const config = CLASSIFICATION_CONFIG[facility.classification];
   const rate = Number(facility.effective_apr ?? facility.interest_rate ?? 0);
   const balance = Number(facility.current_balance);
   const monthly = Number(facility.monthly_repayment);
   const isPaidOff = facility.status === 'paid_off';
+  const hasMissingInfo = facility.missing_info && facility.missing_info.length > 0;
 
   return (
     <div className={cn(
       'rounded-xl border bg-white transition-all',
       isPaidOff ? 'border-gray-200 opacity-60' : config.borderColor,
     )}>
-      {/* Header */}
       <button
         onClick={() => setExpanded(!expanded)}
         className="w-full p-4 flex items-center gap-3 text-left"
       >
         <ClassificationIcon classification={facility.classification} />
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h4 className="font-semibold text-gray-900 text-sm truncate">{facility.facility_name}</h4>
             {isPaidOff && (
-              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-500 rounded-full">
-                Paid Off
-              </span>
+              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-gray-100 text-gray-500 rounded-full">Paid Off</span>
             )}
             {facility.refinance_eligible && (
-              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-blue-50 text-blue-600 rounded-full">
-                Refinance
-              </span>
+              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-blue-50 text-blue-600 rounded-full">Refinance</span>
             )}
             {facility.has_debenture && (
-              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-red-50 text-red-600 rounded-full">
-                Debenture
+              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-red-50 text-red-600 rounded-full">Debenture</span>
+            )}
+            {showCreditImpact && facility.credit_impacting && (
+              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-orange-50 text-orange-600 rounded-full">Credit Impact</span>
+            )}
+            {hasMissingInfo && (
+              <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-yellow-50 text-yellow-700 rounded-full flex items-center gap-0.5">
+                <AlertTriangle className="h-2.5 w-2.5" /> Info Needed
               </span>
             )}
           </div>
           <p className="text-xs text-gray-500 flex items-center gap-1.5 mt-0.5">
             <FacilityTypeIcon type={facility.facility_type} />
             {FACILITY_TYPE_LABELS[facility.facility_type]}
-            {facility.lender && ` \u00B7 ${facility.lender}`}
+            {facility.lender && ` · ${facility.lender}`}
           </p>
         </div>
         <div className="text-right shrink-0">
           <p className="text-sm font-bold text-gray-900">{formatCurrency(balance)}</p>
-          {monthly > 0 && (
-            <p className="text-xs text-gray-500">{formatCurrencyFull(monthly)}/mo</p>
-          )}
+          {monthly > 0 && <p className="text-xs text-gray-500">{formatCurrencyFull(monthly)}/mo</p>}
         </div>
         <div className="ml-2">
           {expanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
         </div>
       </button>
 
-      {/* Expanded Detail */}
       {expanded && (
         <div className="border-t border-gray-100 p-4 space-y-4">
-          {/* Key Metrics Grid */}
+          {/* Key Metrics */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">Original Amount</p>
@@ -308,32 +192,32 @@ function FacilityCard({ facility }: { facility: DebtFacility }) {
             </div>
             <div>
               <p className="text-[10px] uppercase tracking-wider text-gray-400">Frequency</p>
-              <p className="text-sm font-medium text-gray-900 capitalize">
-                {facility.repayment_frequency.replace('_', '-')}
-              </p>
+              <p className="text-sm font-medium text-gray-900 capitalize">{facility.repayment_frequency.replace('_', '-')}</p>
             </div>
           </div>
 
-          {/* MCA specific */}
+          {/* MCA sweep */}
           {facility.sweep_percentage && (
             <div className="rounded-lg bg-orange-50 border border-orange-100 p-3">
               <p className="text-xs font-medium text-orange-800">
                 MCA Sweep: {facility.sweep_percentage}% of {facility.sweep_source ?? 'income'} payments
               </p>
-              <p className="text-[10px] text-orange-600 mt-0.5">
-                Variable repayment — no fixed monthly amount. Repaid when income is earned.
-              </p>
+              <p className="text-[10px] text-orange-600 mt-0.5">Variable repayment — no fixed monthly. Repaid when income is earned.</p>
             </div>
           )}
 
-          {/* Director loan specific */}
+          {/* Director loan */}
           {facility.director_name && (
-            <div className="rounded-lg bg-purple-50 border border-purple-100 p-3">
-              <p className="text-xs font-medium text-purple-800">
+            <div className={cn('rounded-lg border p-3', facility.credit_impacting ? 'bg-orange-50 border-orange-200' : 'bg-purple-50 border-purple-100')}>
+              <p className={cn('text-xs font-medium', facility.credit_impacting ? 'text-orange-800' : 'text-purple-800')}>
                 Director: {facility.director_name}
+                {facility.credit_impacting && ' — AFFECTS PERSONAL CREDIT'}
               </p>
+              {facility.credit_impact_notes && (
+                <p className="text-[10px] text-orange-700 mt-1">{facility.credit_impact_notes}</p>
+              )}
               {facility.payment_day && (
-                <p className="text-[10px] text-purple-600 mt-0.5">
+                <p className={cn('text-[10px] mt-0.5', facility.credit_impacting ? 'text-orange-600' : 'text-purple-600')}>
                   DD on {facility.payment_day}th of month
                 </p>
               )}
@@ -344,9 +228,35 @@ function FacilityCard({ facility }: { facility: DebtFacility }) {
           {facility.secured && facility.collateral_description && (
             <div className="rounded-lg bg-blue-50 border border-blue-100 p-3">
               <p className="text-xs font-medium text-blue-800 flex items-center gap-1">
-                <Shield className="h-3.5 w-3.5" />
-                Secured: {facility.collateral_description}
+                <Shield className="h-3.5 w-3.5" /> Secured: {facility.collateral_description}
               </p>
+            </div>
+          )}
+
+          {/* Action required */}
+          {facility.action_required && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+              <p className="text-xs font-medium text-red-800 flex items-center gap-1">
+                <AlertTriangle className="h-3.5 w-3.5" /> Action Required
+              </p>
+              <p className="text-xs text-red-700 mt-0.5">{facility.action_required}</p>
+            </div>
+          )}
+
+          {/* Missing info */}
+          {hasMissingInfo && (
+            <div className="rounded-lg bg-yellow-50 border border-yellow-200 p-3">
+              <p className="text-xs font-medium text-yellow-800 flex items-center gap-1 mb-1">
+                <Info className="h-3.5 w-3.5" /> Information Needed
+              </p>
+              <ul className="space-y-0.5">
+                {facility.missing_info!.map((item, i) => (
+                  <li key={i} className="text-xs text-yellow-700 flex items-center gap-1">
+                    <span className="h-1 w-1 rounded-full bg-yellow-500 shrink-0" />
+                    {item}
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 
@@ -369,8 +279,7 @@ function FacilityCard({ facility }: { facility: DebtFacility }) {
           {/* Statement access */}
           {facility.statement_access && (
             <div className="flex items-center gap-1.5 text-xs text-gray-500">
-              <FileText className="h-3.5 w-3.5" />
-              Statement access: {facility.statement_access}
+              <FileText className="h-3.5 w-3.5" /> Statement access: {facility.statement_access}
             </div>
           )}
         </div>
@@ -379,16 +288,557 @@ function FacilityCard({ facility }: { facility: DebtFacility }) {
   );
 }
 
-// ============================================================
-// Payment Timeline
-// ============================================================
+/* ================================================================== */
+/*  Shared: Classification Group                                       */
+/* ================================================================== */
+
+function ClassificationGroup({
+  classification,
+  facilities,
+  showCreditImpact,
+}: {
+  classification: DebtClassification;
+  facilities: DebtFacility[];
+  showCreditImpact?: boolean;
+}) {
+  if (facilities.length === 0) return null;
+  const config = CLASSIFICATION_CONFIG[classification];
+  const total = facilities.reduce((s, f) => s + Number(f.current_balance), 0);
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <span className={cn('h-2.5 w-2.5 rounded-full', classification === 'good' ? 'bg-emerald-500' : classification === 'okay' ? 'bg-amber-400' : classification === 'bad' ? 'bg-red-500' : 'bg-gray-300')} />
+        <h3 className="text-sm font-semibold text-gray-900">{config.label} Debt</h3>
+        <span className="text-xs text-gray-500">{formatCurrency(total)} across {facilities.length} facilities</span>
+      </div>
+      <div className="space-y-2">
+        {facilities.map((f) => (
+          <FacilityCard key={f.id} facility={f} showCreditImpact={showCreditImpact} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Overview Tab                                                       */
+/* ================================================================== */
+
+function OverviewTab({ summary, facilities }: { summary: DebtSummary; facilities: DebtFacility[] }) {
+  const total = summary.good_total + summary.okay_total + summary.bad_total;
+  const goodPct = total > 0 ? (summary.good_total / total) * 100 : 0;
+  const okayPct = total > 0 ? (summary.okay_total / total) * 100 : 0;
+  const badPct = total > 0 ? (summary.bad_total / total) * 100 : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards — split by category */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border border-blue-200 bg-blue-50/30 p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-blue-600">Financial Lenders</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.lenders_total)}</p>
+          <p className="mt-1 text-xs text-gray-500">{formatCurrency(summary.lenders_monthly)}/mo repayments</p>
+        </div>
+        <div className="rounded-xl border border-purple-200 bg-purple-50/30 p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-purple-600">Director Loans</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.director_loans_total)}</p>
+          <p className="mt-1 text-xs text-gray-500">{formatCurrency(summary.director_loans_monthly)}/mo repayments</p>
+          {summary.credit_impacting_count > 0 && (
+            <p className="mt-1 text-xs text-orange-600 font-medium">
+              ⚠ {formatCurrency(summary.credit_impacting_total)} credit-impacting
+            </p>
+          )}
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-gray-50/30 p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-600">Creditors</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.creditors_total)}</p>
+          <p className="mt-1 text-xs text-gray-500">{formatCurrency(summary.creditors_monthly)}/mo repayments</p>
+        </div>
+        <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-amber-600">Total Outstanding</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.total_outstanding)}</p>
+          <p className="mt-1 text-xs text-gray-500">{formatCurrency(summary.total_monthly_repayment)}/mo total</p>
+        </div>
+      </div>
+
+      {/* Alerts bar */}
+      {(summary.facilities_missing_info > 0 || summary.facilities_action_required > 0) && (
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 flex items-center gap-3">
+          <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0" />
+          <div className="flex-1 text-sm text-yellow-800">
+            {summary.facilities_action_required > 0 && (
+              <span className="font-medium">{summary.facilities_action_required} facilities need action. </span>
+            )}
+            {summary.facilities_missing_info > 0 && (
+              <span>{summary.facilities_missing_info} facilities have missing information/statements.</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Rate + Maturity cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Weighted Avg Rate</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{formatRate(summary.weighted_average_rate)}</p>
+          <p className="mt-1 text-xs text-red-600">Highest: {summary.highest_rate_facility}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Next Maturity</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">
+            {summary.next_maturity ? formatDate(summary.next_maturity.date) : '--'}
+          </p>
+          <p className="mt-1 text-xs text-gray-500 truncate">{summary.next_maturity?.facility ?? 'None scheduled'}</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Annual Debt Cost</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{formatCurrency(summary.total_annual_cost)}</p>
+          <p className="mt-1 text-xs text-gray-500">All repayments × 12</p>
+        </div>
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Active Facilities</p>
+          <p className="mt-1 text-2xl font-bold text-gray-900">{summary.active_count}</p>
+          <p className="mt-1 text-xs text-gray-500">of {summary.facility_count} total</p>
+        </div>
+      </div>
+
+      {/* Health classification bar */}
+      {total > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-900">Debt Health Classification</h3>
+            <p className="text-xs text-gray-500">{formatCurrency(total)} total</p>
+          </div>
+          <div className="flex h-4 overflow-hidden rounded-full">
+            {goodPct > 0 && <div className="bg-emerald-500 transition-all" style={{ width: `${goodPct}%` }} />}
+            {okayPct > 0 && <div className="bg-amber-400 transition-all" style={{ width: `${okayPct}%` }} />}
+            {badPct > 0 && <div className="bg-red-500 transition-all" style={{ width: `${badPct}%` }} />}
+          </div>
+          <div className="mt-3 flex justify-between text-xs">
+            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-emerald-500" /><span className="text-gray-600">Good {formatCurrency(summary.good_total)}</span></div>
+            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /><span className="text-gray-600">Okay {formatCurrency(summary.okay_total)}</span></div>
+            <div className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-red-500" /><span className="text-gray-600">Bad {formatCurrency(summary.bad_total)}</span></div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment timeline */}
+      <PaymentTimeline facilities={facilities} />
+
+      {/* Maturity schedule */}
+      <MaturityTimeline facilities={facilities} />
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Lenders Tab                                                        */
+/* ================================================================== */
+
+function LendersTab({ facilities }: { facilities: DebtFacility[] }) {
+  const lenders = facilities.filter((f) => f.category === 'lender');
+  const groups = groupByClassification(lenders);
+  const total = lenders.reduce((s, f) => s + Number(f.current_balance), 0);
+  const monthly = lenders.reduce((s, f) => s + Number(f.monthly_repayment), 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Financial Lenders</h3>
+          <p className="text-sm text-gray-500">Business loans, MCAs, secured facilities, and credit lines</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-gray-900">{formatCurrency(total)}</p>
+          <p className="text-xs text-gray-500">{formatCurrency(monthly)}/mo</p>
+        </div>
+      </div>
+
+      {Object.entries(groups).map(([cls, list]) => (
+        <ClassificationGroup key={cls} classification={cls as DebtClassification} facilities={list} />
+      ))}
+
+      {lenders.length === 0 && <EmptySection label="No financial lender facilities recorded." />}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Creditors Tab                                                      */
+/* ================================================================== */
+
+function CreditorsTab({ facilities }: { facilities: DebtFacility[] }) {
+  const creditors = facilities.filter((f) => f.category === 'creditor');
+  const total = creditors.reduce((s, f) => s + Number(f.current_balance), 0);
+  const monthly = creditors.reduce((s, f) => s + Number(f.monthly_repayment), 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Operational Creditors</h3>
+          <p className="text-sm text-gray-500">Supplier payment plans and outstanding trade payables that need structured paydown</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-gray-900">{formatCurrency(total)}</p>
+          <p className="text-xs text-gray-500">{formatCurrency(monthly)}/mo</p>
+        </div>
+      </div>
+
+      {/* Cashflow link */}
+      <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 flex items-center gap-3">
+        <CircleDollarSign className="h-5 w-5 text-blue-600 shrink-0" />
+        <div className="flex-1">
+          <p className="text-sm font-medium text-blue-800">Creditor Paydown → Cashflow Impact</p>
+          <p className="text-xs text-blue-600">These obligations flow into the cashflow forecast as committed outflows. Any changes to payment plans will update scenario models.</p>
+        </div>
+      </div>
+
+      {creditors.map((f) => (
+        <FacilityCard key={f.id} facility={f} />
+      ))}
+
+      {creditors.length === 0 && <EmptySection label="No creditor payment plans recorded." />}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Director Loans Tab                                                 */
+/* ================================================================== */
+
+function DirectorsTab({ facilities }: { facilities: DebtFacility[] }) {
+  const dlas = facilities.filter((f) => f.category === 'director_loan');
+  const total = dlas.reduce((s, f) => s + Number(f.current_balance), 0);
+  const monthly = dlas.reduce((s, f) => s + Number(f.monthly_repayment), 0);
+
+  // Group by director
+  const byDirector: Record<string, DebtFacility[]> = {};
+  for (const f of dlas) {
+    const name = f.director_name || 'Unknown';
+    if (!byDirector[name]) byDirector[name] = [];
+    byDirector[name].push(f);
+  }
+
+  // Gbemi first (credit-impacting), then alphabetical
+  const directorOrder = Object.keys(byDirector).sort((a, b) => {
+    const aImpact = byDirector[a].some((f) => f.credit_impacting);
+    const bImpact = byDirector[b].some((f) => f.credit_impacting);
+    if (aImpact && !bImpact) return -1;
+    if (!aImpact && bImpact) return 1;
+    return a.localeCompare(b);
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Director Loan Accounts</h3>
+          <p className="text-sm text-gray-500">Personal loans from directors injected into the business</p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-gray-900">{formatCurrency(total)}</p>
+          <p className="text-xs text-gray-500">{formatCurrency(monthly)}/mo</p>
+        </div>
+      </div>
+
+      {/* Credit impact warning */}
+      {dlas.some((f) => f.credit_impacting) && (
+        <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-orange-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-orange-800">Credit Impact on Refinance</p>
+              <p className="text-xs text-orange-700 mt-1">
+                Gbemi is CEO and majority shareholder. Her personal credit utilisation directly affects the company&apos;s ability to refinance.
+                Lenders (Creative UK, Sigma, Capify) all assess director credit scores. Reducing or consolidating her personal loans
+                improves the refinance case for the business.
+              </p>
+              <div className="mt-2 flex items-center gap-4 text-xs text-orange-700">
+                <span className="font-medium">
+                  {dlas.filter((f) => f.credit_impacting).length} credit-impacting facilities
+                </span>
+                <span className="font-medium">
+                  {formatCurrency(dlas.filter((f) => f.credit_impacting).reduce((s, f) => s + Number(f.current_balance), 0))} total exposure
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {directorOrder.map((directorName) => {
+        const dirFacilities = byDirector[directorName];
+        const dirTotal = dirFacilities.reduce((s, f) => s + Number(f.current_balance), 0);
+        const dirMonthly = dirFacilities.reduce((s, f) => s + Number(f.monthly_repayment), 0);
+        const isImpacting = dirFacilities.some((f) => f.credit_impacting);
+
+        return (
+          <div key={directorName} className={cn('rounded-xl border p-5', isImpacting ? 'border-orange-200 bg-orange-50/20' : 'border-gray-200 bg-white')}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Users className={cn('h-4 w-4', isImpacting ? 'text-orange-600' : 'text-purple-600')} />
+                <h4 className="text-sm font-semibold text-gray-900">{directorName}</h4>
+                {isImpacting && (
+                  <span className="px-2 py-0.5 text-[10px] font-medium uppercase bg-orange-100 text-orange-700 rounded-full">
+                    Credit-Impacting
+                  </span>
+                )}
+              </div>
+              <div className="text-right text-xs">
+                <span className="font-semibold text-gray-900">{formatCurrency(dirTotal)}</span>
+                {dirMonthly > 0 && <span className="text-gray-500 ml-2">{formatCurrency(dirMonthly)}/mo</span>}
+              </div>
+            </div>
+            <div className="space-y-2">
+              {dirFacilities.map((f) => (
+                <FacilityCard key={f.id} facility={f} showCreditImpact />
+              ))}
+            </div>
+          </div>
+        );
+      })}
+
+      {dlas.length === 0 && <EmptySection label="No director loan accounts recorded." />}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Tax & Statutory Tab                                                */
+/* ================================================================== */
+
+function TaxStatutoryTab({
+  facilities,
+  taxLiabilities,
+  vatQuarters,
+  latestPeriod,
+}: {
+  facilities: DebtFacility[];
+  taxLiabilities: TaxLiabilityFromBS[];
+  vatQuarters: VATQuarter[];
+  latestPeriod: string | null;
+}) {
+  const taxFacilities = facilities.filter((f) => f.category === 'tax_statutory');
+
+  // Group balance sheet liabilities by type
+  const payeTotal = taxLiabilities.filter((t) => t.type === 'paye').reduce((s, t) => s + t.balance, 0);
+  const nicTotal = taxLiabilities.filter((t) => t.type === 'nic').reduce((s, t) => s + t.balance, 0);
+  const vatTotal = taxLiabilities.filter((t) => t.type === 'vat').reduce((s, t) => s + t.balance, 0);
+  const pensionTotal = taxLiabilities.filter((t) => t.type === 'pension').reduce((s, t) => s + t.balance, 0);
+  const corpTaxTotal = taxLiabilities.filter((t) => t.type === 'corp_tax').reduce((s, t) => s + t.balance, 0);
+  const otherTaxTotal = taxLiabilities.filter((t) => t.type === 'other_tax').reduce((s, t) => s + t.balance, 0);
+  const totalStatutory = payeTotal + nicTotal + vatTotal + pensionTotal + corpTaxTotal + otherTaxTotal;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">Tax & Statutory Obligations</h3>
+        <p className="text-sm text-gray-500">PAYE, VAT, NIC, pension, and corporation tax liabilities from balance sheet</p>
+      </div>
+
+      {/* Balance sheet liabilities */}
+      {taxLiabilities.length > 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-gray-900">Balance Sheet Tax Liabilities</h4>
+            <span className="text-xs text-gray-500">
+              As at {latestPeriod ? new Date(latestPeriod).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }) : '--'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {[
+              { label: 'PAYE', amount: payeTotal, color: 'text-red-600', bg: 'bg-red-50' },
+              { label: 'NIC', amount: nicTotal, color: 'text-orange-600', bg: 'bg-orange-50' },
+              { label: 'VAT', amount: vatTotal, color: 'text-blue-600', bg: 'bg-blue-50' },
+              { label: 'Pension', amount: pensionTotal, color: 'text-purple-600', bg: 'bg-purple-50' },
+              { label: 'Corp Tax', amount: corpTaxTotal, color: 'text-gray-700', bg: 'bg-gray-50' },
+              { label: 'Other Tax', amount: otherTaxTotal, color: 'text-gray-600', bg: 'bg-gray-50' },
+            ].filter((t) => t.amount > 0).map((t) => (
+              <div key={t.label} className={cn('rounded-lg p-3', t.bg)}>
+                <p className={cn('text-[10px] uppercase font-medium tracking-wider', t.color)}>{t.label}</p>
+                <p className="text-lg font-bold text-gray-900 mt-0.5">{formatCurrency(t.amount)}</p>
+              </div>
+            ))}
+          </div>
+
+          {totalStatutory > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100 flex justify-between text-sm">
+              <span className="font-semibold text-gray-900">Total Statutory Liabilities</span>
+              <span className="font-bold text-gray-900">{formatCurrency(totalStatutory)}</span>
+            </div>
+          )}
+
+          {/* Individual accounts */}
+          <div className="mt-4 space-y-1">
+            <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-2">Account Breakdown</p>
+            {taxLiabilities.map((t) => (
+              <div key={t.account_id} className="flex items-center justify-between text-xs py-1.5 border-b border-gray-50">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-gray-400 w-12">{t.account_code}</span>
+                  <span className="text-gray-700">{t.account_name}</span>
+                  <span className={cn(
+                    'px-1.5 py-0.5 text-[9px] uppercase rounded-full font-medium',
+                    t.type === 'paye' ? 'bg-red-100 text-red-700' :
+                    t.type === 'vat' ? 'bg-blue-100 text-blue-700' :
+                    t.type === 'nic' ? 'bg-orange-100 text-orange-700' :
+                    'bg-gray-100 text-gray-600'
+                  )}>{t.type}</span>
+                </div>
+                <span className="font-medium text-gray-900">{formatCurrency(t.balance)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {taxLiabilities.length === 0 && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <div className="flex items-center gap-3">
+            <Info className="h-5 w-5 text-amber-600 shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-amber-800">No Tax Liabilities Found in Balance Sheet</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Connect Xero and sync your data to pull PAYE, VAT, and NIC balances automatically.
+                These are extracted from your trial balance liability accounts.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PAYE section */}
+      <div className="rounded-xl border border-red-200 bg-white p-5">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Receipt className="h-4 w-4 text-red-600" />
+            <h4 className="text-sm font-semibold text-gray-900">PAYE & Employer NI</h4>
+          </div>
+          <span className="px-2 py-0.5 text-[10px] font-medium uppercase bg-red-100 text-red-700 rounded-full">
+            Overdue — Plan Needed
+          </span>
+        </div>
+        <div className="rounded-lg bg-red-50 border border-red-100 p-3 mb-3">
+          <p className="text-xs text-red-800">
+            <strong>Action Required:</strong> PAYE is overdue. Need to contact HMRC to agree a new Time to Pay (TTP) arrangement.
+            Failure to agree a plan risks penalties, interest charges, and potential distraint proceedings.
+          </p>
+        </div>
+        <div className="space-y-2 text-xs">
+          <div className="flex justify-between py-1 border-b border-gray-50">
+            <span className="text-gray-600">Balance Sheet PAYE Liability</span>
+            <span className="font-medium text-gray-900">{payeTotal > 0 ? formatCurrency(payeTotal) : 'Confirm with HMRC'}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b border-gray-50">
+            <span className="text-gray-600">Balance Sheet NIC Liability</span>
+            <span className="font-medium text-gray-900">{nicTotal > 0 ? formatCurrency(nicTotal) : 'Confirm with HMRC'}</span>
+          </div>
+          <div className="flex justify-between py-1 border-b border-gray-50">
+            <span className="text-gray-600">Current Payment Plan</span>
+            <span className="font-medium text-red-600">None — needs negotiation</span>
+          </div>
+          <div className="flex justify-between py-1">
+            <span className="text-gray-600">Suggested Next Step</span>
+            <span className="font-medium text-gray-900">Call HMRC TTP line to agree instalments</span>
+          </div>
+        </div>
+      </div>
+
+      {/* VAT section */}
+      <div className="rounded-xl border border-blue-200 bg-white p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <CircleDollarSign className="h-4 w-4 text-blue-600" />
+          <h4 className="text-sm font-semibold text-gray-900">VAT Quarterly Position</h4>
+        </div>
+
+        {vatTotal > 0 && (
+          <div className="rounded-lg bg-blue-50 border border-blue-100 p-3 mb-4">
+            <p className="text-xs text-blue-800">
+              <strong>Current BS Liability:</strong> {formatCurrency(vatTotal)} VAT showing on balance sheet.
+              {vatTotal < 0 ? ' This appears to be a refund position — check if claimed.' : ' Confirm if this is filed and paid or outstanding.'}
+            </p>
+          </div>
+        )}
+
+        <p className="text-xs text-gray-500 mb-3">
+          Quarterly VAT estimates based on revenue and purchases. Positive = owe HMRC, Negative = refund expected.
+        </p>
+
+        {/* VAT quarters from DB */}
+        {vatQuarters.length > 0 ? (
+          <div className="space-y-2">
+            {vatQuarters.map((q) => (
+              <div key={q.id} className="flex items-center justify-between py-2 border-b border-gray-50">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{q.quarter_label}</p>
+                  <p className="text-[10px] text-gray-500">{formatDate(q.period_start)} – {formatDate(q.period_end)}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className={cn('text-sm font-bold', q.net_vat >= 0 ? 'text-red-600' : 'text-emerald-600')}>
+                      {q.net_vat >= 0 ? '' : '−'}{formatCurrency(Math.abs(q.net_vat))}
+                    </p>
+                    <p className="text-[10px] text-gray-500">
+                      {q.net_vat >= 0 ? 'Owe HMRC' : 'Refund expected'}
+                    </p>
+                  </div>
+                  <span className={cn(
+                    'px-2 py-0.5 text-[10px] rounded-full font-medium',
+                    q.status === 'paid' || q.status === 'refund_received' ? 'bg-emerald-100 text-emerald-700' :
+                    q.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                    q.status === 'filed' || q.status === 'refund_pending' ? 'bg-blue-100 text-blue-700' :
+                    'bg-gray-100 text-gray-600'
+                  )}>
+                    {q.status.replace('_', ' ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg bg-gray-50 border border-gray-200 p-4 text-center">
+            <Clock className="h-6 w-6 text-gray-300 mx-auto mb-2" />
+            <p className="text-xs text-gray-500">No VAT quarters tracked yet. VAT estimates will be calculated from Xero revenue and purchase data once available.</p>
+          </div>
+        )}
+      </div>
+
+      {/* Pension */}
+      {pensionTotal > 0 && (
+        <div className="rounded-xl border border-purple-200 bg-white p-5">
+          <div className="flex items-center gap-2 mb-2">
+            <Users className="h-4 w-4 text-purple-600" />
+            <h4 className="text-sm font-semibold text-gray-900">Pension Obligations</h4>
+          </div>
+          <p className="text-xs text-gray-600">Auto-enrolment employer pension contributions outstanding.</p>
+          <p className="text-lg font-bold text-gray-900 mt-1">{formatCurrency(pensionTotal)}</p>
+        </div>
+      )}
+
+      {/* Tax facilities (if any manually added) */}
+      {taxFacilities.length > 0 && (
+        <div>
+          <h4 className="text-sm font-semibold text-gray-900 mb-3">Tax Payment Plans</h4>
+          {taxFacilities.map((f) => (
+            <FacilityCard key={f.id} facility={f} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Payment Timeline                                                   */
+/* ================================================================== */
+
 function PaymentTimeline({ facilities }: { facilities: DebtFacility[] }) {
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const year = 2026;
 
-  // For each month, sum monthly repayments of active facilities
   const monthlyData = months.map((month, idx) => {
-    const period = `${year}-${String(idx + 1).padStart(2, '0')}`;
     let total = 0;
     const breakdown: { name: string; amount: number; classification: DebtClassification }[] = [];
 
@@ -397,7 +847,6 @@ function PaymentTimeline({ facilities }: { facilities: DebtFacility[] }) {
       const monthly = Number(f.monthly_repayment);
       if (monthly <= 0) continue;
 
-      // Check if facility is active in this month
       const start = f.start_date ? new Date(f.start_date) : new Date('2020-01-01');
       const end = f.maturity_date ? new Date(f.maturity_date) : new Date('2030-12-31');
       const monthDate = new Date(`${year}-${String(idx + 1).padStart(2, '0')}-15`);
@@ -408,7 +857,7 @@ function PaymentTimeline({ facilities }: { facilities: DebtFacility[] }) {
       }
     }
 
-    return { month, period, total, breakdown };
+    return { month, total, breakdown };
   });
 
   const maxTotal = Math.max(...monthlyData.map((m) => m.total), 1);
@@ -423,16 +872,10 @@ function PaymentTimeline({ facilities }: { facilities: DebtFacility[] }) {
           return (
             <div key={m.month} className="flex-1 flex flex-col items-center gap-1 group relative">
               <div className="w-full flex flex-col justify-end h-40">
-                <div
-                  className={cn(
-                    'w-full rounded-t-md transition-all',
-                    isPast ? 'bg-gray-300' : 'bg-blue-500 group-hover:bg-blue-600',
-                  )}
-                  style={{ height: `${Math.max(heightPct, 2)}%` }}
-                />
+                <div className={cn('w-full rounded-t-md transition-all', isPast ? 'bg-gray-300' : 'bg-blue-500 group-hover:bg-blue-600')}
+                  style={{ height: `${Math.max(heightPct, 2)}%` }} />
               </div>
               <span className="text-[10px] text-gray-500 font-medium">{m.month}</span>
-              {/* Tooltip */}
               <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
                 <div className="bg-gray-900 text-white rounded-lg p-3 text-xs min-w-48 shadow-lg">
                   <p className="font-semibold mb-1">{m.month} {year}: {formatCurrency(m.total)}</p>
@@ -442,9 +885,7 @@ function PaymentTimeline({ facilities }: { facilities: DebtFacility[] }) {
                       <span className="shrink-0">{formatCurrency(b.amount)}</span>
                     </div>
                   ))}
-                  {m.breakdown.length > 5 && (
-                    <p className="text-gray-400 mt-1">+{m.breakdown.length - 5} more</p>
-                  )}
+                  {m.breakdown.length > 5 && <p className="text-gray-400 mt-1">+{m.breakdown.length - 5} more</p>}
                 </div>
               </div>
             </div>
@@ -455,9 +896,10 @@ function PaymentTimeline({ facilities }: { facilities: DebtFacility[] }) {
   );
 }
 
-// ============================================================
-// Maturity Timeline
-// ============================================================
+/* ================================================================== */
+/*  Maturity Timeline                                                  */
+/* ================================================================== */
+
 function MaturityTimeline({ facilities }: { facilities: DebtFacility[] }) {
   const withMaturity = facilities
     .filter((f) => f.maturity_date && f.status === 'active')
@@ -470,29 +912,20 @@ function MaturityTimeline({ facilities }: { facilities: DebtFacility[] }) {
       <h3 className="text-sm font-semibold text-gray-900 mb-4">Maturity Schedule</h3>
       <div className="space-y-2">
         {withMaturity.map((f) => {
-          const daysLeft = Math.ceil(
-            (new Date(f.maturity_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)
-          );
+          const daysLeft = Math.ceil((new Date(f.maturity_date!).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
           const isUrgent = daysLeft < 60;
           const isSoon = daysLeft < 180;
 
           return (
-            <div
-              key={f.id}
-              className={cn(
-                'flex items-center gap-3 rounded-lg border p-3',
-                isUrgent ? 'border-red-200 bg-red-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100',
-              )}
-            >
+            <div key={f.id} className={cn('flex items-center gap-3 rounded-lg border p-3',
+              isUrgent ? 'border-red-200 bg-red-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100')}>
               <Calendar className={cn('h-4 w-4 shrink-0', isUrgent ? 'text-red-600' : isSoon ? 'text-amber-600' : 'text-gray-400')} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 truncate">{f.facility_name}</p>
-                <p className="text-xs text-gray-500">{formatDate(f.maturity_date)} &middot; {formatCurrency(Number(f.current_balance))}</p>
+                <p className="text-xs text-gray-500">{formatDate(f.maturity_date)} · {formatCurrency(Number(f.current_balance))}</p>
               </div>
-              <span className={cn(
-                'text-xs font-medium px-2 py-0.5 rounded-full',
-                isUrgent ? 'bg-red-100 text-red-700' : isSoon ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600',
-              )}>
+              <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full',
+                isUrgent ? 'bg-red-100 text-red-700' : isSoon ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600')}>
                 {daysLeft <= 0 ? 'Overdue' : `${daysLeft}d`}
               </span>
             </div>
@@ -503,10 +936,11 @@ function MaturityTimeline({ facilities }: { facilities: DebtFacility[] }) {
   );
 }
 
-// ============================================================
-// Refinance Scenario Summary (Creative UK Plan from spreadsheet)
-// ============================================================
-function RefinancePlan() {
+/* ================================================================== */
+/*  Refinance Tab                                                      */
+/* ================================================================== */
+
+function RefinanceTab() {
   const plan = {
     source: 'Creative UK',
     total_funding: 500000,
@@ -528,74 +962,95 @@ function RefinancePlan() {
   };
 
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-900">Refinance Plan: Creative UK</h3>
-        <span className="px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider bg-blue-50 text-blue-600 rounded-full">
-          Proposed
-        </span>
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900">Refinance Strategy</h3>
+        <p className="text-sm text-gray-500">Consolidation plan to reduce cost and improve debt structure</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="rounded-lg bg-blue-50 p-3 text-center">
-          <p className="text-[10px] uppercase tracking-wider text-blue-600">Funding</p>
-          <p className="text-lg font-bold text-blue-800">{formatCurrency(plan.total_funding)}</p>
+      <div className="rounded-xl border border-gray-200 bg-white p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h4 className="text-sm font-semibold text-gray-900">Refinance Plan: Creative UK</h4>
+          <span className="px-2 py-0.5 text-[10px] font-medium uppercase bg-blue-50 text-blue-600 rounded-full">Proposed</span>
         </div>
-        <div className="rounded-lg bg-emerald-50 p-3 text-center">
-          <p className="text-[10px] uppercase tracking-wider text-emerald-600">Debt Clearance</p>
-          <p className="text-lg font-bold text-emerald-800">{formatCurrency(plan.total_repay)}</p>
-        </div>
-        <div className="rounded-lg bg-purple-50 p-3 text-center">
-          <p className="text-[10px] uppercase tracking-wider text-purple-600">For Investment</p>
-          <p className="text-lg font-bold text-purple-800">{formatCurrency(plan.balance_for_investing)}</p>
-        </div>
-      </div>
 
-      <div className="space-y-2 mb-4">
-        <p className="text-xs font-medium text-gray-700 mb-2">Allocation Plan</p>
-        {plan.allocation.map((item) => (
-          <div key={item.item} className="flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2">
-              <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="text-gray-700">{item.item}</span>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="rounded-lg bg-blue-50 p-3 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-blue-600">Funding</p>
+            <p className="text-lg font-bold text-blue-800">{formatCurrency(plan.total_funding)}</p>
+          </div>
+          <div className="rounded-lg bg-emerald-50 p-3 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-emerald-600">Debt Clearance</p>
+            <p className="text-lg font-bold text-emerald-800">{formatCurrency(plan.total_repay)}</p>
+          </div>
+          <div className="rounded-lg bg-purple-50 p-3 text-center">
+            <p className="text-[10px] uppercase tracking-wider text-purple-600">For Investment</p>
+            <p className="text-lg font-bold text-purple-800">{formatCurrency(plan.balance_for_investing)}</p>
+          </div>
+        </div>
+
+        <div className="space-y-2 mb-4">
+          <p className="text-xs font-medium text-gray-700 mb-2">Allocation Plan</p>
+          {plan.allocation.map((item) => (
+            <div key={item.item} className="flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2">
+                <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="text-gray-700">{item.item}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
+                <span className="text-gray-400">{item.action}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+          ))}
+        </div>
+
+        <div className="border-t border-gray-100 pt-3">
+          <p className="text-xs font-medium text-gray-700 mb-2">Remaining Debt Post-Refinance</p>
+          {plan.remaining_post_refinance.map((item) => (
+            <div key={item.item} className="flex justify-between text-xs py-0.5">
+              <span className="text-gray-600">{item.item}</span>
               <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
-              <span className="text-gray-400">{item.action}</span>
             </div>
+          ))}
+          <div className="flex justify-between text-xs py-1 mt-1 border-t border-gray-100 font-semibold">
+            <span className="text-gray-900">Total Post-Refinance</span>
+            <span className="text-gray-900">{formatCurrency(plan.remaining_post_refinance.reduce((s, i) => s + i.amount, 0))}</span>
           </div>
-        ))}
-      </div>
-
-      <div className="border-t border-gray-100 pt-3">
-        <p className="text-xs font-medium text-gray-700 mb-2">Remaining Debt Post-Refinance</p>
-        {plan.remaining_post_refinance.map((item) => (
-          <div key={item.item} className="flex justify-between text-xs py-0.5">
-            <span className="text-gray-600">{item.item}</span>
-            <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
-          </div>
-        ))}
-        <div className="flex justify-between text-xs py-1 mt-1 border-t border-gray-100 font-semibold">
-          <span className="text-gray-900">Total Post-Refinance</span>
-          <span className="text-gray-900">
-            {formatCurrency(plan.remaining_post_refinance.reduce((s, i) => s + i.amount, 0))}
-          </span>
         </div>
-      </div>
 
-      <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3">
-        <p className="text-xs text-amber-800">
-          <strong>Note:</strong> Lenders typically require 1.5x DSCR (if repaying 100k, need 150k in EBITDA/profit).
-          Sigma declined. Capify declined - still waiting back. Portman lending under review.
-        </p>
+        <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3">
+          <p className="text-xs text-amber-800">
+            <strong>Note:</strong> Lenders typically require 1.5x DSCR. Sigma declined. Capify declined — still waiting back. Portman lending under review.
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
-// ============================================================
-// Empty State
-// ============================================================
+/* ================================================================== */
+/*  Helpers                                                            */
+/* ================================================================== */
+
+function groupByClassification(facilities: DebtFacility[]): Record<DebtClassification, DebtFacility[]> {
+  const groups: Record<DebtClassification, DebtFacility[]> = { bad: [], okay: [], good: [], unclassified: [] };
+  for (const f of facilities) groups[f.classification].push(f);
+  return groups;
+}
+
+function EmptySection({ label }: { label: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-8 text-center">
+      <p className="text-sm text-gray-500">{label}</p>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Empty State                                                        */
+/* ================================================================== */
+
 function EmptyState({ orgId }: { orgId: string }) {
   const [seeding, setSeeding] = useState(false);
   const [seeded, setSeeded] = useState(false);
@@ -622,306 +1077,97 @@ function EmptyState({ orgId }: { orgId: string }) {
       <h2 className="mt-4 text-lg font-semibold text-gray-900">Debt Command Centre</h2>
       <p className="mt-2 text-sm text-gray-500 max-w-md mx-auto">
         Track all business loans, MCAs, director loans, and creditor plans in one place.
-        Monitor costs, classify debt health, and plan your refinancing strategy.
       </p>
       <button
         onClick={handleSeed}
         disabled={seeding || seeded}
         className={cn(
           'mt-6 inline-flex items-center gap-2 rounded-lg px-6 py-3 text-sm font-medium transition-colors',
-          seeded
-            ? 'bg-emerald-100 text-emerald-700'
-            : 'bg-gray-900 text-white hover:bg-gray-800',
+          seeded ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-900 text-white hover:bg-gray-800',
         )}
       >
-        {seeding ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Seeding debt data...
-          </>
-        ) : seeded ? (
-          <>
-            <CheckCircle2 className="h-4 w-4" />
-            Seeded! Refreshing...
-          </>
-        ) : (
-          <>
-            <RefreshCw className="h-4 w-4" />
-            Load Alonuko Debt Data
-          </>
-        )}
+        {seeding ? (<><Loader2 className="h-4 w-4 animate-spin" /> Seeding...</>) :
+         seeded ? (<><CheckCircle2 className="h-4 w-4" /> Seeded! Refreshing...</>) :
+         (<><RefreshCw className="h-4 w-4" /> Load Alonuko Debt Data</>)}
       </button>
     </div>
   );
 }
 
-// ============================================================
-// Main Client
-// ============================================================
-export function DebtClient({ facilities, summary, hasData, orgId }: DebtClientProps) {
+/* ================================================================== */
+/*  Main Client                                                        */
+/* ================================================================== */
+
+export function DebtClient({ facilities, summary, hasData, orgId, taxLiabilities, vatQuarters, latestPeriod }: DebtClientProps) {
   const [activeTab, setActiveTab] = useState<ViewTab>('overview');
-  const [filter, setFilter] = useState<FacilityFilter>('all');
 
-  const filteredFacilities = useMemo(() => {
-    switch (filter) {
-      case 'business':
-        return facilities.filter((f) =>
-          ['term_loan', 'unsecured_loan', 'secured_loan', 'credit_card', 'overdraft', 'government_loan'].includes(f.facility_type)
-        );
-      case 'director':
-        return facilities.filter((f) => f.facility_type === 'director_loan');
-      case 'creditor':
-        return facilities.filter((f) => f.facility_type === 'creditor_plan');
-      case 'mca':
-        return facilities.filter((f) => f.facility_type === 'mca');
-      default:
-        return facilities;
-    }
-  }, [facilities, filter]);
-
-  // Group by classification
-  const byClassification = useMemo(() => {
-    const groups: Record<DebtClassification, DebtFacility[]> = {
-      bad: [],
-      okay: [],
-      good: [],
-      unclassified: [],
-    };
-    for (const f of filteredFacilities) {
-      groups[f.classification].push(f);
-    }
-    return groups;
-  }, [filteredFacilities]);
+  const lenderCount = facilities.filter((f) => f.category === 'lender').length;
+  const creditorCount = facilities.filter((f) => f.category === 'creditor').length;
+  const dlaCount = facilities.filter((f) => f.category === 'director_loan').length;
 
   if (!hasData) {
     return (
       <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Debt Command Centre</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Full visibility across all business debt, director loans, and creditor arrangements
-          </p>
+          <p className="mt-1 text-sm text-gray-500">Full visibility across all business debt, director loans, and creditor arrangements</p>
         </div>
         <EmptyState orgId={orgId} />
       </div>
     );
   }
 
-  const tabs: { id: ViewTab; label: string }[] = [
+  const tabs: { id: ViewTab; label: string; badge?: string }[] = [
     { id: 'overview', label: 'Overview' },
-    { id: 'facilities', label: `Facilities (${facilities.length})` },
-    { id: 'timeline', label: 'Timeline' },
+    { id: 'lenders', label: `Lenders (${lenderCount})` },
+    { id: 'creditors', label: `Creditors (${creditorCount})` },
+    { id: 'directors', label: `Directors (${dlaCount})`, badge: summary.credit_impacting_count > 0 ? '⚠' : undefined },
+    { id: 'tax', label: 'Tax & Statutory' },
     { id: 'refinance', label: 'Refinance' },
-  ];
-
-  const filterTabs: { id: FacilityFilter; label: string; count: number }[] = [
-    { id: 'all', label: 'All', count: facilities.length },
-    {
-      id: 'business',
-      label: 'Business Loans',
-      count: facilities.filter((f) =>
-        ['term_loan', 'unsecured_loan', 'secured_loan', 'credit_card', 'overdraft', 'government_loan'].includes(f.facility_type)
-      ).length,
-    },
-    { id: 'director', label: 'Director Loans', count: facilities.filter((f) => f.facility_type === 'director_loan').length },
-    { id: 'mca', label: 'MCAs', count: facilities.filter((f) => f.facility_type === 'mca').length },
-    { id: 'creditor', label: 'Creditor Plans', count: facilities.filter((f) => f.facility_type === 'creditor_plan').length },
   ];
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-8">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Debt Command Centre</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Full visibility across all business debt, director loans, and creditor arrangements
-        </p>
+        <p className="mt-1 text-sm text-gray-500">Full visibility across all business debt, director loans, and creditor arrangements</p>
       </div>
 
-      {/* Summary Cards */}
-      <SummaryCards summary={summary} />
-
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-6">
+      <div className="border-b border-gray-200 overflow-x-auto">
+        <nav className="flex gap-4 min-w-max">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'pb-3 text-sm font-medium border-b-2 transition-colors',
+                'pb-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                 activeTab === tab.id
-                  ? 'border-gray-900 text-gray-900'
+                  ? 'border-blue-600 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700',
               )}
             >
               {tab.label}
+              {tab.badge && <span className="ml-1">{tab.badge}</span>}
             </button>
           ))}
         </nav>
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'overview' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <ClassificationBar summary={summary} />
-          <DebtComposition summary={summary} />
-          <div className="lg:col-span-2">
-            <PaymentTimeline facilities={facilities} />
-          </div>
-          <MaturityTimeline facilities={facilities} />
-          <RefinancePlan />
-        </div>
+      {activeTab === 'overview' && <OverviewTab summary={summary} facilities={facilities} />}
+      {activeTab === 'lenders' && <LendersTab facilities={facilities} />}
+      {activeTab === 'creditors' && <CreditorsTab facilities={facilities} />}
+      {activeTab === 'directors' && <DirectorsTab facilities={facilities} />}
+      {activeTab === 'tax' && (
+        <TaxStatutoryTab
+          facilities={facilities}
+          taxLiabilities={taxLiabilities}
+          vatQuarters={vatQuarters}
+          latestPeriod={latestPeriod}
+        />
       )}
-
-      {activeTab === 'facilities' && (
-        <div className="space-y-4">
-          {/* Filter tabs */}
-          <div className="flex gap-2 flex-wrap">
-            {filterTabs.map((ft) => (
-              <button
-                key={ft.id}
-                onClick={() => setFilter(ft.id)}
-                className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
-                  filter === ft.id
-                    ? 'bg-gray-900 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
-                )}
-              >
-                {ft.label} ({ft.count})
-              </button>
-            ))}
-          </div>
-
-          {/* Grouped by classification */}
-          {(['bad', 'okay', 'good', 'unclassified'] as DebtClassification[]).map((cls) => {
-            const group = byClassification[cls];
-            if (group.length === 0) return null;
-            const config = CLASSIFICATION_CONFIG[cls];
-            const groupTotal = group.reduce((s, f) => s + Number(f.current_balance), 0);
-
-            return (
-              <div key={cls}>
-                <div className="flex items-center gap-2 mb-2">
-                  <span className={cn('h-2.5 w-2.5 rounded-full', cls === 'bad' ? 'bg-red-500' : cls === 'okay' ? 'bg-amber-400' : cls === 'good' ? 'bg-emerald-500' : 'bg-gray-300')} />
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    {config.label} Debt
-                  </h3>
-                  <span className="text-xs text-gray-500">{formatCurrency(groupTotal)} across {group.length} facilities</span>
-                </div>
-                <div className="space-y-2">
-                  {group.map((f) => (
-                    <FacilityCard key={f.id} facility={f} />
-                  ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {activeTab === 'timeline' && (
-        <div className="space-y-6">
-          <PaymentTimeline facilities={facilities} />
-          <MaturityTimeline facilities={facilities} />
-
-          {/* Payment Calendar */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Upcoming Payments</h3>
-            <div className="divide-y divide-gray-100">
-              {facilities
-                .filter((f) => f.status === 'active' && Number(f.monthly_repayment) > 0)
-                .sort((a, b) => Number(b.monthly_repayment) - Number(a.monthly_repayment))
-                .map((f) => (
-                  <div key={f.id} className="flex items-center gap-3 py-3">
-                    <ClassificationIcon classification={f.classification} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{f.facility_name}</p>
-                      <p className="text-xs text-gray-500">
-                        {f.repayment_frequency.replace('_', ' ')}
-                        {f.payment_day ? ` on ${f.payment_day}th` : ''}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">{formatCurrencyFull(Number(f.monthly_repayment))}</p>
-                      <p className="text-[10px] text-gray-400 uppercase">{f.repayment_frequency}</p>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTab === 'refinance' && (
-        <div className="space-y-6">
-          <RefinancePlan />
-
-          {/* Refinance Priority List */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Refinance Priority Order</h3>
-            <div className="space-y-2">
-              {facilities
-                .filter((f) => f.refinance_eligible)
-                .sort((a, b) => (a.refinance_priority ?? 99) - (b.refinance_priority ?? 99))
-                .map((f, idx) => {
-                  const rate = Number(f.effective_apr ?? f.interest_rate ?? 0);
-                  return (
-                    <div key={f.id} className="flex items-center gap-3 rounded-lg border border-gray-100 p-3">
-                      <span className="h-6 w-6 rounded-full bg-red-100 text-red-700 text-xs font-bold flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{f.facility_name}</p>
-                        <p className="text-xs text-gray-500">{f.refinance_notes}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-sm font-bold text-gray-900">{formatCurrency(Number(f.current_balance))}</p>
-                        {rate > 0 && (
-                          <p className="text-xs text-red-600">{formatRate(rate)} APR</p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-
-          {/* Cost of Debt Summary */}
-          <div className="rounded-xl border border-gray-200 bg-white p-5">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Annual Cost of Debt</h3>
-            <div className="space-y-2">
-              {facilities
-                .filter((f) => f.status === 'active' && Number(f.monthly_repayment) > 0)
-                .sort((a, b) => Number(b.monthly_repayment) * 12 - Number(a.monthly_repayment) * 12)
-                .map((f) => {
-                  const annual = Number(f.monthly_repayment) * 12;
-                  const pctOfTotal = summary.total_annual_cost > 0 ? (annual / summary.total_annual_cost) * 100 : 0;
-                  return (
-                    <div key={f.id} className="flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between text-xs mb-0.5">
-                          <span className="text-gray-700 truncate">{f.facility_name}</span>
-                          <span className="font-medium text-gray-900">{formatCurrency(annual)}/yr</span>
-                        </div>
-                        <div className="h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                          <div
-                            className={cn(
-                              'h-full rounded-full',
-                              f.classification === 'bad' ? 'bg-red-500' : f.classification === 'okay' ? 'bg-amber-400' : 'bg-emerald-500',
-                            )}
-                            style={{ width: `${pctOfTotal}%` }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-          </div>
-        </div>
-      )}
+      {activeTab === 'refinance' && <RefinanceTab />}
     </div>
   );
 }
