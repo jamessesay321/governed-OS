@@ -12,6 +12,8 @@ interface KPICardData {
   label: string;
   value: number;
   previousValue?: number;
+  priorYearValue?: number;
+  trendData?: number[];
   format: 'currency' | 'percentage';
   higherIsBetter: boolean;
   benchmarkStatus?: BenchmarkStatus;
@@ -26,6 +28,16 @@ interface KPICardsProps {
   previousGrossProfit?: number;
   previousExpenses?: number;
   previousNetProfit?: number;
+  /** Prior year values for YoY comparison */
+  priorYearRevenue?: number;
+  priorYearGrossProfit?: number;
+  priorYearExpenses?: number;
+  priorYearNetProfit?: number;
+  /** Last 6 period values for sparkline trend [oldest → newest] */
+  trendRevenue?: number[];
+  trendGrossMargin?: number[];
+  trendExpenses?: number[];
+  trendNetProfit?: number[];
   /** Traffic-light benchmark statuses for each card (Fathom-style) */
   benchmarkStatuses?: {
     revenue?: BenchmarkStatus;
@@ -82,7 +94,7 @@ function getVarianceBg(
 ): string {
   if (direction === 'flat') return 'bg-muted';
   const isGood = higherIsBetter ? direction === 'up' : direction === 'down';
-  return isGood ? 'bg-green-50' : 'bg-red-50';
+  return isGood ? 'bg-green-50 dark:bg-green-950/30' : 'bg-red-50 dark:bg-red-950/30';
 }
 
 function TrendIcon({ direction }: { direction: 'up' | 'down' | 'flat' }) {
@@ -99,11 +111,79 @@ const statusBorderColors: Record<BenchmarkStatus, string> = {
 };
 
 const statusLabels: Record<BenchmarkStatus, { text: string; className: string }> = {
-  green: { text: 'Above benchmark', className: 'text-green-600 bg-green-50' },
-  amber: { text: 'Near benchmark', className: 'text-yellow-700 bg-yellow-50' },
-  red: { text: 'Below benchmark', className: 'text-red-600 bg-red-50' },
+  green: { text: 'Above benchmark', className: 'text-green-600 bg-green-50 dark:text-green-400 dark:bg-green-950/50' },
+  amber: { text: 'Near benchmark', className: 'text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/50' },
+  red: { text: 'Below benchmark', className: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/50' },
   none: { text: '', className: '' },
 };
+
+// ─── Inline Sparkline (pure SVG) ──────────────────────────────────
+function Sparkline({
+  data,
+  higherIsBetter,
+  width = 64,
+  height = 24,
+}: {
+  data: number[];
+  higherIsBetter: boolean;
+  width?: number;
+  height?: number;
+}) {
+  if (data.length < 2) return null;
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const padding = 2;
+  const usableH = height - padding * 2;
+  const usableW = width - padding * 2;
+
+  const points = data.map((v, i) => {
+    const x = padding + (i / (data.length - 1)) * usableW;
+    const y = padding + usableH - ((v - min) / range) * usableH;
+    return `${x},${y}`;
+  });
+
+  // Determine trend color from first to last value
+  const first = data[0];
+  const last = data[data.length - 1];
+  const isUp = last > first;
+  const isGood = higherIsBetter ? isUp : !isUp;
+  const strokeColor = first === last
+    ? 'rgba(156, 163, 175, 0.6)'
+    : isGood
+      ? 'rgba(34, 197, 94, 0.7)'
+      : 'rgba(239, 68, 68, 0.7)';
+
+  // Build area fill path
+  const areaPath = `M${points[0]} ${points.slice(1).map((p) => `L${p}`).join(' ')} L${padding + usableW},${height - padding} L${padding},${height - padding} Z`;
+  const fillColor = first === last
+    ? 'rgba(156, 163, 175, 0.08)'
+    : isGood
+      ? 'rgba(34, 197, 94, 0.08)'
+      : 'rgba(239, 68, 68, 0.08)';
+
+  return (
+    <svg width={width} height={height} className="flex-shrink-0">
+      <path d={areaPath} fill={fillColor} />
+      <polyline
+        points={points.join(' ')}
+        fill="none"
+        stroke={strokeColor}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      {/* Dot on the latest value */}
+      <circle
+        cx={padding + usableW}
+        cy={padding + usableH - ((last - min) / range) * usableH}
+        r="2"
+        fill={strokeColor}
+      />
+    </svg>
+  );
+}
 
 export function KPICards({
   revenue,
@@ -114,6 +194,14 @@ export function KPICards({
   previousGrossProfit,
   previousExpenses,
   previousNetProfit,
+  priorYearRevenue,
+  priorYearGrossProfit,
+  priorYearExpenses,
+  priorYearNetProfit,
+  trendRevenue,
+  trendGrossMargin,
+  trendExpenses,
+  trendNetProfit,
   benchmarkStatuses,
   onCardClick,
 }: KPICardsProps) {
@@ -121,12 +209,17 @@ export function KPICards({
   const prevGrossMargin = previousRevenue && previousRevenue > 0
     ? ((previousGrossProfit ?? 0) / previousRevenue) * 100
     : undefined;
+  const pyGrossMargin = priorYearRevenue && priorYearRevenue > 0
+    ? ((priorYearGrossProfit ?? 0) / priorYearRevenue) * 100
+    : undefined;
 
   const cards: KPICardData[] = [
     {
       label: 'Revenue',
       value: revenue,
       previousValue: previousRevenue,
+      priorYearValue: priorYearRevenue,
+      trendData: trendRevenue,
       format: 'currency',
       higherIsBetter: true,
       benchmarkStatus: benchmarkStatuses?.revenue,
@@ -135,6 +228,8 @@ export function KPICards({
       label: 'Gross Margin',
       value: grossMargin,
       previousValue: prevGrossMargin,
+      priorYearValue: pyGrossMargin,
+      trendData: trendGrossMargin,
       format: 'percentage',
       higherIsBetter: true,
       benchmarkStatus: benchmarkStatuses?.grossMargin,
@@ -143,6 +238,8 @@ export function KPICards({
       label: 'Expenses',
       value: expenses,
       previousValue: previousExpenses,
+      priorYearValue: priorYearExpenses,
+      trendData: trendExpenses,
       format: 'currency',
       higherIsBetter: false,
       benchmarkStatus: benchmarkStatuses?.expenses,
@@ -151,6 +248,8 @@ export function KPICards({
       label: 'Net Profit',
       value: netProfit,
       previousValue: previousNetProfit,
+      priorYearValue: priorYearNetProfit,
+      trendData: trendNetProfit,
       format: 'currency',
       higherIsBetter: true,
       benchmarkStatus: benchmarkStatuses?.netProfit,
@@ -204,21 +303,59 @@ export function KPICards({
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl font-bold" style={{ color: '#1e293b' }}>
-                  {card.format === 'percentage'
-                    ? formatPercentage(card.value)
-                    : formatCurrency(card.value)}
-                </span>
-                <SourceBadge source="actual" size="sm" />
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-baseline gap-2 min-w-0">
+                  <span className="text-2xl font-bold text-foreground">
+                    {card.format === 'percentage'
+                      ? formatPercentage(card.value)
+                      : formatCurrency(card.value)}
+                  </span>
+                  <SourceBadge source="actual" size="sm" />
+                </div>
+                {card.trendData && card.trendData.length >= 2 && (
+                  <Sparkline
+                    data={card.trendData}
+                    higherIsBetter={card.higherIsBetter}
+                  />
+                )}
               </div>
-              {card.previousValue !== undefined && (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  vs {card.format === 'percentage'
-                    ? formatPercentage(card.previousValue)
-                    : formatCurrency(card.previousValue)} last month
-                </p>
-              )}
+              {/* PP/PY comparisons */}
+              <div className="mt-1.5 space-y-0.5">
+                {card.previousValue !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    PP: {card.format === 'percentage'
+                      ? formatPercentage(card.previousValue)
+                      : formatCurrency(card.previousValue)}
+                    {(() => {
+                      const v = getVariance(card.value, card.previousValue);
+                      if (v.direction === 'flat') return null;
+                      const c = getVarianceColor(v.direction, card.higherIsBetter);
+                      return (
+                        <span className={`ml-1 ${c}`}>
+                          ({v.direction === 'up' ? '+' : ''}{v.percentage.toFixed(1)}%)
+                        </span>
+                      );
+                    })()}
+                  </p>
+                )}
+                {card.priorYearValue !== undefined && (
+                  <p className="text-xs text-muted-foreground">
+                    PY: {card.format === 'percentage'
+                      ? formatPercentage(card.priorYearValue)
+                      : formatCurrency(card.priorYearValue)}
+                    {(() => {
+                      const v = getVariance(card.value, card.priorYearValue);
+                      if (v.direction === 'flat') return null;
+                      const c = getVarianceColor(v.direction, card.higherIsBetter);
+                      return (
+                        <span className={`ml-1 ${c}`}>
+                          ({v.direction === 'up' ? '+' : ''}{v.percentage.toFixed(1)}%)
+                        </span>
+                      );
+                    })()}
+                  </p>
+                )}
+              </div>
             </CardContent>
           </Card>
         );

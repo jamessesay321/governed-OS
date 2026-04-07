@@ -195,6 +195,24 @@ export function DashboardClient({
   const previousPeriod = periodIdx < periods.length - 1 ? periods[periodIdx + 1] : null;
   const previousPnl = previousPeriod ? pnlByPeriod[previousPeriod] : null;
 
+  // Prior year period (same month, 1 year prior)
+  const priorYearPeriod = selectedPeriod ? (() => {
+    const d = new Date(selectedPeriod);
+    d.setFullYear(d.getFullYear() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  })() : null;
+  const priorYearPnl = priorYearPeriod ? pnlByPeriod[priorYearPeriod] ?? null : null;
+
+  // Trend data: up to 6 periods ending with selected (ascending order)
+  const trendPeriods = periods.slice(Math.max(0, periodIdx - 5), periodIdx + 1).reverse();
+  const trendRevenue = trendPeriods.map((p) => pnlByPeriod[p]?.revenue ?? 0);
+  const trendGrossMargin = trendPeriods.map((p) => {
+    const pp = pnlByPeriod[p];
+    return pp && pp.revenue > 0 ? (pp.grossProfit / pp.revenue) * 100 : 0;
+  });
+  const trendExpenses = trendPeriods.map((p) => pnlByPeriod[p]?.expenses ?? 0);
+  const trendNetProfit = trendPeriods.map((p) => pnlByPeriod[p]?.netProfit ?? 0);
+
   const userRole = role as Role;
   const canSync = hasMinRole(userRole, 'advisor');
   const canConnect = hasMinRole(userRole, 'admin');
@@ -359,6 +377,14 @@ export function DashboardClient({
           previousGrossProfit={previousPnl?.grossProfit}
           previousExpenses={previousPnl?.expenses}
           previousNetProfit={previousPnl?.netProfit}
+          priorYearRevenue={priorYearPnl?.revenue}
+          priorYearGrossProfit={priorYearPnl?.grossProfit}
+          priorYearExpenses={priorYearPnl?.expenses}
+          priorYearNetProfit={priorYearPnl?.netProfit}
+          trendRevenue={trendRevenue}
+          trendGrossMargin={trendGrossMargin}
+          trendExpenses={trendExpenses}
+          trendNetProfit={trendNetProfit}
           onCardClick={(metric) => {
             const value = metric === 'revenue' ? pnl.revenue
               : metric === 'gross_margin' ? (pnl.revenue > 0 ? (pnl.grossProfit / pnl.revenue) * 100 : 0)

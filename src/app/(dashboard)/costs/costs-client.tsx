@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import {
   TrendingUp,
   TrendingDown,
@@ -98,6 +99,7 @@ export function CostsClient({
   momGrowth,
   lastPeriodTotal,
 }: CostsClientProps) {
+  const { openDrill } = useDrillDown();
   const [showAccounts, setShowAccounts] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'interest'>('overview');
 
@@ -511,7 +513,24 @@ export function CostsClient({
                 <div className="space-y-2">
                   <h3 className="text-sm font-semibold">Lender Breakdown</h3>
                   {interestData.map((item) => (
-                    <div key={item.name} className="flex items-center justify-between text-sm">
+                    <div
+                      key={item.name}
+                      className="flex items-center justify-between text-sm cursor-pointer hover:bg-muted/50 rounded-lg px-2 py-1.5 -mx-2 transition-colors"
+                      onClick={() => {
+                        openDrill({
+                          type: 'custom',
+                          title: `Interest — ${item.name}`,
+                          subtitle: `${formatCurrency(item.value)} annual interest expense`,
+                          rows: [
+                            { label: 'Lender', value: item.name },
+                            { label: 'Annual Interest', value: formatCurrency(item.value) },
+                            { label: 'Monthly Average', value: formatCurrency(item.value / 12) },
+                            { label: '% of Total Interest', value: `${interestTotal > 0 ? ((item.value / interestTotal) * 100).toFixed(1) : 0}%` },
+                            { label: '% of Revenue', value: `${totalRevenue > 0 ? ((item.value / totalRevenue) * 100).toFixed(2) : 0}%` },
+                          ],
+                        });
+                      }}
+                    >
                       <span className="text-muted-foreground">{item.name}</span>
                       <span className="font-medium">{formatCurrency(item.value)}</span>
                     </div>
@@ -547,7 +566,24 @@ export function CostsClient({
               </thead>
               <tbody>
                 {topAccounts.map((acct) => (
-                  <tr key={acct.accountId} className="border-b hover:bg-muted/50">
+                  <tr
+                    key={acct.accountId}
+                    className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => {
+                      openDrill({
+                        type: 'custom',
+                        title: acct.accountName,
+                        subtitle: `${acct.accountCode} — ${acct.xeroClass === 'DIRECTCOSTS' ? 'Direct Cost' : 'Overhead'}`,
+                        rows: [
+                          { label: 'Account Code', value: acct.accountCode },
+                          { label: 'Category', value: acct.category },
+                          { label: 'Class', value: acct.xeroClass === 'DIRECTCOSTS' ? 'Direct Cost' : 'Overhead' },
+                          { label: 'Total (12mo)', value: formatCurrency(acct.total) },
+                          { label: '% of Total Costs', value: `${totalCosts > 0 ? ((acct.total / totalCosts) * 100).toFixed(1) : 0}%` },
+                        ],
+                      });
+                    }}
+                  >
                     <td className="py-2 px-3">
                       <p className="font-medium">{acct.accountName}</p>
                       <p className="text-xs text-muted-foreground">{acct.accountCode}</p>

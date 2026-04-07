@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import {
   TrendingUp,
   TrendingDown,
@@ -89,6 +90,7 @@ export function RevenueClient({
   yoyGrowth,
   lastPeriodTotal,
 }: RevenueClientProps) {
+  const { openDrill } = useDrillDown();
   const [showAccounts, setShowAccounts] = useState(false);
 
   // Pie chart data
@@ -386,7 +388,23 @@ export function RevenueClient({
               </thead>
               <tbody>
                 {topAccounts.map((acct) => (
-                  <tr key={acct.accountId} className="border-b hover:bg-muted/50">
+                  <tr
+                    key={acct.accountId}
+                    className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                    onClick={() => {
+                      openDrill({
+                        type: 'custom',
+                        title: acct.accountName,
+                        subtitle: `${acct.accountCode} — ${acct.category}`,
+                        rows: [
+                          { label: 'Account Code', value: acct.accountCode },
+                          { label: 'Category', value: acct.category },
+                          { label: 'Total (12mo)', value: formatCurrency(acct.total) },
+                          { label: '% of Revenue', value: `${totalRevenue > 0 ? ((acct.total / totalRevenue) * 100).toFixed(1) : 0}%` },
+                        ],
+                      });
+                    }}
+                  >
                     <td className="py-2 px-3">
                       <p className="font-medium">{acct.accountName}</p>
                       <p className="text-xs text-muted-foreground">{acct.accountCode}</p>

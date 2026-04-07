@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import {
   Users,
   TrendingUp,
@@ -91,6 +92,7 @@ export function StaffCostsClient({
   activeRoles,
   employerOnCostRatio,
 }: StaffCostsClientProps) {
+  const { openDrill } = useDrillDown();
   const [expandedRole, setExpandedRole] = useState<string | null>(null);
 
   // Pie chart by role
@@ -402,7 +404,31 @@ export function StaffCostsClient({
                   <span className="text-muted-foreground">
                     {totalStaffCost > 0 ? ((role.total / totalStaffCost) * 100).toFixed(1) : 0}%
                   </span>
-                  <span className="font-semibold w-24 text-right">{fmtCompact(role.total)}</span>
+                  <span
+                    className="font-semibold w-24 text-right cursor-pointer hover:underline"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDrill({
+                        type: 'custom',
+                        title: role.roleName,
+                        subtitle: `${formatCurrency(role.total)} — ${role.accounts.length} account${role.accounts.length !== 1 ? 's' : ''}`,
+                        rows: [
+                          { label: 'Salary', value: formatCurrency(role.salaryTotal) },
+                          { label: 'Employer NIC', value: formatCurrency(role.nicTotal) },
+                          { label: 'Pension', value: formatCurrency(role.pensionTotal) },
+                          { label: 'Total Role Cost', value: formatCurrency(role.total) },
+                          { label: '% of Total Staff Cost', value: `${totalStaffCost > 0 ? ((role.total / totalStaffCost) * 100).toFixed(1) : 0}%` },
+                          ...role.accounts.sort((a, b) => b.total - a.total).map((a) => ({
+                            label: a.accountName,
+                            value: formatCurrency(a.total),
+                            sublabel: `${a.accountCode} — ${a.costType}`,
+                          })),
+                        ],
+                      });
+                    }}
+                  >
+                    {fmtCompact(role.total)}
+                  </span>
                 </div>
               </button>
 
@@ -460,7 +486,25 @@ export function StaffCostsClient({
                       {role.accounts
                         .sort((a, b) => b.total - a.total)
                         .map((acct) => (
-                          <tr key={acct.accountId} className="border-b last:border-0">
+                          <tr
+                            key={acct.accountId}
+                            className="border-b last:border-0 cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() => {
+                              openDrill({
+                                type: 'custom',
+                                title: acct.accountName,
+                                subtitle: `${acct.accountCode} — ${role.roleName}`,
+                                rows: [
+                                  { label: 'Account Code', value: acct.accountCode },
+                                  { label: 'Role', value: role.roleName },
+                                  { label: 'Cost Type', value: acct.costType.charAt(0).toUpperCase() + acct.costType.slice(1) },
+                                  { label: 'Total (12mo)', value: formatCurrency(acct.total) },
+                                  { label: '% of Role Cost', value: `${role.total > 0 ? ((acct.total / role.total) * 100).toFixed(1) : 0}%` },
+                                  { label: '% of Total Staff', value: `${totalStaffCost > 0 ? ((acct.total / totalStaffCost) * 100).toFixed(1) : 0}%` },
+                                ],
+                              });
+                            }}
+                          >
                             <td className="py-1 px-2">
                               {acct.accountName}
                               <span className="text-muted-foreground ml-1">({acct.accountCode})</span>

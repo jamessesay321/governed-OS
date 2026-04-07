@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import {
   Users,
   Receipt,
@@ -189,10 +190,12 @@ function TopAccountsBar({
   accounts,
   title,
   colour,
+  onBarClick,
 }: {
   accounts: { accountName: string; amount: number }[];
   title: string;
   colour: string;
+  onBarClick?: (account: { accountName: string; amount: number }) => void;
 }) {
   const chartData = accounts.map((a) => ({
     name: a.accountName.length > 20 ? a.accountName.substring(0, 20) + '...' : a.accountName,
@@ -235,7 +238,26 @@ function TopAccountsBar({
                 }}
                 contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: 12 }}
               />
-              <Bar dataKey="amount" fill={colour} radius={[0, 4, 4, 0]} barSize={18} />
+              <Bar
+                dataKey="amount"
+                fill={colour}
+                radius={[0, 4, 4, 0]}
+                barSize={18}
+                className={onBarClick ? 'cursor-pointer' : ''}
+                onClick={(_data, _index) => {
+                  if (onBarClick && _data) {
+                    const payload = _data as unknown as Record<string, unknown>;
+                    const fullName = payload.fullName as string | undefined;
+                    const name = payload.name as string | undefined;
+                    const match = accounts.find(
+                      (a) =>
+                        a.accountName === fullName ||
+                        a.accountName.substring(0, 20) + '...' === name
+                    );
+                    if (match) onBarClick(match);
+                  }
+                }}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -249,6 +271,7 @@ function TopAccountsBar({
 /* ================================================================== */
 
 export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
+  const { openDrill } = useDrillDown();
   const [activeTab, setActiveTab] = useState<TabKey>('debtors');
 
   const tabs: { key: TabKey; label: string }[] = [
@@ -434,6 +457,18 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
               accounts={data.topDebtorAccounts}
               title="Top Debtor Accounts"
               colour={CHART_COLORS.debtors}
+              onBarClick={(acct) => {
+                openDrill({
+                  type: 'custom',
+                  title: acct.accountName,
+                  subtitle: `Debtor — ${formatCurrency(acct.amount)} outstanding`,
+                  rows: [
+                    { label: 'Outstanding Balance', value: formatCurrency(acct.amount) },
+                    { label: 'DSO (Overall)', value: `${data.dso} days` },
+                    { label: 'Type', value: 'Accounts Receivable' },
+                  ],
+                });
+              }}
             />
           </div>
 
@@ -502,7 +537,24 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                     const total = data.debtorBuckets.reduce((s, x) => s + x.amount, 0);
                     const pct = total > 0 ? ((b.amount / total) * 100).toFixed(1) : '0';
                     return (
-                      <tr key={b.label} className="border-b hover:bg-muted/50">
+                      <tr
+                        key={b.label}
+                        className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          openDrill({
+                            type: 'custom',
+                            title: `Debtors — ${b.label}`,
+                            subtitle: `${formatCurrency(b.amount)} (${pct}% of total debtors)`,
+                            rows: [
+                              { label: 'Bucket', value: b.label },
+                              { label: 'Amount', value: formatCurrency(b.amount) },
+                              { label: '% of Total', value: `${pct}%` },
+                              { label: 'Status', value: b.colour === 'green' ? 'On Track' : b.colour === 'amber' ? 'Watch' : 'Overdue' },
+                              { label: 'Total Debtors', value: formatCurrency(total) },
+                            ],
+                          });
+                        }}
+                      >
                         <td className="py-2 px-3 font-medium flex items-center gap-2">
                           <div
                             className="h-2.5 w-2.5 rounded-full flex-shrink-0"
@@ -553,6 +605,18 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
               accounts={data.topCreditorAccounts}
               title="Top Creditor Accounts"
               colour={CHART_COLORS.creditors}
+              onBarClick={(acct) => {
+                openDrill({
+                  type: 'custom',
+                  title: acct.accountName,
+                  subtitle: `Creditor — ${formatCurrency(acct.amount)} outstanding`,
+                  rows: [
+                    { label: 'Outstanding Balance', value: formatCurrency(acct.amount) },
+                    { label: 'DPO (Overall)', value: `${data.dpo} days` },
+                    { label: 'Type', value: 'Accounts Payable' },
+                  ],
+                });
+              }}
             />
           </div>
 
@@ -621,7 +685,24 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                     const total = data.creditorBuckets.reduce((s, x) => s + x.amount, 0);
                     const pct = total > 0 ? ((b.amount / total) * 100).toFixed(1) : '0';
                     return (
-                      <tr key={b.label} className="border-b hover:bg-muted/50">
+                      <tr
+                        key={b.label}
+                        className="border-b cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => {
+                          openDrill({
+                            type: 'custom',
+                            title: `Creditors — ${b.label}`,
+                            subtitle: `${formatCurrency(b.amount)} (${pct}% of total creditors)`,
+                            rows: [
+                              { label: 'Bucket', value: b.label },
+                              { label: 'Amount', value: formatCurrency(b.amount) },
+                              { label: '% of Total', value: `${pct}%` },
+                              { label: 'Status', value: b.colour === 'green' ? 'Current' : b.colour === 'amber' ? 'Aging' : 'Overdue' },
+                              { label: 'Total Creditors', value: formatCurrency(total) },
+                            ],
+                          });
+                        }}
+                      >
                         <td className="py-2 px-3 font-medium flex items-center gap-2">
                           <div
                             className="h-2.5 w-2.5 rounded-full flex-shrink-0"

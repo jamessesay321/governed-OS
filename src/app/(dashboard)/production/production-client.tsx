@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import {
   Factory,
   Package,
@@ -105,6 +106,7 @@ export function ProductionClient({
   shippingTotal,
   periodSummaries,
 }: ProductionClientProps) {
+  const { openDrill } = useDrillDown();
   const hasData = periodSummaries.length > 0;
 
   // Stacked bar data for CoGS by product line
@@ -391,7 +393,23 @@ export function ProductionClient({
         </p>
         <div className="space-y-3">
           {productionLines.filter((l) => l.total > 0).map((line, i) => (
-            <div key={line.code} className="flex items-center gap-4">
+            <div
+              key={line.code}
+              className="flex items-center gap-4 cursor-pointer hover:bg-muted/50 rounded-lg px-2 py-1 -mx-2 transition-colors"
+              onClick={() => {
+                openDrill({
+                  type: 'custom',
+                  title: line.name,
+                  subtitle: `${formatCurrency(line.total)} — ${line.pctOfTotal.toFixed(1)}% of total CoGS`,
+                  rows: [
+                    { label: 'Product Line Code', value: line.code },
+                    { label: 'Total Cost', value: formatCurrency(line.total) },
+                    { label: '% of Total CoGS', value: `${line.pctOfTotal.toFixed(1)}%` },
+                    { label: 'Total CoGS', value: formatCurrency(totalCogsProductionCost) },
+                  ],
+                });
+              }}
+            >
               <div className="w-40 truncate text-sm font-medium">{line.name}</div>
               <div className="flex-1">
                 <div className="h-6 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
