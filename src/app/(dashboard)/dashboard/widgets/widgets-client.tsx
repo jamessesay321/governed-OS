@@ -3,6 +3,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  rectSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import {
   BarChart,
   Bar,
   LineChart as RechartsLineChart,
@@ -41,6 +58,7 @@ import {
   TrendingUp,
   BookOpen,
   LayoutGrid,
+  GripVertical,
 } from 'lucide-react';
 
 // New widget component imports
@@ -362,6 +380,80 @@ const widgetRenderers: Record<ExtendedWidgetType, WidgetRenderer> = {
 };
 
 /* ------------------------------------------------------------------ */
+/*  Sortable Widget Card                                              */
+/* ------------------------------------------------------------------ */
+
+function SortableWidgetCard({
+  id,
+  isEnabled,
+  onToggle,
+  label,
+  description,
+  category,
+  children,
+}: {
+  id: string;
+  isEnabled: boolean;
+  onToggle: () => void;
+  label: string;
+  description: string;
+  category: string;
+  children: React.ReactNode;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.85 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card
+        className={`transition-all duration-200 ${
+          isDragging ? 'shadow-xl ring-2 ring-indigo-400' : ''
+        } ${
+          isEnabled
+            ? 'border-border shadow-sm hover:shadow-md hover:border-indigo-400/50'
+            : 'border-border/50 opacity-60 hover:opacity-80'
+        }`}
+      >
+        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+          <div className="flex items-start gap-2 pr-4">
+            <button
+              {...attributes}
+              {...listeners}
+              className="mt-0.5 cursor-grab rounded p-1 text-muted-foreground/50 hover:bg-muted hover:text-muted-foreground active:cursor-grabbing"
+              title="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+            <div className="space-y-0.5">
+              <CardTitle className="text-sm font-semibold">{label}</CardTitle>
+              <p className="text-xs text-muted-foreground">{description}</p>
+              <Badge variant="outline" className="text-[9px] mt-1">
+                {category}
+              </Badge>
+            </div>
+          </div>
+          <Toggle checked={isEnabled} onChange={onToggle} />
+        </CardHeader>
+        <CardContent className="pt-0">{children}</CardContent>
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Page component                                                    */
 /* ------------------------------------------------------------------ */
 
@@ -373,10 +465,20 @@ export default function WidgetsClient(props: WidgetsClientProps) {
   const [enabled, setEnabled] = useState<Record<string, boolean>>(
     Object.fromEntries(ALL_EXTENDED_WIDGET_TYPES.map((w) => [w, true]))
   );
+  // Widget order — determines rendering sequence on dashboard
+  const [widgetOrder, setWidgetOrder] = useState<ExtendedWidgetType[]>([
+    ...ALL_EXTENDED_WIDGET_TYPES,
+  ]);
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
   // Load saved config from API on mount
   useEffect(() => {
@@ -387,12 +489,19 @@ export default function WidgetsClient(props: WidgetsClientProps) {
         if (res.ok) {
           const { config } = await res.json();
           if (config && !cancelled) {
-            const savedWidgets = new Set(config.widgets as string[]);
+            const savedWidgets = config.widgets as string[];
+            const savedSet = new Set(savedWidgets);
             const newEnabled: Record<string, boolean> = {};
             for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
-              newEnabled[wt] = savedWidgets.has(wt);
+              newEnabled[wt] = savedSet.has(wt);
             }
             setEnabled(newEnabled);
+            // Restore order: saved widgets first (in order), then any new types at the end
+            const orderedTypes = savedWidgets.filter((w): w is ExtendedWidgetType =>
+              ALL_EXTENDED_WIDGET_TYPES.includes(w as ExtendedWidgetType)
+            );
+            const remaining = ALL_EXTENDED_WIDGET_TYPES.filter((w) => !savedSet.has(w));
+            setWidgetOrder([...orderedTypes, ...remaining]);
             setActiveTemplate(config.template_name ?? null);
           }
         }
@@ -406,14 +515,17 @@ export default function WidgetsClient(props: WidgetsClientProps) {
     return () => { cancelled = true; };
   }, []);
 
-  // Save config to API when enabled state changes (after initial load)
-  const saveConfig = useCallback(async (widgetState: Record<string, boolean>, templateName: string | null) => {
+  // Save config to API (now includes order via the widgets array)
+  const saveConfig = useCallback(async (
+    widgetState: Record<string, boolean>,
+    order: ExtendedWidgetType[],
+    templateName: string | null,
+  ) => {
     if (!loaded) return;
     setSaving(true);
     try {
-      const widgets = Object.entries(widgetState)
-        .filter(([, v]) => v)
-        .map(([k]) => k);
+      // Send enabled widgets in their current order
+      const widgets = order.filter((wt) => widgetState[wt]);
       await fetch('/api/dashboard/widget-config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -430,7 +542,20 @@ export default function WidgetsClient(props: WidgetsClientProps) {
     setActiveTemplate(null);
     const newEnabled = { ...enabled, [id]: !enabled[id] };
     setEnabled(newEnabled);
-    saveConfig(newEnabled, null);
+    saveConfig(newEnabled, widgetOrder, null);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (over && active.id !== over.id) {
+      setWidgetOrder((prev) => {
+        const oldIndex = prev.indexOf(active.id as ExtendedWidgetType);
+        const newIndex = prev.indexOf(over.id as ExtendedWidgetType);
+        const newOrder = arrayMove(prev, oldIndex, newIndex);
+        saveConfig(enabled, newOrder, activeTemplate);
+        return newOrder;
+      });
+    }
   };
 
   const applyTemplate = (template: WidgetTemplate) => {
@@ -439,10 +564,17 @@ export default function WidgetsClient(props: WidgetsClientProps) {
     for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
       newEnabled[wt] = templateWidgets.has(wt);
     }
+    // Reorder: template widgets first, then the rest
+    const orderedTypes = template.widgets.filter((w): w is ExtendedWidgetType =>
+      ALL_EXTENDED_WIDGET_TYPES.includes(w as ExtendedWidgetType)
+    );
+    const remaining = ALL_EXTENDED_WIDGET_TYPES.filter((w) => !templateWidgets.has(w));
+    const newOrder = [...orderedTypes, ...remaining];
     setEnabled(newEnabled);
+    setWidgetOrder(newOrder);
     setActiveTemplate(template.id);
     setTemplateSelectorOpen(false);
-    saveConfig(newEnabled, template.id);
+    saveConfig(newEnabled, newOrder, template.id);
   };
 
   const handleStartFromScratch = () => {
@@ -453,7 +585,7 @@ export default function WidgetsClient(props: WidgetsClientProps) {
     setEnabled(newEnabled);
     setActiveTemplate(null);
     setTemplateSelectorOpen(false);
-    saveConfig(newEnabled, null);
+    saveConfig(newEnabled, widgetOrder, null);
   };
 
   const enabledCount = Object.values(enabled).filter(Boolean).length;
@@ -594,47 +726,42 @@ export default function WidgetsClient(props: WidgetsClientProps) {
 
       {/* Individual Widgets heading */}
       <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Individual Widgets
-        </h2>
-
-        {/* Widget grid */}
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
-          {ALL_EXTENDED_WIDGET_TYPES.map((wt) => {
-            const renderer = widgetRenderers[wt];
-            return (
-              <Card
-                key={wt}
-                className={`transition-all duration-200 ${
-                  enabled[wt]
-                    ? 'border-border shadow-sm hover:shadow-md hover:border-indigo-400/50'
-                    : 'border-border/50 opacity-60 hover:opacity-80'
-                }`}
-              >
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="space-y-0.5 pr-4">
-                    <CardTitle className="text-sm font-semibold">
-                      {getWidgetLabel(wt)}
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground">
-                      {getWidgetDescription(wt)}
-                    </p>
-                    <Badge variant="outline" className="text-[9px] mt-1">
-                      {FULL_WIDGET_REGISTRY[wt]?.category ?? 'financial'}
-                    </Badge>
-                  </div>
-                  <Toggle
-                    checked={enabled[wt]}
-                    onChange={() => toggle(wt)}
-                  />
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {renderer(props, format)}
-                </CardContent>
-              </Card>
-            );
-          })}
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+            Individual Widgets
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Drag to reorder &middot; Toggle to show/hide
+          </p>
         </div>
+
+        {/* Sortable widget grid */}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
+              {widgetOrder.map((wt) => {
+                const renderer = widgetRenderers[wt];
+                return (
+                  <SortableWidgetCard
+                    key={wt}
+                    id={wt}
+                    isEnabled={enabled[wt]}
+                    onToggle={() => toggle(wt)}
+                    label={getWidgetLabel(wt)}
+                    description={getWidgetDescription(wt)}
+                    category={FULL_WIDGET_REGISTRY[wt]?.category ?? 'financial'}
+                  >
+                    {renderer(props, format)}
+                  </SortableWidgetCard>
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
       </div>
     </div>
   );
