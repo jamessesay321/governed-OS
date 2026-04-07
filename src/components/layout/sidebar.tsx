@@ -156,6 +156,16 @@ const navigation: NavGroup[] = [
     children: [],
   },
   {
+    group: 'Revenue & Costs',
+    icon: 'Receipt',
+    href: '/revenue',
+    children: [
+      { href: '/revenue', label: 'Revenue Breakdown' },
+      { href: '/costs', label: 'Cost Analysis' },
+      { href: '/staff-costs', label: 'Staff Costs' },
+    ],
+  },
+  {
     group: 'Debt',
     icon: 'Landmark',
     href: '/debt',
@@ -658,6 +668,12 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
     </svg>
   ),
+  Receipt: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M4 2v20l3-2 3 2 3-2 3 2 3-2 3 2V2l-3 2-3-2-3 2-3-2-3 2-3-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h4" />
+    </svg>
+  ),
 };
 
 /* ------------------------------------------------------------------ */
@@ -666,13 +682,13 @@ const icons: Record<string, React.ReactNode> = {
 
 const sectionBreaks: Record<number, string> = {
   0: 'OVERVIEW',              // Dashboard, Business Profile
-  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions
-  10: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
-  19: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
-  22: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
-  25: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
-  29: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
-  33: 'ADMIN',                // Billing & Plans, Settings, Help & Support
+  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions, Revenue & Costs, Debt
+  11: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
+  20: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
+  23: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
+  26: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
+  30: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
+  34: 'ADMIN',                // Billing & Plans, Settings, Help & Support
 };
 
 /* ------------------------------------------------------------------ */
