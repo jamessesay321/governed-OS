@@ -134,7 +134,10 @@ const navigation: NavGroup[] = [
     group: 'Forecast',
     icon: 'TrendingUp',
     href: '/forecast',
-    children: [],
+    children: [
+      { href: '/forecast', label: 'P&L Forecast' },
+      { href: '/cashflow-forecast', label: 'Cash Forecast' },
+    ],
   },
   {
     group: 'Scenarios',
