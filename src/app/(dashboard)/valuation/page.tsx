@@ -95,6 +95,8 @@ export interface BusinessPlanData {
   keyMetrics: { label: string; value: string; detail: string }[];
   teamSize: number;
   usRevenueShare: number;
+  /** True if projections are pulled from a linked scenario */
+  scenarioLinked: boolean;
 }
 
 export interface ValuationData {
@@ -326,18 +328,163 @@ export default async function ValuationPage() {
     },
   ];
 
-  // ── Business Plan Data (from Alonuko Business Plan 2025 PDF) ──
+  // ── Business Plan Data ──
+  // LIVE DATA: Revenue history, margins, team size derived from platform
+  // SCENARIO-LINKED: Forward projections pulled from scenario if available
+  // STATIC: Deal terms (fundraise structure) and market sizes
 
-  const revenueTrajectory: RevenueTrajectoryPoint[] = [
-    { year: '2021', revenue: 145_000, isProjection: false, yoyGrowth: '' },
-    { year: '2022', revenue: 500_000, isProjection: false, yoyGrowth: '245%' },
-    { year: '2023', revenue: 1_300_000, isProjection: false, yoyGrowth: '160%' },
-    { year: '2024', revenue: 1_400_000, isProjection: false, yoyGrowth: '8%' },
-    { year: '2025E', revenue: 2_000_000, isProjection: true, yoyGrowth: '43%' },
-    { year: '2026E', revenue: 5_000_000, isProjection: true, yoyGrowth: '150%' },
-    { year: '2027E', revenue: 10_000_000, isProjection: true, yoyGrowth: '100%' },
-  ];
+  // 12a. Revenue by calendar year — derived from normalised_financials
+  const revenueByYear = new Map<number, number>();
+  for (const row of rows) {
+    const acct = accountMap.get(row.account_id);
+    if (acct && ['REVENUE', 'OTHERINCOME'].includes(acct.class)) {
+      const year = new Date(row.period).getFullYear();
+      revenueByYear.set(year, (revenueByYear.get(year) ?? 0) + Math.abs(Number(row.amount)));
+    }
+  }
 
+  // 12b. Actual gross margin — revenue vs direct costs per year
+  const directCostsByYear = new Map<number, number>();
+  for (const row of rows) {
+    const acct = accountMap.get(row.account_id);
+    if (acct && acct.class === 'DIRECTCOSTS') {
+      const year = new Date(row.period).getFullYear();
+      directCostsByYear.set(year, (directCostsByYear.get(year) ?? 0) + Math.abs(Number(row.amount)));
+    }
+  }
+
+  // 12c. Count distinct payroll accounts as a proxy for team size
+  const payrollAccountIds = new Set<string>();
+  for (const acct of allAccounts) {
+    if (/wage|salary|payroll|paye|ni\b|pension|employer/i.test(acct.name)) {
+      payrollAccountIds.add(acct.id);
+    }
+  }
+  // Count unique payroll accounts with non-zero activity in last 3 months
+  const recentPeriods = allPeriods.slice(-3);
+  const activePayrollAccounts = new Set<string>();
+  for (const row of rows) {
+    if (payrollAccountIds.has(row.account_id) && recentPeriods.includes(row.period) && Number(row.amount) !== 0) {
+      activePayrollAccounts.add(row.account_id);
+    }
+  }
+
+  // 12d. Marketing spend as % of revenue (from overheads matching marketing patterns)
+  const marketingSpend = rows
+    .filter((r) => {
+      const acct = accountMap.get(r.account_id);
+      return acct && /marketing|advertising|social media|pr |promotion|content/i.test(acct.name);
+    })
+    .filter((r) => last12Periods.includes(r.period))
+    .reduce((sum, r) => sum + Math.abs(Number(r.amount)), 0);
+  const marketingPct = annualRevenue > 0 ? (marketingSpend / annualRevenue) * 100 : 0;
+
+  // Build revenue trajectory from live data + scenario projections
+  const sortedYears = [...revenueByYear.keys()].sort();
+  const liveRevenueTrajectory: RevenueTrajectoryPoint[] = sortedYears.map((year, i) => {
+    const rev = revenueByYear.get(year) ?? 0;
+    const prevRev = i > 0 ? (revenueByYear.get(sortedYears[i - 1]) ?? 0) : 0;
+    const yoyGrowth = i > 0 && prevRev > 0
+      ? `${Math.round(((rev - prevRev) / prevRev) * 100)}%`
+      : '';
+    return { year: String(year), revenue: rev, isProjection: false, yoyGrowth };
+  });
+
+  // 12e. Try to fetch forward projections from a scenario named "Business Plan*"
+  let scenarioProjections: RevenueTrajectoryPoint[] = [];
+  let scenarioLinked = false;
+  try {
+    const { data: scenarioData } = await supabase
+      .from('scenarios')
+      .select('id, name')
+      .eq('org_id', orgId)
+      .ilike('name', 'Business Plan%')
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (scenarioData && scenarioData.length > 0) {
+      const scenarioId = (scenarioData[0] as { id: string }).id;
+      // Get latest model version
+      const { data: mvData } = await supabase
+        .from('model_versions')
+        .select('id')
+        .eq('scenario_id', scenarioId)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (mvData && mvData.length > 0) {
+        const mvId = (mvData[0] as { id: string }).id;
+        const { data: snapshots } = await supabase
+          .from('model_snapshots')
+          .select('period, revenue')
+          .eq('model_version_id', mvId)
+          .order('period', { ascending: true });
+
+        if (snapshots && snapshots.length > 0) {
+          scenarioLinked = true;
+          // Aggregate by year
+          const projByYear = new Map<number, number>();
+          for (const snap of snapshots as Array<{ period: string; revenue: number }>) {
+            const yr = new Date(snap.period).getFullYear();
+            projByYear.set(yr, (projByYear.get(yr) ?? 0) + Number(snap.revenue));
+          }
+          const existingYears = new Set(sortedYears);
+          const projYears = [...projByYear.keys()].filter((y) => !existingYears.has(y)).sort();
+          let prevRev = liveRevenueTrajectory.length > 0
+            ? liveRevenueTrajectory[liveRevenueTrajectory.length - 1].revenue
+            : 0;
+          for (const yr of projYears) {
+            const rev = projByYear.get(yr) ?? 0;
+            const yoyGrowth = prevRev > 0 ? `${Math.round(((rev - prevRev) / prevRev) * 100)}%` : '';
+            scenarioProjections.push({
+              year: `${yr}E`,
+              revenue: rev,
+              isProjection: true,
+              yoyGrowth,
+            });
+            prevRev = rev;
+          }
+        }
+      }
+    }
+  } catch {
+    // Scenario tables may not exist yet
+  }
+
+  // Fall back to business plan targets if no scenario linked
+  if (scenarioProjections.length === 0) {
+    const lastActualYear = sortedYears[sortedYears.length - 1] ?? 2024;
+    const lastActualRev = revenueByYear.get(lastActualYear) ?? 0;
+    // Business Plan 2025 targets
+    const targets = [
+      { year: lastActualYear + 1, revenue: 2_000_000 },
+      { year: lastActualYear + 2, revenue: 5_000_000 },
+      { year: lastActualYear + 3, revenue: 10_000_000 },
+    ].filter((t) => !revenueByYear.has(t.year)); // Don't overlap with actuals
+
+    let prevRev = lastActualRev;
+    for (const t of targets) {
+      const yoyGrowth = prevRev > 0 ? `${Math.round(((t.revenue - prevRev) / prevRev) * 100)}%` : '';
+      scenarioProjections.push({
+        year: `${t.year}E`,
+        revenue: t.revenue,
+        isProjection: true,
+        yoyGrowth,
+      });
+      prevRev = t.revenue;
+    }
+  }
+
+  const revenueTrajectory = [...liveRevenueTrajectory, ...scenarioProjections];
+
+  // 12f. Actual gross margin (latest full year)
+  const latestFullYear = sortedYears[sortedYears.length - 1];
+  const latestYearRev = revenueByYear.get(latestFullYear ?? 0) ?? 0;
+  const latestYearCoS = directCostsByYear.get(latestFullYear ?? 0) ?? 0;
+  const actualGrossMargin = latestYearRev > 0 ? ((latestYearRev - latestYearCoS) / latestYearRev) * 100 : 0;
+  const actualEbitdaMargin = annualRevenue > 0 ? (ebitda / annualRevenue) * 100 : 0;
+
+  // Product margins: use business plan targets (product-level isn't in Xero)
   const productMargins: ProductMargin[] = [
     { product: 'Bridal (Bespoke)', grossMargin: 60, operatingMargin: 50, color: '#7c3aed' },
     { product: 'Ready to Wear', grossMargin: 70, operatingMargin: 60, color: '#06b6d4' },
@@ -345,21 +492,26 @@ export default async function ValuationPage() {
     { product: 'Robes & Lingerie', grossMargin: 90, operatingMargin: null, color: '#ec4899' },
   ];
 
+  // Static deal terms
   const fundraise: FundraiseContext = {
     raising: 400_000,
     preMoneyValuation: 5_000_000,
     structure: 'SeedFAST',
-    impliedRevenueMultiple: 5_000_000 / 1_400_000,
+    impliedRevenueMultiple: annualRevenue > 0 ? 5_000_000 / annualRevenue : 3.6,
   };
 
+  // Exit scenario — uses latest actual revenue to compute forward targets
+  const exitTargetRevenue = 10_000_000;
+  const exitTargetEbitdaMargin = 15;
+  const exitFloorMultiple = 4.5;
   const exitScenario: ExitScenario = {
     year: '2027',
-    targetRevenue: 10_000_000,
-    targetEbitdaMargin: 15,
-    targetEbitda: 1_500_000,
-    floorMultiple: 4.5,
-    floorValuation: 50_000_000,
-    investorReturnMultiple: '10x',
+    targetRevenue: exitTargetRevenue,
+    targetEbitdaMargin: exitTargetEbitdaMargin,
+    targetEbitda: exitTargetRevenue * (exitTargetEbitdaMargin / 100),
+    floorMultiple: exitFloorMultiple,
+    floorValuation: exitTargetRevenue * exitFloorMultiple,
+    investorReturnMultiple: `${Math.round((exitTargetRevenue * exitFloorMultiple) / fundraise.preMoneyValuation)}x`,
   };
 
   const markets: MarketOpportunity[] = [
@@ -367,19 +519,41 @@ export default async function ValuationPage() {
     { market: 'Global Evening Dress', size: '$1.8bn', sizeGBP: '£1.4bn' },
   ];
 
+  // Profitability path — auto-determine status from live EBITDA
   const profitabilityPath: ProfitabilityMilestone[] = [
-    { year: '2025', target: 'Reduce losses via CoGS analysis & debt refinancing', status: 'in-progress' },
-    { year: '2026', target: 'EBITDA positive by year-end', status: 'planned' },
-    { year: '2027', target: 'EBITDA margin of at least 15%', status: 'planned' },
+    {
+      year: '2025',
+      target: 'Reduce losses via CoGS analysis & debt refinancing',
+      status: ebitda > 0 ? 'achieved' : 'in-progress',
+    },
+    {
+      year: '2026',
+      target: 'EBITDA positive by year-end',
+      status: ebitda > 0 ? 'achieved' : 'planned',
+    },
+    { year: '2027', target: 'EBITDA margin of at least 15%', status: actualEbitdaMargin >= 15 ? 'achieved' : 'planned' },
   ];
 
+  // Key metrics — mix of live and deck data
   const keyMetrics = [
+    {
+      label: 'Gross Margin',
+      value: `${actualGrossMargin.toFixed(1)}%`,
+      detail: `Live from Xero (${latestFullYear ?? 'N/A'})`,
+    },
+    {
+      label: 'EBITDA Margin',
+      value: `${actualEbitdaMargin.toFixed(1)}%`,
+      detail: 'Trailing 12 months',
+    },
     { label: 'Avg Dress Price', value: '£8,957', detail: '50% increase since 2021' },
-    { label: 'Avg Bride Spend', value: '£9,000', detail: '3x from £3k in 2021' },
-    { label: 'Conversion Rate', value: '74%', detail: 'Appointments to confirmed clients' },
-    { label: 'Trunk Show Margin', value: '~50%', detail: 'Operating margin, asset-light model' },
-    { label: 'Social Following', value: '1m+', detail: 'IG, TikTok & Facebook combined' },
-    { label: 'Marketing Spend', value: '<5%', detail: 'Of sales — highly capital-efficient' },
+    { label: 'Conversion Rate', value: '74%', detail: 'Appointments to confirmed' },
+    {
+      label: 'Marketing / Revenue',
+      value: `${marketingPct.toFixed(1)}%`,
+      detail: `£${Math.round(marketingSpend / 1000)}k annual spend (live)`,
+    },
+    { label: 'Trunk Show Margin', value: '~50%', detail: 'Operating margin, asset-light' },
   ];
 
   const businessPlan: BusinessPlanData = {
@@ -390,8 +564,9 @@ export default async function ValuationPage() {
     markets,
     profitabilityPath,
     keyMetrics,
-    teamSize: 22,
+    teamSize: activePayrollAccounts.size > 0 ? activePayrollAccounts.size : 22,
     usRevenueShare: 70,
+    scenarioLinked,
   };
 
   return (

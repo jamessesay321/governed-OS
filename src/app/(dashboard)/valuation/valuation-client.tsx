@@ -186,7 +186,17 @@ export function ValuationClient({ data }: ValuationClientProps) {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Business Valuation</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Indicative enterprise and equity valuation using revenue and EBITDA multiples, enriched with data from the Alonuko Business Plan 2025
+          Indicative enterprise and equity valuation — actuals from Xero, projections from{' '}
+          {businessPlan.scenarioLinked ? (
+            <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+              linked scenario
+              <CheckCircle2 className="h-3.5 w-3.5" />
+            </span>
+          ) : (
+            <span className="text-amber-600 dark:text-amber-400">
+              business plan (create a &quot;Business Plan&quot; scenario to auto-link)
+            </span>
+          )}
         </p>
       </div>
 
@@ -479,7 +489,7 @@ export function ValuationClient({ data }: ValuationClientProps) {
           Revenue Trajectory
         </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-          Actual performance (2021–2024) and business plan projections (2025–2027) — 9x revenue growth in 3 years
+          Actual revenue from Xero (solid) and {businessPlan.scenarioLinked ? 'scenario' : 'business plan'} projections (faded)
         </p>
         <div className="h-72">
           <ResponsiveContainer width="100%" height="100%">
