@@ -1,0 +1,20 @@
+/*
+ * Presentation Mode styles.
+ *
+ * When the `presentation-mode` class is on <body>, hide sidebar + header
+ * and let the main content fill the viewport. Imported once from the
+ * root layout (or globals.css).
+ */
+
+body.presentation-mode [data-sidebar] {
+  display: none !important;
+}
+
+body.presentation-mode [data-header] {
+  display: none !important;
+}
+
+body.presentation-mode [data-main-content] {
+  margin-left: 0 !important;
+  padding-top: 0 !important;
+}

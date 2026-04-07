@@ -205,7 +205,7 @@ export function StaffCostsClient({
 
         <div className={cn(
           'rounded-xl border p-5',
-          employerOnCostRatio > 25 ? 'bg-amber-50 border-amber-200' : 'bg-card'
+          employerOnCostRatio > 25 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800' : 'bg-card'
         )}>
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             <Building2 className="h-4 w-4" />
@@ -222,9 +222,9 @@ export function StaffCostsClient({
       {totalRevenue > 0 && (
         <div className={cn(
           'rounded-xl border p-4 flex items-center justify-between',
-          staffToRevenue > 50 ? 'bg-red-50 border-red-200'
-            : staffToRevenue > 35 ? 'bg-amber-50 border-amber-200'
-              : 'bg-emerald-50 border-emerald-200'
+          staffToRevenue > 50 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+            : staffToRevenue > 35 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
+              : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
         )}>
           <div>
             <p className="text-sm font-medium">Staff Cost as % of Revenue</p>
@@ -468,9 +468,9 @@ export function StaffCostsClient({
                             <td className="py-1 px-2">
                               <span className={cn(
                                 'px-1.5 py-0.5 rounded-full text-[10px]',
-                                acct.costType === 'salary' ? 'bg-purple-100 text-purple-700'
-                                  : acct.costType === 'nic' ? 'bg-red-100 text-red-700'
-                                    : acct.costType === 'pension' ? 'bg-cyan-100 text-cyan-700'
+                                acct.costType === 'salary' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                                  : acct.costType === 'nic' ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300'
+                                    : acct.costType === 'pension' ? 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-700 dark:text-cyan-300'
                                       : 'bg-gray-100 text-gray-700'
                               )}>
                                 {acct.costType}

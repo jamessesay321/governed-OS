@@ -218,8 +218,8 @@ export function CostsClient({
 
         <div className={cn(
           'rounded-xl border p-5',
-          interestTotal > totalRevenue * 0.1 ? 'bg-red-50 border-red-200'
-            : interestTotal > totalRevenue * 0.05 ? 'bg-amber-50 border-amber-200'
+          interestTotal > totalRevenue * 0.1 ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
+            : interestTotal > totalRevenue * 0.05 ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
               : 'bg-card'
         )}>
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -484,7 +484,7 @@ export function CostsClient({
             <div className="rounded-xl border bg-card p-6">
               <h2 className="text-lg font-semibold mb-4">Interest Summary</h2>
               <div className="space-y-4">
-                <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
                   <p className="text-sm font-medium text-red-800">Annual Interest Expense</p>
                   <p className="text-3xl font-bold text-red-600 mt-1">{fmtCompact(interestTotal)}</p>
                   <p className="text-xs text-red-600 mt-1">
@@ -493,7 +493,7 @@ export function CostsClient({
                 </div>
 
                 {totalRevenue > 0 && (
-                  <div className="p-4 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                     <p className="text-sm font-medium text-amber-800">Interest as % of Revenue</p>
                     <p className="text-3xl font-bold text-amber-600 mt-1">
                       {((interestTotal / totalRevenue) * 100).toFixed(1)}%
@@ -556,8 +556,8 @@ export function CostsClient({
                     <td className="py-2 px-3">
                       <span className={cn(
                         'text-xs px-2 py-0.5 rounded-full',
-                        acct.xeroClass === 'DIRECTCOSTS' ? 'bg-purple-100 text-purple-700'
-                          : 'bg-blue-100 text-blue-700'
+                        acct.xeroClass === 'DIRECTCOSTS' ? 'bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300'
+                          : 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
                       )}>
                         {acct.xeroClass === 'DIRECTCOSTS' ? 'Direct' : 'Overhead'}
                       </span>

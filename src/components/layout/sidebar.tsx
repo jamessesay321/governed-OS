@@ -137,6 +137,7 @@ const navigation: NavGroup[] = [
     children: [
       { href: '/forecast', label: 'P&L Forecast' },
       { href: '/cashflow-forecast', label: 'Cash Forecast' },
+      { href: '/forecast-accuracy', label: 'Accuracy Tracking' },
     ],
   },
   {
@@ -163,6 +164,8 @@ const navigation: NavGroup[] = [
       { href: '/revenue', label: 'Revenue Breakdown' },
       { href: '/costs', label: 'Cost Analysis' },
       { href: '/staff-costs', label: 'Staff Costs' },
+      { href: '/headcount', label: 'Headcount Register' },
+      { href: '/trunk-shows', label: 'Trunk Shows' },
     ],
   },
   {
@@ -171,6 +174,31 @@ const navigation: NavGroup[] = [
     href: '/debt',
     children: [
       { href: '/debt', label: 'Command Centre' },
+      { href: '/aged-analysis', label: 'Aged Analysis' },
+    ],
+  },
+  {
+    group: 'Production',
+    icon: 'Blocks',
+    href: '/production',
+    children: [
+      { href: '/production', label: 'WIP & Inventory' },
+    ],
+  },
+  {
+    group: 'Valuation',
+    icon: 'TrendingUp',
+    href: '/valuation',
+    children: [
+      { href: '/valuation', label: 'Business Valuation' },
+    ],
+  },
+  {
+    group: 'Anomalies',
+    icon: 'Activity',
+    href: '/anomalies',
+    children: [
+      { href: '/anomalies', label: 'Anomaly Detection' },
     ],
   },
 
@@ -682,13 +710,13 @@ const icons: Record<string, React.ReactNode> = {
 
 const sectionBreaks: Record<number, string> = {
   0: 'OVERVIEW',              // Dashboard, Business Profile
-  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions, Revenue & Costs, Debt
-  11: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
-  20: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
-  23: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
-  26: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
-  30: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
-  34: 'ADMIN',                // Billing & Plans, Settings, Help & Support
+  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions, Revenue & Costs, Debt, Production, Valuation, Anomalies
+  15: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
+  23: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
+  26: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
+  29: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
+  33: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
+  37: 'ADMIN',                // Billing & Plans, Settings, Help & Support
 };
 
 /* ------------------------------------------------------------------ */

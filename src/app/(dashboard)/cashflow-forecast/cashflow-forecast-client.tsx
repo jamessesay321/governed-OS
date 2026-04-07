@@ -191,9 +191,9 @@ export function CashflowForecastClient({
         <div className={cn(
           'rounded-xl border p-5',
           (scenarioRunway ?? monthsOfRunway) !== null && (scenarioRunway ?? monthsOfRunway)! < 3
-            ? 'bg-red-50 border-red-200'
+            ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
             : (scenarioRunway ?? monthsOfRunway) !== null && (scenarioRunway ?? monthsOfRunway)! < 6
-              ? 'bg-amber-50 border-amber-200'
+              ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
               : 'bg-card'
         )}>
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
@@ -216,10 +216,10 @@ export function CashflowForecastClient({
         <div className={cn(
           'rounded-xl border p-5',
           scenarioCashNegative >= 0 && scenarioCashNegative < 6
-            ? 'bg-red-50 border-red-200'
+            ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800'
             : scenarioCashNegative >= 0
-              ? 'bg-amber-50 border-amber-200'
-              : 'bg-emerald-50 border-emerald-200'
+              ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800'
+              : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
         )}>
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
             {scenarioCashNegative >= 0 ? (
@@ -244,10 +244,10 @@ export function CashflowForecastClient({
 
       {/* Lowest Point Warning */}
       {lowestCash < actualCashPosition * 0.3 && lowestCashMonth && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
+        <div className="rounded-xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium text-amber-800">
+            <p className="font-medium text-amber-800 dark:text-amber-200">
               Lowest projected cash: {formatCurrency(lowestCash)} in {lowestCashMonth.label}
             </p>
             <p className="text-sm text-amber-700 mt-0.5">
@@ -354,7 +354,7 @@ export function CashflowForecastClient({
               {maturityMarkers.map((m) => (
                 <span
                   key={m.facilityName}
-                  className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-800"
+                  className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
                 >
                   <Calendar className="h-3 w-3" />
                   {m.facilityName} · {fmtCompact(m.balance)} · {new Date(m.maturityDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
@@ -565,9 +565,9 @@ export function CashflowForecastClient({
                     className={cn(
                       'flex items-center justify-between p-3 rounded-lg border',
                       daysUntil < 30
-                        ? 'border-red-200 bg-red-50'
+                        ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/30'
                         : daysUntil < 90
-                          ? 'border-amber-200 bg-amber-50'
+                          ? 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30'
                           : ''
                     )}
                   >
