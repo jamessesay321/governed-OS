@@ -40,6 +40,63 @@ export interface ComparableBenchmark {
   unit: string;
 }
 
+// ── Business Plan Data (from Alonuko Business Plan 2025) ──
+
+export interface RevenueTrajectoryPoint {
+  year: string;
+  revenue: number;
+  isProjection: boolean;
+  yoyGrowth: string;
+}
+
+export interface ProductMargin {
+  product: string;
+  grossMargin: number;
+  operatingMargin: number | null;
+  color: string;
+}
+
+export interface FundraiseContext {
+  raising: number;
+  preMoneyValuation: number;
+  structure: string;
+  impliedRevenueMultiple: number;
+}
+
+export interface ExitScenario {
+  year: string;
+  targetRevenue: number;
+  targetEbitdaMargin: number;
+  targetEbitda: number;
+  floorMultiple: number;
+  floorValuation: number;
+  investorReturnMultiple: string;
+}
+
+export interface MarketOpportunity {
+  market: string;
+  size: string;
+  sizeGBP: string;
+}
+
+export interface ProfitabilityMilestone {
+  year: string;
+  target: string;
+  status: 'achieved' | 'in-progress' | 'planned';
+}
+
+export interface BusinessPlanData {
+  revenueTrajectory: RevenueTrajectoryPoint[];
+  productMargins: ProductMargin[];
+  fundraise: FundraiseContext;
+  exitScenario: ExitScenario;
+  markets: MarketOpportunity[];
+  profitabilityPath: ProfitabilityMilestone[];
+  keyMetrics: { label: string; value: string; detail: string }[];
+  teamSize: number;
+  usRevenueShare: number;
+}
+
 export interface ValuationData {
   metrics: ValuationMetrics;
   revenueMultiples: ValuationMultipleResult[];
@@ -51,6 +108,7 @@ export interface ValuationData {
   comparables: ComparableBenchmark[];
   hasData: boolean;
   midEbitdaMultiple: number;
+  businessPlan: BusinessPlanData;
 }
 
 // ── Helpers ──
@@ -268,6 +326,74 @@ export default async function ValuationPage() {
     },
   ];
 
+  // ── Business Plan Data (from Alonuko Business Plan 2025 PDF) ──
+
+  const revenueTrajectory: RevenueTrajectoryPoint[] = [
+    { year: '2021', revenue: 145_000, isProjection: false, yoyGrowth: '' },
+    { year: '2022', revenue: 500_000, isProjection: false, yoyGrowth: '245%' },
+    { year: '2023', revenue: 1_300_000, isProjection: false, yoyGrowth: '160%' },
+    { year: '2024', revenue: 1_400_000, isProjection: false, yoyGrowth: '8%' },
+    { year: '2025E', revenue: 2_000_000, isProjection: true, yoyGrowth: '43%' },
+    { year: '2026E', revenue: 5_000_000, isProjection: true, yoyGrowth: '150%' },
+    { year: '2027E', revenue: 10_000_000, isProjection: true, yoyGrowth: '100%' },
+  ];
+
+  const productMargins: ProductMargin[] = [
+    { product: 'Bridal (Bespoke)', grossMargin: 60, operatingMargin: 50, color: '#7c3aed' },
+    { product: 'Ready to Wear', grossMargin: 70, operatingMargin: 60, color: '#06b6d4' },
+    { product: 'Evening Wear', grossMargin: 70, operatingMargin: 60, color: '#f59e0b' },
+    { product: 'Robes & Lingerie', grossMargin: 90, operatingMargin: null, color: '#ec4899' },
+  ];
+
+  const fundraise: FundraiseContext = {
+    raising: 400_000,
+    preMoneyValuation: 5_000_000,
+    structure: 'SeedFAST',
+    impliedRevenueMultiple: 5_000_000 / 1_400_000,
+  };
+
+  const exitScenario: ExitScenario = {
+    year: '2027',
+    targetRevenue: 10_000_000,
+    targetEbitdaMargin: 15,
+    targetEbitda: 1_500_000,
+    floorMultiple: 4.5,
+    floorValuation: 50_000_000,
+    investorReturnMultiple: '10x',
+  };
+
+  const markets: MarketOpportunity[] = [
+    { market: 'US Bridal Wear', size: '$28bn', sizeGBP: '£22bn' },
+    { market: 'Global Evening Dress', size: '$1.8bn', sizeGBP: '£1.4bn' },
+  ];
+
+  const profitabilityPath: ProfitabilityMilestone[] = [
+    { year: '2025', target: 'Reduce losses via CoGS analysis & debt refinancing', status: 'in-progress' },
+    { year: '2026', target: 'EBITDA positive by year-end', status: 'planned' },
+    { year: '2027', target: 'EBITDA margin of at least 15%', status: 'planned' },
+  ];
+
+  const keyMetrics = [
+    { label: 'Avg Dress Price', value: '£8,957', detail: '50% increase since 2021' },
+    { label: 'Avg Bride Spend', value: '£9,000', detail: '3x from £3k in 2021' },
+    { label: 'Conversion Rate', value: '74%', detail: 'Appointments to confirmed clients' },
+    { label: 'Trunk Show Margin', value: '~50%', detail: 'Operating margin, asset-light model' },
+    { label: 'Social Following', value: '1m+', detail: 'IG, TikTok & Facebook combined' },
+    { label: 'Marketing Spend', value: '<5%', detail: 'Of sales — highly capital-efficient' },
+  ];
+
+  const businessPlan: BusinessPlanData = {
+    revenueTrajectory,
+    productMargins,
+    fundraise,
+    exitScenario,
+    markets,
+    profitabilityPath,
+    keyMetrics,
+    teamSize: 22,
+    usRevenueShare: 70,
+  };
+
   return (
     <ValuationClient
       data={{
@@ -281,6 +407,7 @@ export default async function ValuationPage() {
         comparables,
         hasData,
         midEbitdaMultiple,
+        businessPlan,
       }}
     />
   );

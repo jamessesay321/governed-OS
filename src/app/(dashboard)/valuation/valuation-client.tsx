@@ -9,6 +9,14 @@ import {
   Scale,
   BarChart3,
   Info,
+  Target,
+  Globe,
+  Users,
+  Banknote,
+  ArrowUpRight,
+  CheckCircle2,
+  Clock,
+  Circle,
 } from 'lucide-react';
 import {
   BarChart,
@@ -19,12 +27,17 @@ import {
   Tooltip as RechartsTooltip,
   ResponsiveContainer,
   Cell,
+  ComposedChart,
+  Line,
+  Area,
 } from 'recharts';
 import { formatCurrency } from '@/lib/formatting/currency';
 import type {
   ValuationData,
   BridgeStep,
   ComparableBenchmark,
+  ProductMargin,
+  ProfitabilityMilestone,
 } from './page';
 
 /* ================================================================== */
@@ -94,6 +107,7 @@ export function ValuationClient({ data }: ValuationClientProps) {
     comparables,
     hasData,
     midEbitdaMultiple,
+    businessPlan,
   } = data;
 
   // Equity range from EBITDA multiples
@@ -172,8 +186,40 @@ export function ValuationClient({ data }: ValuationClientProps) {
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Business Valuation</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Indicative enterprise and equity valuation using revenue and EBITDA multiples
+          Indicative enterprise and equity valuation using revenue and EBITDA multiples, enriched with data from the Alonuko Business Plan 2025
         </p>
+      </div>
+
+      {/* ── Current Fundraise Banner ── */}
+      <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 p-5">
+        <div className="flex flex-wrap items-center gap-6">
+          <div className="flex items-center gap-3">
+            <div className="rounded-lg bg-indigo-100 dark:bg-indigo-900/50 p-2.5">
+              <Banknote className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wide">Current Raise</p>
+              <p className="text-lg font-bold text-indigo-900 dark:text-indigo-100">£400k minimum</p>
+            </div>
+          </div>
+          <div className="h-10 w-px bg-indigo-200 dark:bg-indigo-700 hidden sm:block" />
+          <div>
+            <p className="text-xs text-indigo-500 dark:text-indigo-400">Pre-money Valuation</p>
+            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">£5m minimum</p>
+          </div>
+          <div>
+            <p className="text-xs text-indigo-500 dark:text-indigo-400">Structure</p>
+            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">{businessPlan.fundraise.structure}</p>
+          </div>
+          <div>
+            <p className="text-xs text-indigo-500 dark:text-indigo-400">Implied Revenue Multiple</p>
+            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">{businessPlan.fundraise.impliedRevenueMultiple.toFixed(1)}x</p>
+          </div>
+          <div>
+            <p className="text-xs text-indigo-500 dark:text-indigo-400">US Revenue Share</p>
+            <p className="text-sm font-semibold text-indigo-900 dark:text-indigo-100">{businessPlan.usRevenueShare}%</p>
+          </div>
+        </div>
       </div>
 
       {/* ── Metric Cards ── */}
@@ -426,6 +472,194 @@ export function ValuationClient({ data }: ValuationClientProps) {
           </p>
         </div>
       </div>
+
+      {/* ── Revenue Trajectory (Actuals + Projections) ── */}
+      <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">
+          Revenue Trajectory
+        </h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+          Actual performance (2021–2024) and business plan projections (2025–2027) — 9x revenue growth in 3 years
+        </p>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <ComposedChart
+              data={businessPlan.revenueTrajectory}
+              margin={{ top: 20, right: 20, left: 20, bottom: 5 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+              <XAxis dataKey="year" tick={{ fontSize: 12 }} />
+              <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 12 }} />
+              <RechartsTooltip
+                formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Revenue']}
+                contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: 12 }}
+              />
+              <Bar dataKey="revenue" radius={[4, 4, 0, 0]} barSize={40}>
+                {businessPlan.revenueTrajectory.map((entry, index) => (
+                  <Cell
+                    key={`rev-traj-${index}`}
+                    fill={entry.isProjection ? '#818cf8' : '#7c3aed'}
+                    opacity={entry.isProjection ? 0.6 : 1}
+                  />
+                ))}
+              </Bar>
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#7c3aed"
+                strokeWidth={2}
+                strokeDasharray="4 4"
+                dot={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </div>
+        {/* YoY badges */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {businessPlan.revenueTrajectory.filter((p) => p.yoyGrowth).map((p) => (
+            <span
+              key={p.year}
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+                p.isProjection
+                  ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-300'
+                  : 'bg-violet-50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300',
+              )}
+            >
+              {p.year}: <ArrowUpRight className="h-3 w-3" />{p.yoyGrowth}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Product Margin Breakdown + Market Opportunity ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Product Margins */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Product Margin Profile
+          </h2>
+          <div className="space-y-4">
+            {businessPlan.productMargins.map((pm) => (
+              <ProductMarginRow key={pm.product} margin={pm} />
+            ))}
+          </div>
+        </div>
+
+        {/* Market Opportunity + Key Metrics */}
+        <div className="space-y-6">
+          {/* Market Opportunity */}
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              Market Opportunity
+            </h2>
+            <div className="space-y-3">
+              {businessPlan.markets.map((m) => (
+                <div key={m.market} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-gray-800/50 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-gray-400" />
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{m.market}</span>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-gray-900 dark:text-white">{m.size}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{m.sizeGBP}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Operational Metrics Grid */}
+          <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Key Metrics</h2>
+              <div className="flex items-center gap-1 text-xs text-gray-400">
+                <Users className="h-3.5 w-3.5" />
+                {businessPlan.teamSize} team
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {businessPlan.keyMetrics.map((km) => (
+                <div key={km.label} className="rounded-lg bg-gray-50 dark:bg-gray-800/50 px-3 py-2.5">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{km.label}</p>
+                  <p className="text-sm font-bold text-gray-900 dark:text-white">{km.value}</p>
+                  <p className="text-[10px] text-gray-400 dark:text-gray-500">{km.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Profitability Path + Exit Scenario ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Profitability Roadmap */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            Path to Profitability
+          </h2>
+          <div className="space-y-4">
+            {businessPlan.profitabilityPath.map((milestone) => (
+              <MilestoneRow key={milestone.year} milestone={milestone} />
+            ))}
+          </div>
+        </div>
+
+        {/* Exit Scenario */}
+        <div className="rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/20 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-lg font-semibold text-emerald-900 dark:text-emerald-100">
+              {businessPlan.exitScenario.year} Exit Scenario
+            </h2>
+          </div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-700 dark:text-emerald-300">Target Revenue</span>
+              <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                {formatCurrency(businessPlan.exitScenario.targetRevenue)}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-700 dark:text-emerald-300">Target EBITDA Margin</span>
+              <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                {businessPlan.exitScenario.targetEbitdaMargin}%
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-700 dark:text-emerald-300">Implied EBITDA</span>
+              <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                {formatCurrency(businessPlan.exitScenario.targetEbitda)}
+              </span>
+            </div>
+            <div className="h-px bg-emerald-200 dark:bg-emerald-700 my-1" />
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-emerald-700 dark:text-emerald-300">Floor Multiple (Revenue)</span>
+              <span className="text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                {businessPlan.exitScenario.floorMultiple}x
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Floor Valuation</span>
+              <span className="text-lg font-bold text-emerald-900 dark:text-emerald-100">
+                {formatCurrency(businessPlan.exitScenario.floorValuation)}
+              </span>
+            </div>
+            <div className="h-px bg-emerald-200 dark:bg-emerald-700 my-1" />
+            <div className="flex justify-between items-center">
+              <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Investor Return (from £5m)</span>
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-200 dark:bg-emerald-800 px-3 py-1 text-sm font-bold text-emerald-800 dark:text-emerald-200">
+                <ArrowUpRight className="h-3.5 w-3.5" />
+                {businessPlan.exitScenario.investorReturnMultiple}
+              </span>
+            </div>
+          </div>
+          <p className="mt-4 text-xs text-emerald-600 dark:text-emerald-400">
+            Based on business plan projections. Floor valuation is conservative — multiple expected to be higher
+            due to profitability and maturity at exit. Minority exit targeting partners with proven luxury sector expertise.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
@@ -461,6 +695,80 @@ function MetricCard({
       </div>
       <p className="text-xl font-bold text-gray-900 dark:text-white truncate">{value}</p>
       <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{subtext}</p>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Comparable Row (visual range indicator)                            */
+/* ================================================================== */
+
+/* ================================================================== */
+/*  Product Margin Row                                                 */
+/* ================================================================== */
+
+function ProductMarginRow({ margin }: { margin: ProductMargin }) {
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{margin.product}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-gray-500 dark:text-gray-400">
+            GM: <span className="font-semibold text-gray-900 dark:text-white">{margin.grossMargin}%</span>
+          </span>
+          {margin.operatingMargin !== null && (
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              OM: <span className="font-semibold text-gray-900 dark:text-white">{margin.operatingMargin}%</span>
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="relative h-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+        <div
+          className="absolute top-0 left-0 h-full rounded-full transition-all"
+          style={{ width: `${margin.grossMargin}%`, backgroundColor: margin.color, opacity: 0.7 }}
+        />
+        {margin.operatingMargin !== null && (
+          <div
+            className="absolute top-0 left-0 h-full rounded-full transition-all"
+            style={{ width: `${margin.operatingMargin}%`, backgroundColor: margin.color, opacity: 1 }}
+          />
+        )}
+      </div>
+      <div className="flex justify-between mt-1 text-[10px] text-gray-400 dark:text-gray-500">
+        <span>0%</span>
+        <span>100%</span>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  Profitability Milestone Row                                        */
+/* ================================================================== */
+
+function MilestoneRow({ milestone }: { milestone: ProfitabilityMilestone }) {
+  const statusConfig = {
+    'achieved': { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-950/30', label: 'Achieved' },
+    'in-progress': { icon: Clock, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', label: 'In Progress' },
+    'planned': { icon: Circle, color: 'text-gray-400 dark:text-gray-500', bg: 'bg-gray-50 dark:bg-gray-800/50', label: 'Planned' },
+  };
+
+  const config = statusConfig[milestone.status];
+  const StatusIcon = config.icon;
+
+  return (
+    <div className={cn('flex items-start gap-3 rounded-lg px-4 py-3', config.bg)}>
+      <StatusIcon className={cn('h-5 w-5 mt-0.5 shrink-0', config.color)} />
+      <div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900 dark:text-white">{milestone.year}</span>
+          <span className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full', config.bg, config.color)}>
+            {config.label}
+          </span>
+        </div>
+        <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{milestone.target}</p>
+      </div>
     </div>
   );
 }
