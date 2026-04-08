@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { KPIGrid } from '@/components/kpi/kpi-grid';
+import { KPITable } from '@/components/kpi/kpi-table';
 import { KPIDetail } from '@/components/kpi/kpi-detail';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
@@ -19,6 +20,7 @@ import { ExportButton } from '@/components/shared/export-button';
 import type { ExportColumn } from '@/components/shared/export-button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 interface KPIDashboardClientProps {
   orgId: string;
@@ -47,6 +49,7 @@ export function KPIDashboardClient({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recalculating, setRecalculating] = useState(false);
+  const [view, setView] = useState<'table' | 'cards'>('table');
 
   const canRecalculate = hasMinRole(role as Role, 'advisor');
 
@@ -245,10 +248,44 @@ export function KPIDashboardClient({
         </div>
       ) : (
         <>
-          <KPIGrid
-            kpis={kpis}
-            onSelect={handleSelectKPI}
-          />
+          {/* View toggle */}
+          <div className="flex gap-1 bg-muted rounded-lg p-1 w-fit">
+            <button
+              className={cn(
+                'px-3 py-1.5 text-sm rounded-md transition-colors',
+                view === 'table'
+                  ? 'bg-background shadow-sm font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setView('table')}
+            >
+              Table
+            </button>
+            <button
+              className={cn(
+                'px-3 py-1.5 text-sm rounded-md transition-colors',
+                view === 'cards'
+                  ? 'bg-background shadow-sm font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+              onClick={() => setView('cards')}
+            >
+              Cards
+            </button>
+          </div>
+
+          {view === 'table' ? (
+            <KPITable
+              kpis={kpis}
+              onSelectKPI={(kpi) => handleSelectKPI(kpi.key)}
+              selectedKPIKey={selectedKPI ?? undefined}
+            />
+          ) : (
+            <KPIGrid
+              kpis={kpis}
+              onSelect={handleSelectKPI}
+            />
+          )}
 
           {selectedKPIData && (
             <KPIDetail

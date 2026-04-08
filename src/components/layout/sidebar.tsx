@@ -136,6 +136,7 @@ const navigation: NavGroup[] = [
     href: '/forecast',
     children: [
       { href: '/forecast', label: 'P&L Forecast' },
+      { href: '/forecast/drivers', label: 'Drivers' },
       { href: '/cashflow-forecast', label: 'Cash Forecast' },
       { href: '/forecast-accuracy', label: 'Accuracy Tracking' },
     ],
@@ -166,6 +167,7 @@ const navigation: NavGroup[] = [
       { href: '/staff-costs', label: 'Staff Costs' },
       { href: '/headcount', label: 'Headcount Register' },
       { href: '/trunk-shows', label: 'Trunk Shows' },
+      { href: '/trunk-shows/planner', label: 'Planner & Roadmap' },
     ],
   },
   {
@@ -358,6 +360,7 @@ const navigation: NavGroup[] = [
       { href: '/reports/builder', label: 'Report Builder' },
       { href: '/reports/new', label: 'Custom Reports' },
       { href: '/reports/templates', label: 'Templates' },
+      { href: '/settings/scheduled-reports', label: 'Schedules' },
     ],
   },
   {
@@ -493,6 +496,7 @@ const navigation: NavGroup[] = [
       { href: '/settings/preferences', label: 'Preferences' },
       { href: '/settings/modules', label: 'Modules' },
       { href: '/settings/blueprints', label: 'Industry Blueprints' },
+      { href: '/settings/scheduled-reports', label: 'Scheduled Reports' },
       { href: '/settings/exports', label: 'Data Exports' },
       { href: '/settings/data', label: 'Data & Privacy' },
     ],

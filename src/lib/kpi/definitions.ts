@@ -5,6 +5,8 @@
 
 export type KPIFormat = 'currency' | 'percentage' | 'months' | 'ratio' | 'number' | 'days';
 export type BusinessType = 'universal' | 'saas' | 'ecommerce' | 'services' | 'fashion';
+export type KPICategory = 'profitability' | 'activity' | 'efficiency' | 'asset_usage' | 'liquidity' | 'coverage';
+export type KPIImportance = 'critical' | 'high' | 'medium' | 'low';
 
 export type KPIDefinition = {
   key: string;
@@ -16,6 +18,12 @@ export type KPIDefinition = {
   format: KPIFormat;
   business_types: BusinessType[];
   higher_is_better: boolean;
+  /** Category grouping for table display */
+  category: KPICategory;
+  /** Importance level for prioritisation */
+  importance: KPIImportance;
+  /** Reasonable default target value (in same unit as formula output) */
+  default_target: number | null;
 };
 
 /**
@@ -130,6 +138,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'revenue_growth',
@@ -140,6 +151,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: 0.05, // 5% month-over-month growth
   },
   {
     key: 'gross_margin',
@@ -150,6 +164,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: 0.5, // 50% gross margin
   },
   {
     key: 'operating_margin',
@@ -160,6 +177,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'high',
+    default_target: 0.15, // 15% operating margin
   },
   {
     key: 'net_margin',
@@ -170,6 +190,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: 0.1, // 10% net margin
   },
   {
     key: 'burn_rate',
@@ -180,6 +203,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'liquidity',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'cash_runway_months',
@@ -193,6 +219,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'months',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'liquidity',
+    importance: 'critical',
+    default_target: 12, // 12 months runway
   },
   {
     key: 'cash_position',
@@ -203,6 +232,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'liquidity',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'ar_days',
@@ -217,6 +249,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'days',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'activity',
+    importance: 'high',
+    default_target: 30, // 30 days
   },
   {
     key: 'ap_days',
@@ -231,6 +266,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'days',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'activity',
+    importance: 'medium',
+    default_target: 45, // 45 days
   },
   {
     key: 'working_capital',
@@ -241,6 +279,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'activity',
+    importance: 'high',
+    default_target: null, // varies by business
   },
   {
     key: 'revenue_per_employee',
@@ -254,6 +295,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'efficiency',
+    importance: 'medium',
+    default_target: 10000000, // £100,000 annual revenue per employee (in pence)
   },
   {
     key: 'opex_ratio',
@@ -264,6 +308,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'high',
+    default_target: 0.3, // 30% of revenue
   },
   {
     key: 'current_ratio',
@@ -274,6 +321,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'ratio',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'asset_usage',
+    importance: 'high',
+    default_target: 1.5, // 1.5x current ratio
   },
   {
     key: 'quick_ratio',
@@ -284,6 +334,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'ratio',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'asset_usage',
+    importance: 'high',
+    default_target: 1.0, // 1.0x quick ratio
   },
   {
     key: 'debt_to_equity',
@@ -298,6 +351,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'ratio',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'asset_usage',
+    importance: 'medium',
+    default_target: 1.0, // 1.0x debt-to-equity
   },
   {
     key: 'ebitda',
@@ -308,6 +364,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'ebitda_margin',
@@ -321,6 +380,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'high',
+    default_target: 0.2, // 20% EBITDA margin
   },
   {
     key: 'cash_conversion_cycle',
@@ -338,6 +400,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'days',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'activity',
+    importance: 'high',
+    default_target: 30, // 30 days cycle
   },
   {
     key: 'cost_of_revenue_ratio',
@@ -348,6 +413,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'medium',
+    default_target: 0.5, // 50% cost of revenue
   },
   {
     key: 'employee_cost_ratio',
@@ -358,6 +426,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'medium',
+    default_target: 0.35, // 35% employee cost ratio
   },
 
   // ── UK Compliance-Aware KPIs ──────────────────────────────────────
@@ -376,6 +447,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'ratio',
     business_types: ['universal'],
     higher_is_better: false,
+    category: 'coverage',
+    importance: 'medium',
+    default_target: 0.8, // alert when within 80% of threshold
   },
   {
     key: 'going_concern_ratio',
@@ -389,6 +463,9 @@ const universalKPIs: KPIDefinition[] = [
     format: 'ratio',
     business_types: ['universal'],
     higher_is_better: true,
+    category: 'coverage',
+    importance: 'critical',
+    default_target: 1.2, // 1.2x going concern ratio
   },
 ];
 
@@ -404,6 +481,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['saas'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'arr',
@@ -414,6 +494,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['saas'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'nrr',
@@ -427,6 +510,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['saas'],
     higher_is_better: true,
+    category: 'activity',
+    importance: 'critical',
+    default_target: 1.1, // 110% NRR
   },
   {
     key: 'grr',
@@ -440,6 +526,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['saas'],
     higher_is_better: true,
+    category: 'activity',
+    importance: 'high',
+    default_target: 0.9, // 90% GRR
   },
   {
     key: 'cac',
@@ -450,6 +539,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['saas'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'high',
+    default_target: null, // varies by business
   },
   {
     key: 'ltv',
@@ -466,6 +558,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['saas'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'high',
+    default_target: null, // varies by business
   },
   {
     key: 'ltv_cac_ratio',
@@ -485,6 +580,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'ratio',
     business_types: ['saas'],
     higher_is_better: true,
+    category: 'efficiency',
+    importance: 'critical',
+    default_target: 3.0, // 3x LTV:CAC
   },
   {
     key: 'payback_period',
@@ -504,6 +602,9 @@ const saasKPIs: KPIDefinition[] = [
     format: 'months',
     business_types: ['saas'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'high',
+    default_target: 12, // 12 months payback
   },
 ];
 
@@ -519,6 +620,9 @@ const ecommerceKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['ecommerce'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: null, // varies by business
   },
   {
     key: 'aov',
@@ -529,6 +633,9 @@ const ecommerceKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['ecommerce'],
     higher_is_better: true,
+    category: 'activity',
+    importance: 'high',
+    default_target: null, // varies by business
   },
   {
     key: 'repeat_purchase_rate',
@@ -539,6 +646,9 @@ const ecommerceKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['ecommerce'],
     higher_is_better: true,
+    category: 'activity',
+    importance: 'high',
+    default_target: 0.3, // 30% repeat purchases
   },
   {
     key: 'shipping_cost_ratio',
@@ -549,6 +659,9 @@ const ecommerceKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['ecommerce'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'medium',
+    default_target: 0.08, // 8% shipping cost
   },
 ];
 
@@ -564,6 +677,9 @@ const servicesKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['services'],
     higher_is_better: true,
+    category: 'efficiency',
+    importance: 'critical',
+    default_target: 0.75, // 75% utilisation
   },
   {
     key: 'average_hourly_rate',
@@ -574,6 +690,9 @@ const servicesKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['services'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'high',
+    default_target: null, // varies by business
   },
   {
     key: 'project_margin',
@@ -584,6 +703,9 @@ const servicesKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['services'],
     higher_is_better: true,
+    category: 'profitability',
+    importance: 'critical',
+    default_target: 0.4, // 40% project margin
   },
 ];
 
@@ -603,6 +725,9 @@ const fashionKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['fashion'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'high',
+    default_target: 0.35, // 35% material cost
   },
   {
     key: 'opex_to_revenue',
@@ -613,6 +738,9 @@ const fashionKPIs: KPIDefinition[] = [
     format: 'percentage',
     business_types: ['fashion'],
     higher_is_better: false,
+    category: 'efficiency',
+    importance: 'medium',
+    default_target: 0.3, // 30% studio costs
   },
   {
     key: 'revenue_per_head',
@@ -626,6 +754,9 @@ const fashionKPIs: KPIDefinition[] = [
     format: 'currency',
     business_types: ['fashion'],
     higher_is_better: true,
+    category: 'efficiency',
+    importance: 'medium',
+    default_target: null, // varies by business
   },
 ];
 

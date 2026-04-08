@@ -4,7 +4,7 @@ import { roundCurrency } from '@/lib/financial/normalise';
 import { getKPIsForBusinessType, emptyKPIInputData } from './definitions';
 import { parseLineItems, getPeriodDateRange } from '@/lib/intelligence/line-item-parser';
 import { calculateIndustryKPIs } from '@/lib/intelligence/industry-kpis';
-import type { BusinessType, KPIFormat } from './definitions';
+import type { BusinessType, KPIFormat, KPICategory, KPIImportance } from './definitions';
 import type {
   NormalisedFinancial,
   ChartOfAccount,
@@ -27,6 +27,12 @@ export type CalculatedKPI = {
   benchmark_value: number | null;
   benchmark_status: 'green' | 'amber' | 'red' | 'none';
   higher_is_better: boolean;
+  /** Category grouping for table display */
+  category: KPICategory;
+  /** Importance level for prioritisation */
+  importance: KPIImportance;
+  /** Default target value for pass/fail comparison */
+  default_target: number | null;
 };
 
 /**
@@ -206,6 +212,9 @@ export async function calculateKPIs(
       benchmark_value: benchmarkResult.benchmarkValue,
       benchmark_status: benchmarkResult.status,
       higher_is_better: def.higher_is_better,
+      category: def.category,
+      importance: def.importance,
+      default_target: def.default_target,
     });
   }
 
@@ -241,6 +250,9 @@ export async function calculateKPIs(
           benchmark_value: null,
           benchmark_status: 'none',
           higher_is_better: pk.higherIsBetter,
+          category: 'profitability',
+          importance: 'medium',
+          default_target: null,
         });
       }
     }

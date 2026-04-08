@@ -179,7 +179,7 @@ export function CostsClient({
             account: a.accountName,
             code: a.accountCode,
             category: a.category,
-            class: a.accountClass,
+            class: a.xeroClass,
             total: a.total,
             percentOfCosts: ((a.total / totalCosts) * 100).toFixed(1),
           }))}

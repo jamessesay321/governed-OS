@@ -5,6 +5,8 @@
 
 export type KPIFormat = 'currency' | 'percentage' | 'months' | 'ratio' | 'days' | 'number';
 export type TrendDirection = 'up' | 'down' | 'flat';
+export type KPICategory = 'profitability' | 'activity' | 'efficiency' | 'asset_usage' | 'liquidity' | 'coverage';
+export type KPIImportance = 'critical' | 'high' | 'medium' | 'low';
 
 export type CalculatedKPI = {
   key: string;
@@ -20,6 +22,12 @@ export type CalculatedKPI = {
   benchmark_value: number | null;
   benchmark_status: 'green' | 'amber' | 'red' | 'none';
   higher_is_better: boolean;
+  /** Category grouping for table display */
+  category: KPICategory;
+  /** Importance level for prioritisation */
+  importance: KPIImportance;
+  /** Default target value for pass/fail comparison */
+  default_target: number | null;
 };
 
 export function formatKPIValue(
