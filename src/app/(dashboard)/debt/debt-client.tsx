@@ -39,6 +39,7 @@ import type {
   VATQuarter,
 } from '@/types/debt';
 import { CLASSIFICATION_CONFIG, FACILITY_TYPE_LABELS } from '@/types/debt';
+import { ExportButton, type ExportColumn } from '@/components/shared/export-button';
 
 /* ================================================================== */
 /*  Props                                                              */
@@ -1095,6 +1096,29 @@ function EmptyState({ orgId }: { orgId: string }) {
 }
 
 /* ================================================================== */
+/*  Export Columns                                                     */
+/* ================================================================== */
+
+const DEBT_EXPORT_COLUMNS: ExportColumn[] = [
+  { header: 'Facility Name', key: 'facility_name', format: 'text' },
+  { header: 'Lender', key: 'lender', format: 'text' },
+  { header: 'Type', key: 'facility_type', format: 'text' },
+  { header: 'Category', key: 'category', format: 'text' },
+  { header: 'Classification', key: 'classification', format: 'text' },
+  { header: 'Status', key: 'status', format: 'text' },
+  { header: 'Original Amount', key: 'original_amount', format: 'currency' },
+  { header: 'Current Balance', key: 'current_balance', format: 'currency' },
+  { header: 'Monthly Repayment', key: 'monthly_repayment', format: 'currency' },
+  { header: 'Interest / APR', key: 'interest_rate', format: 'percentage' },
+  { header: 'Start Date', key: 'start_date', format: 'date' },
+  { header: 'Maturity Date', key: 'maturity_date', format: 'date' },
+  { header: 'Repayment Frequency', key: 'repayment_frequency', format: 'text' },
+  { header: 'Secured', key: 'secured', format: 'text' },
+  { header: 'Has Debenture', key: 'has_debenture', format: 'text' },
+  { header: 'Refinance Eligible', key: 'refinance_eligible', format: 'text' },
+];
+
+/* ================================================================== */
 /*  Main Client                                                        */
 /* ================================================================== */
 
@@ -1108,9 +1132,18 @@ export function DebtClient({ facilities, summary, hasData, orgId, taxLiabilities
   if (!hasData) {
     return (
       <div className="mx-auto max-w-7xl space-y-8 p-6 lg:p-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Debt Command Centre</h1>
-          <p className="mt-1 text-sm text-gray-500">Full visibility across all business debt, director loans, and creditor arrangements</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Debt Command Centre</h1>
+            <p className="mt-1 text-sm text-gray-500">Full visibility across all business debt, director loans, and creditor arrangements</p>
+          </div>
+          <ExportButton
+            data={[]}
+            columns={DEBT_EXPORT_COLUMNS}
+            filename="debt-facilities"
+            title="Debt Command Centre"
+            disabled
+          />
         </div>
         <EmptyState orgId={orgId} />
       </div>
@@ -1128,9 +1161,34 @@ export function DebtClient({ facilities, summary, hasData, orgId, taxLiabilities
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 p-6 lg:p-8">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Debt Command Centre</h1>
-        <p className="mt-1 text-sm text-gray-500">Full visibility across all business debt, director loans, and creditor arrangements</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Debt Command Centre</h1>
+          <p className="mt-1 text-sm text-gray-500">Full visibility across all business debt, director loans, and creditor arrangements</p>
+        </div>
+        <ExportButton
+          data={facilities.map((f) => ({
+            facility_name: f.facility_name,
+            lender: f.lender,
+            facility_type: FACILITY_TYPE_LABELS[f.facility_type],
+            category: f.category,
+            classification: f.classification,
+            status: f.status,
+            original_amount: Number(f.original_amount),
+            current_balance: Number(f.current_balance),
+            monthly_repayment: Number(f.monthly_repayment),
+            interest_rate: Number(f.effective_apr ?? f.interest_rate ?? 0),
+            start_date: f.start_date ?? '',
+            maturity_date: f.maturity_date ?? '',
+            repayment_frequency: f.repayment_frequency,
+            secured: f.secured ? 'Yes' : 'No',
+            has_debenture: f.has_debenture ? 'Yes' : 'No',
+            refinance_eligible: f.refinance_eligible ? 'Yes' : 'No',
+          }))}
+          columns={DEBT_EXPORT_COLUMNS}
+          filename="debt-facilities"
+          title="Debt Command Centre"
+        />
       </div>
 
       {/* Tab Navigation */}

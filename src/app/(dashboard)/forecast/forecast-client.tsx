@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { VoiceInput } from '@/components/ui/voice-input';
 import type { ForecastResult, ForecastAssumption } from '@/lib/forecast/engine';
 import type { Scenario } from '@/lib/forecast/scenarios';
+import { ExportButton } from '@/components/shared/export-button';
+import type { ExportColumn } from '@/components/shared/export-button';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -195,23 +197,46 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
 
   const chartData = forecast ? buildChartData(forecast, scenario) : [];
 
+  const exportColumns: ExportColumn[] = [
+    { header: 'Period', key: 'period', format: 'text' },
+    { header: 'Revenue', key: 'revenue', format: 'currency' },
+    { header: 'Net Profit', key: 'netProfit', format: 'currency' },
+    { header: 'Cash Position', key: 'cash', format: 'currency' },
+    ...(scenario
+      ? [
+          { header: 'Scenario Revenue', key: 'scenarioRevenue', format: 'currency' as const },
+          { header: 'Scenario Profit', key: 'scenarioProfit', format: 'currency' as const },
+          { header: 'Scenario Cash', key: 'scenarioCash', format: 'currency' as const },
+        ]
+      : []),
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Forecast</h1>
           <p className="text-muted-foreground">
             Three-way financial forecast: P&L, Balance Sheet, and Cash Flow
           </p>
         </div>
-        {forecast && (
-          <div className="text-sm text-muted-foreground">
-            Confidence: {Math.round((forecast.confidence || 0) * 100)}%
-            {' | '}
-            Generated: {new Date(forecast.generatedAt).toLocaleDateString()}
-          </div>
-        )}
+        <div className="flex items-center gap-3">
+          {forecast && (
+            <div className="text-sm text-muted-foreground">
+              Confidence: {Math.round((forecast.confidence || 0) * 100)}%
+              {' | '}
+              Generated: {new Date(forecast.generatedAt).toLocaleDateString()}
+            </div>
+          )}
+          <ExportButton
+            data={chartData}
+            columns={exportColumns}
+            filename="forecast"
+            title="Financial Forecast"
+            disabled={chartData.length === 0}
+          />
+        </div>
       </div>
 
       {error && (

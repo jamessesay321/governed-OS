@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { ExportButton } from '@/components/shared/export-button';
 import {
   TrendingUp,
   TrendingDown,
@@ -158,11 +159,31 @@ export function RevenueClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Revenue Breakdown</h1>
-        <p className="text-muted-foreground">
-          Revenue streams, mix analysis, and growth trends
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Revenue Breakdown</h1>
+          <p className="text-muted-foreground">
+            Revenue streams, mix analysis, and growth trends
+          </p>
+        </div>
+        <ExportButton
+          data={topAccounts.map((a) => ({
+            account: a.accountName,
+            code: a.accountCode,
+            category: a.category,
+            total: a.total,
+            percentOfRevenue: ((a.total / totalRevenue) * 100).toFixed(1),
+          }))}
+          columns={[
+            { header: 'Account', key: 'account', format: 'text' },
+            { header: 'Code', key: 'code', format: 'text' },
+            { header: 'Category', key: 'category', format: 'text' },
+            { header: 'Total', key: 'total', format: 'currency' },
+            { header: '% of Revenue', key: 'percentOfRevenue', format: 'percentage' },
+          ]}
+          filename="revenue-breakdown"
+          title="Revenue Breakdown"
+        />
       </div>
 
       {/* Key Metrics */}

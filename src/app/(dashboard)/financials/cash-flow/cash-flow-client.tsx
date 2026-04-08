@@ -17,6 +17,7 @@ import { CrossRef } from '@/components/shared/in-page-link';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
+import { ExportButton, ExportColumn } from '@/components/shared/export-button';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string; type: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -471,21 +472,38 @@ export function CashFlowClient({
     { Section: 'Reconciliation', Description: 'Closing Cash Balance', [formatPeriodLabel(currentPeriod)]: closingCash, ...(priorPeriod ? { [formatPeriodLabel(priorPeriod)]: priorClosingCash } : {}) },
   );
 
+  const exportColumns: ExportColumn[] = [
+    { header: 'Section', key: 'Section', format: 'text' },
+    { header: 'Description', key: 'Description', format: 'text' },
+    { header: formatPeriodLabel(currentPeriod), key: formatPeriodLabel(currentPeriod), format: 'currency' },
+    ...(priorPeriod
+      ? [{ header: formatPeriodLabel(priorPeriod), key: formatPeriodLabel(priorPeriod), format: 'currency' as const }]
+      : []),
+  ];
+
   const colCount = priorPeriod ? 5 : 3;
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div>
-        <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          &larr; Back to Financials
-        </Link>
-        <div className="flex items-center gap-3 mt-1">
-          <h2 className="text-2xl font-bold">Cash Flow Statement</h2>
-          <DataFreshness lastSyncAt={lastSyncAt} />
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            &larr; Back to Financials
+          </Link>
+          <div className="flex items-center gap-3 mt-1">
+            <h2 className="text-2xl font-bold">Cash Flow Statement</h2>
+            <DataFreshness lastSyncAt={lastSyncAt} />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            Indirect method, as at {formatPeriodLabel(currentPeriod)}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          Indirect method, as at {formatPeriodLabel(currentPeriod)}
-        </p>
+        <ExportButton
+          data={csvData}
+          columns={exportColumns}
+          filename="cash-flow-statement"
+          title="Cash Flow Statement"
+        />
       </div>
       <ChallengeButton
         page="cash-flow"

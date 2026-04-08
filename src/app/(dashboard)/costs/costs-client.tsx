@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { ExportButton } from '@/components/shared/export-button';
 import {
   TrendingUp,
   TrendingDown,
@@ -166,11 +167,34 @@ export function CostsClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Cost Analysis</h1>
-        <p className="text-muted-foreground">
-          Direct costs, overheads, interest expense, and cost efficiency metrics
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Cost Analysis</h1>
+          <p className="text-muted-foreground">
+            Direct costs, overheads, interest expense, and cost efficiency metrics
+          </p>
+        </div>
+        <ExportButton
+          data={topAccounts.map((a) => ({
+            account: a.accountName,
+            code: a.accountCode,
+            category: a.category,
+            class: a.accountClass,
+            total: a.total,
+            percentOfCosts: ((a.total / totalCosts) * 100).toFixed(1),
+          }))}
+          columns={[
+            { header: 'Account', key: 'account', format: 'text' },
+            { header: 'Code', key: 'code', format: 'text' },
+            { header: 'Category', key: 'category', format: 'text' },
+            { header: 'Class', key: 'class', format: 'text' },
+            { header: 'Total', key: 'total', format: 'currency' },
+            { header: '% of Costs', key: 'percentOfCosts', format: 'percentage' },
+          ]}
+          filename="cost-analysis"
+          title="Cost Analysis"
+          subtitle={`Total Costs: ${fmtCompact(totalCosts)} · Cost:Revenue Ratio: ${(costToRevenueRatio * 100).toFixed(1)}%`}
+        />
       </div>
 
       {/* Key Metrics */}

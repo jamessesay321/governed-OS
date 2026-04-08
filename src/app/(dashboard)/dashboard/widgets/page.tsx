@@ -1,8 +1,8 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
-import WidgetsClient from './widgets-client';
+import { WidgetsClient } from './widgets-client';
 
 /* ─── expense category colour palette ─── */
 const EXPENSE_COLORS = [
@@ -16,11 +16,118 @@ const EXPENSE_COLORS = [
   '#94a3b8',
 ];
 
+/**
+ * Available widget types for the customiser.
+ * Each entry maps to a rendered widget on the main dashboard.
+ */
+const CUSTOMISABLE_WIDGETS: Array<{
+  type: string;
+  label: string;
+  description: string;
+}> = [
+  {
+    type: 'kpi_cards',
+    label: 'KPI Summary Cards',
+    description: 'Key performance indicator cards with trends and period comparisons.',
+  },
+  {
+    type: 'pnl_table',
+    label: 'Profit & Loss Table',
+    description: 'Full P&L breakdown with drill-down into accounts and transactions.',
+  },
+  {
+    type: 'narrative_summary',
+    label: 'AI Narrative Summary',
+    description: 'Claude-generated financial insight and commentary for the period.',
+  },
+  {
+    type: 'waterfall_chart',
+    label: 'Revenue Waterfall',
+    description: 'Visual bridge from revenue to net profit showing each step.',
+  },
+  {
+    type: 'cash_position',
+    label: 'Cash Position',
+    description: 'Current cash balance, runway projection, and cash flow trends.',
+  },
+  {
+    type: 'data_health',
+    label: 'Data Health Widget',
+    description: 'Sync status, data freshness, and data quality indicators.',
+  },
+  {
+    type: 'activity_feed',
+    label: 'Activity Feed',
+    description: 'Recent team activity, comments, and audit trail entries.',
+  },
+  {
+    type: 'sync_status',
+    label: 'Sync Status',
+    description: 'Xero connection health, last sync time, and records synced.',
+  },
+];
+
+/** Default widget order when no saved config exists */
+const DEFAULT_WIDGET_CONFIG = CUSTOMISABLE_WIDGETS.map((w, i) => ({
+  type: w.type,
+  visible: true,
+  order: i,
+}));
+
 export default async function DashboardWidgetsPage() {
-  const { orgId } = await getUserProfile();
+  const { orgId, userId } = await getUserProfile();
   const supabase = await createClient();
 
-  /* ─── 1. Check Xero connection ─── */
+  /* ─── 1. Fetch saved widget config ─── */
+  let savedConfig: Array<{ type: string; visible: boolean; order: number }> | null = null;
+
+  try {
+    const svc = await createUntypedServiceClient();
+
+    // Try dashboard_preferences first
+    const { data: prefData } = await svc
+      .from('dashboard_preferences')
+      .select('custom_widgets')
+      .eq('user_id', userId)
+      .eq('org_id', orgId)
+      .maybeSingle();
+
+    if (prefData?.custom_widgets && Array.isArray(prefData.custom_widgets)) {
+      const items = prefData.custom_widgets as unknown[];
+      const first = items[0] as Record<string, unknown> | undefined;
+      if (first && 'visible' in first && 'order' in first) {
+        savedConfig = prefData.custom_widgets as Array<{ type: string; visible: boolean; order: number }>;
+      }
+    }
+
+    // Fallback to dashboard_widget_configs
+    if (!savedConfig) {
+      const { data: configData } = await svc
+        .from('dashboard_widget_configs')
+        .select('widgets')
+        .eq('user_id', userId)
+        .eq('org_id', orgId)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (configData?.widgets && Array.isArray(configData.widgets)) {
+        const items = configData.widgets as unknown[];
+        const first = items[0] as Record<string, unknown> | undefined;
+        if (first && 'visible' in first && 'order' in first) {
+          savedConfig = configData.widgets as Array<{ type: string; visible: boolean; order: number }>;
+        }
+      }
+    }
+  } catch {
+    // Table may not exist yet — proceed with defaults
+  }
+
+  // Merge saved config with available widgets
+  const widgetConfig = savedConfig
+    ? mergeWidgetConfig(savedConfig, CUSTOMISABLE_WIDGETS)
+    : DEFAULT_WIDGET_CONFIG;
+
+  /* ─── 2. Check Xero connection ─── */
   const { data: connections } = await supabase
     .from('xero_connections')
     .select('id')
@@ -30,7 +137,7 @@ export default async function DashboardWidgetsPage() {
 
   const connected = (connections?.length ?? 0) > 0;
 
-  /* ─── 2. Fetch normalised financials ─── */
+  /* ─── 3. Fetch normalised financials ─── */
   const { data: rawFinancials } = await supabase
     .from('normalised_financials')
     .select('*, chart_of_accounts!inner(id, code, name, type, class, status)')
@@ -48,7 +155,7 @@ export default async function DashboardWidgetsPage() {
     updated_at: r.updated_at,
   }));
 
-  /* ─── 3. Fetch chart of accounts ─── */
+  /* ─── 4. Fetch chart of accounts ─── */
   const { data: rawAccounts } = await supabase
     .from('chart_of_accounts')
     .select('*')
@@ -66,11 +173,14 @@ export default async function DashboardWidgetsPage() {
         cashTrend={[]}
         expenseBreakdown={[]}
         kpis={[]}
+        initialWidgets={widgetConfig}
+        availableWidgets={CUSTOMISABLE_WIDGETS}
+        defaultWidgets={DEFAULT_WIDGET_CONFIG}
       />
     );
   }
 
-  /* ─── 4. Build P&L for latest period and last 6 ─── */
+  /* ─── 5. Build P&L for latest period and last 6 ─── */
   const last6 = periods.slice(0, 6).reverse(); // chronological
   const latestPeriod = periods[0];
   const latestPnL = buildPnL(financials, accounts, latestPeriod);
@@ -79,13 +189,13 @@ export default async function DashboardWidgetsPage() {
   const prevPnL =
     periods.length > 1 ? buildPnL(financials, accounts, periods[1]) : null;
 
-  /* ─── 5. Revenue trend (6 months) ─── */
+  /* ─── 6. Revenue trend (6 months) ─── */
   const revenueTrend = last6.map((period) => {
     const pnl = buildPnL(financials, accounts, period);
     return { period, revenue: pnl.revenue };
   });
 
-  /* ─── 6. P&L summary for latest month ─── */
+  /* ─── 7. P&L summary for latest month ─── */
   const pnlSummary = [
     { name: 'Revenue', value: latestPnL.revenue },
     { name: 'COGS', value: latestPnL.costOfSales },
@@ -94,7 +204,7 @@ export default async function DashboardWidgetsPage() {
     { name: 'Net Profit', value: latestPnL.netProfit },
   ];
 
-  /* ─── 7. Expense breakdown by account name ─── */
+  /* ─── 8. Expense breakdown by account name ─── */
   const accountMap = new Map<string, ChartOfAccount>();
   for (const acc of accounts) {
     accountMap.set(acc.id, acc);
@@ -126,7 +236,7 @@ export default async function DashboardWidgetsPage() {
       color: EXPENSE_COLORS[i % EXPENSE_COLORS.length],
     }));
 
-  /* ─── 8. Cash position trend ─── */
+  /* ─── 9. Cash position trend ─── */
   const cashTrend = last6.map((period) => {
     const periodFins = financials.filter((f) => f.period === period);
     let periodCash = 0;
@@ -145,7 +255,7 @@ export default async function DashboardWidgetsPage() {
     return { period, cash: periodCash };
   });
 
-  /* ─── 9. KPIs ─── */
+  /* ─── 10. KPIs ─── */
   const grossMarginPct =
     latestPnL.revenue > 0
       ? Math.round((latestPnL.grossProfit / latestPnL.revenue) * 100)
@@ -192,6 +302,39 @@ export default async function DashboardWidgetsPage() {
       cashTrend={cashTrend}
       expenseBreakdown={expenseBreakdown}
       kpis={kpis}
+      initialWidgets={widgetConfig}
+      availableWidgets={CUSTOMISABLE_WIDGETS}
+      defaultWidgets={DEFAULT_WIDGET_CONFIG}
     />
   );
+}
+
+/**
+ * Merge saved config with the full list of available widgets.
+ * Preserves saved order/visibility, appends any new widgets at the end.
+ */
+function mergeWidgetConfig(
+  saved: Array<{ type: string; visible: boolean; order: number }>,
+  available: Array<{ type: string; label: string; description: string }>
+): Array<{ type: string; visible: boolean; order: number }> {
+  const savedTypes = new Set(saved.map((w) => w.type));
+  const merged = [...saved];
+
+  // Add any new widgets that were not in the saved config
+  for (const widget of available) {
+    if (!savedTypes.has(widget.type)) {
+      merged.push({
+        type: widget.type,
+        visible: true,
+        order: merged.length,
+      });
+    }
+  }
+
+  // Remove widgets that no longer exist in available list
+  const availableTypes = new Set(available.map((w) => w.type));
+  return merged
+    .filter((w) => availableTypes.has(w.type))
+    .sort((a, b) => a.order - b.order)
+    .map((w, i) => ({ ...w, order: i }));
 }

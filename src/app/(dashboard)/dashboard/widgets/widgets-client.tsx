@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   DndContext,
@@ -15,71 +15,49 @@ import {
   SortableContext,
   sortableKeyboardCoordinates,
   useSortable,
-  rectSortingStrategy,
+  verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import {
-  BarChart,
-  Bar,
-  LineChart as RechartsLineChart,
-  Line,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
-  AreaChart as RechartsAreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { useCurrency } from '@/components/providers/currency-context';
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import {
-  WIDGET_REGISTRY,
-  type WidgetType,
-} from '@/lib/dashboard/templates';
-import {
-  FULL_WIDGET_REGISTRY,
-  ALL_EXTENDED_WIDGET_TYPES,
-  type ExtendedWidgetType,
-} from '@/lib/dashboard/widget-registry';
-import {
-  WidgetTemplateSelector,
-  ENHANCED_TEMPLATES,
-  type WidgetTemplate,
-} from '@/components/dashboard/widget-template-selector';
-import {
-  User,
-  Briefcase,
-  TrendingUp,
-  BookOpen,
-  LayoutGrid,
+  BarChart3,
+  Table,
+  Sparkles,
+  BarChart,
+  Wallet,
+  ShieldCheck,
+  Rss,
+  RefreshCw,
   GripVertical,
+  Save,
+  RotateCcw,
+  ArrowLeft,
+  Check,
+  Eye,
+  EyeOff,
+  AlertCircle,
+  type LucideIcon,
 } from 'lucide-react';
-
-// New widget component imports
-import { DebtMaturityWidget } from '@/components/dashboard/widgets/debt-maturity-widget';
-import { WorkingCapitalWidget } from '@/components/dashboard/widgets/working-capital-widget';
-import { HeadcountCostWidget } from '@/components/dashboard/widgets/headcount-cost-widget';
-import { RevenueConcentrationWidget } from '@/components/dashboard/widgets/revenue-concentration-widget';
-import { MarginTrendWidget } from '@/components/dashboard/widgets/margin-trend-widget';
-import { RunwayWidget } from '@/components/dashboard/widgets/runway-widget';
-import { TopCustomersWidget } from '@/components/dashboard/widgets/top-customers-widget';
-import { TopExpensesWidget } from '@/components/dashboard/widgets/top-expenses-widget';
-import { BudgetVarianceWidget } from '@/components/dashboard/widgets/budget-variance-widget';
-import { PayrollSummaryWidget } from '@/components/dashboard/widgets/payroll-summary-widget';
-import { SeasonalPatternWidget } from '@/components/dashboard/widgets/seasonal-pattern-widget';
-import { GrowthMetricsWidget } from '@/components/dashboard/widgets/growth-metrics-widget';
-import { IndustryBenchmarkWidget } from '@/components/dashboard/widgets/industry-benchmark-widget';
-import { AlertSummaryWidget } from '@/components/dashboard/widgets/alert-summary-widget';
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
 /* ------------------------------------------------------------------ */
+
+interface WidgetConfig {
+  type: string;
+  visible: boolean;
+  order: number;
+}
+
+interface AvailableWidget {
+  type: string;
+  label: string;
+  description: string;
+}
 
 interface WidgetsClientProps {
   connected: boolean;
@@ -88,317 +66,74 @@ interface WidgetsClientProps {
   cashTrend: Array<{ period: string; cash: number }>;
   expenseBreakdown: Array<{ name: string; value: number; color: string }>;
   kpis: Array<{ label: string; value: string; color: string }>;
+  initialWidgets: WidgetConfig[];
+  availableWidgets: AvailableWidget[];
+  defaultWidgets: WidgetConfig[];
 }
 
 /* ------------------------------------------------------------------ */
-/*  Helpers                                                            */
+/*  Icon map for each widget type                                      */
 /* ------------------------------------------------------------------ */
 
-function formatPeriodLabel(period: string): string {
-  const d = new Date(period + 'T00:00:00');
-  return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
-}
+const WIDGET_ICONS: Record<string, LucideIcon> = {
+  kpi_cards: BarChart3,
+  pnl_table: Table,
+  narrative_summary: Sparkles,
+  waterfall_chart: BarChart,
+  cash_position: Wallet,
+  data_health: ShieldCheck,
+  activity_feed: Rss,
+  sync_status: RefreshCw,
+};
 
 /* ------------------------------------------------------------------ */
-/*  Toggle switch component                                           */
+/*  Toggle switch component (no external dependency needed)            */
 /* ------------------------------------------------------------------ */
 
 function Toggle({
   checked,
   onChange,
+  label,
 }: {
   checked: boolean;
   onChange: () => void;
+  label: string;
 }) {
   return (
-    <label className="relative inline-flex cursor-pointer items-center">
-      <input
-        type="checkbox"
-        className="peer sr-only"
-        checked={checked}
-        onChange={onChange}
+    <button
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
+      onClick={onChange}
+      className={cn(
+        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+        checked ? 'bg-indigo-500' : 'bg-muted'
+      )}
+    >
+      <span
+        className={cn(
+          'pointer-events-none block h-4 w-4 rounded-full bg-white shadow-sm transition-transform',
+          checked ? 'translate-x-[18px]' : 'translate-x-[2px]'
+        )}
       />
-      <div className="h-5 w-9 rounded-full bg-muted peer-checked:bg-indigo-500 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:transition-all peer-checked:after:translate-x-full" />
-    </label>
+    </button>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Template icon map                                                  */
+/*  Sortable Widget Item                                               */
 /* ------------------------------------------------------------------ */
 
-const TEMPLATE_ICONS: Record<string, typeof User> = {
-  owner: User,
-  advisor: Briefcase,
-  investor: TrendingUp,
-  bookkeeper: BookOpen,
-};
-
-/* ------------------------------------------------------------------ */
-/*  Widget render functions (keyed by ExtendedWidgetType)               */
-/* ------------------------------------------------------------------ */
-
-type WidgetRenderer = (
-  props: WidgetsClientProps,
-  format: (n: number) => string
-) => React.ReactNode;
-
-function placeholderRender(label: string): WidgetRenderer {
-  return () => (
-    <div className="flex items-center justify-center py-8">
-      <p className="text-xs text-muted-foreground">{label} preview</p>
-    </div>
-  );
-}
-
-const widgetRenderers: Record<ExtendedWidgetType, WidgetRenderer> = {
-  revenue_trend: (props, format) => {
-    const data = props.revenueTrend.map((r) => ({
-      label: formatPeriodLabel(r.period),
-      revenue: r.revenue,
-    }));
-    if (data.length === 0) {
-      return (
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          No revenue data
-        </p>
-      );
-    }
-    return (
-      <ResponsiveContainer width="100%" height={150}>
-        <RechartsLineChart
-          data={data}
-          margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(var(--border))"
-          />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 10 }}
-            stroke="hsl(var(--muted-foreground))"
-          />
-          <YAxis
-            tick={{ fontSize: 10 }}
-            stroke="hsl(var(--muted-foreground))"
-            tickFormatter={(v: number) => format(v)}
-          />
-          <Tooltip
-            formatter={(v) => [format(Number(v ?? 0)), 'Revenue']}
-          />
-          <Line
-            type="monotone"
-            dataKey="revenue"
-            stroke="#6366f1"
-            strokeWidth={2}
-            dot={{ r: 3 }}
-          />
-        </RechartsLineChart>
-      </ResponsiveContainer>
-    );
-  },
-
-  pnl_table: (props, format) => {
-    if (props.pnlSummary.length === 0) {
-      return (
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          No P&L data
-        </p>
-      );
-    }
-    return (
-      <ResponsiveContainer width="100%" height={150}>
-        <BarChart
-          data={props.pnlSummary}
-          margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
-        >
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(var(--border))"
-          />
-          <XAxis
-            dataKey="name"
-            tick={{ fontSize: 9 }}
-            stroke="hsl(var(--muted-foreground))"
-          />
-          <YAxis
-            tick={{ fontSize: 10 }}
-            stroke="hsl(var(--muted-foreground))"
-            tickFormatter={(v: number) => format(v)}
-          />
-          <Tooltip formatter={(v) => [format(Number(v ?? 0))]} />
-          <Bar dataKey="value" fill="#6366f1" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    );
-  },
-
-  cash_forecast: (props, format) => {
-    const data = props.cashTrend.map((c) => ({
-      label: formatPeriodLabel(c.period),
-      cash: c.cash,
-    }));
-    if (data.length === 0) {
-      return (
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          No cash data
-        </p>
-      );
-    }
-    return (
-      <ResponsiveContainer width="100%" height={150}>
-        <RechartsAreaChart
-          data={data}
-          margin={{ top: 5, right: 10, left: -20, bottom: 0 }}
-        >
-          <defs>
-            <linearGradient id="cashGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid
-            strokeDasharray="3 3"
-            stroke="hsl(var(--border))"
-          />
-          <XAxis
-            dataKey="label"
-            tick={{ fontSize: 10 }}
-            stroke="hsl(var(--muted-foreground))"
-          />
-          <YAxis
-            tick={{ fontSize: 10 }}
-            stroke="hsl(var(--muted-foreground))"
-            tickFormatter={(v: number) => format(v)}
-          />
-          <Tooltip
-            formatter={(v) => [format(Number(v ?? 0)), 'Cash']}
-          />
-          <Area
-            type="monotone"
-            dataKey="cash"
-            stroke="#10b981"
-            strokeWidth={2}
-            fill="url(#cashGrad)"
-          />
-        </RechartsAreaChart>
-      </ResponsiveContainer>
-    );
-  },
-
-  kpi_cards: (props) => {
-    if (props.kpis.length === 0) {
-      return (
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          No KPI data
-        </p>
-      );
-    }
-    return (
-      <div className="grid grid-cols-2 gap-2 py-2">
-        {props.kpis.map((k) => (
-          <div
-            key={k.label}
-            className={`rounded-lg px-3 py-2 text-center ${k.color}`}
-          >
-            <p className="text-lg font-bold leading-tight">{k.value}</p>
-            <p className="text-[10px] font-medium opacity-80">{k.label}</p>
-          </div>
-        ))}
-      </div>
-    );
-  },
-
-  expense_breakdown: (props) => {
-    if (props.expenseBreakdown.length === 0) {
-      return (
-        <p className="py-8 text-center text-xs text-muted-foreground">
-          No expense data
-        </p>
-      );
-    }
-    return (
-      <div className="flex items-center gap-3">
-        <ResponsiveContainer width="55%" height={150}>
-          <RechartsPieChart>
-            <Pie
-              data={props.expenseBreakdown}
-              dataKey="value"
-              cx="50%"
-              cy="50%"
-              outerRadius={55}
-              innerRadius={30}
-              paddingAngle={2}
-            >
-              {props.expenseBreakdown.map((e) => (
-                <Cell key={e.name} fill={e.color} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(v) => [`${Number(v ?? 0)}%`]} />
-          </RechartsPieChart>
-        </ResponsiveContainer>
-        <ul className="flex flex-col gap-1 text-[11px]">
-          {props.expenseBreakdown.map((e) => (
-            <li key={e.name} className="flex items-center gap-1.5">
-              <span
-                className="inline-block h-2 w-2 rounded-full"
-                style={{ background: e.color }}
-              />
-              <span className="text-muted-foreground">{e.name}</span>
-              <span className="font-medium">{e.value}%</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    );
-  },
-
-  narrative_summary: placeholderRender('AI Narrative Summary'),
-  waterfall_chart: placeholderRender('Waterfall Chart'),
-  variance_summary: placeholderRender('Variance Analysis'),
-  data_freshness: placeholderRender('Data Freshness'),
-  tax_summary: placeholderRender('Tax Summary'),
-  ar_ap_aging: placeholderRender('AR/AP Aging'),
-  custom_kpis: placeholderRender('Custom KPIs'),
-
-  // ── New F-069/070 widget renderers ──
-  debt_maturity: () => <DebtMaturityWidget />,
-  working_capital: () => <WorkingCapitalWidget />,
-  headcount_cost: () => <HeadcountCostWidget />,
-  revenue_concentration: () => <RevenueConcentrationWidget />,
-  margin_trend: () => <MarginTrendWidget />,
-  runway: () => <RunwayWidget />,
-  top_customers: () => <TopCustomersWidget />,
-  top_expenses: () => <TopExpensesWidget />,
-  budget_variance: () => <BudgetVarianceWidget />,
-  payroll_summary: () => <PayrollSummaryWidget />,
-  seasonal_pattern: () => <SeasonalPatternWidget />,
-  growth_metrics: () => <GrowthMetricsWidget />,
-  industry_benchmark: () => <IndustryBenchmarkWidget />,
-  alert_summary: () => <AlertSummaryWidget />,
-};
-
-/* ------------------------------------------------------------------ */
-/*  Sortable Widget Card                                              */
-/* ------------------------------------------------------------------ */
-
-function SortableWidgetCard({
+function SortableWidgetItem({
   id,
-  isEnabled,
+  widget,
+  meta,
   onToggle,
-  label,
-  description,
-  category,
-  children,
 }: {
   id: string;
-  isEnabled: boolean;
+  widget: WidgetConfig;
+  meta: AvailableWidget;
   onToggle: () => void;
-  label: string;
-  description: string;
-  category: string;
-  children: React.ReactNode;
 }) {
   const {
     attributes,
@@ -413,66 +148,137 @@ function SortableWidgetCard({
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : undefined,
-    opacity: isDragging ? 0.85 : undefined,
   };
+
+  const Icon = WIDGET_ICONS[widget.type] ?? BarChart3;
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Card
-        className={`transition-all duration-200 ${
-          isDragging ? 'shadow-xl ring-2 ring-indigo-400' : ''
-        } ${
-          isEnabled
-            ? 'border-border shadow-sm hover:shadow-md hover:border-indigo-400/50'
-            : 'border-border/50 opacity-60 hover:opacity-80'
-        }`}
+      <div
+        className={cn(
+          'flex items-center gap-3 rounded-lg border p-3 transition-all',
+          isDragging && 'shadow-xl ring-2 ring-indigo-400',
+          widget.visible
+            ? 'bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800'
+            : 'bg-zinc-50 dark:bg-zinc-950/30 border-zinc-200/60 dark:border-zinc-800/60 opacity-60',
+        )}
       >
-        <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-          <div className="flex items-start gap-2 pr-4">
-            <button
-              {...attributes}
-              {...listeners}
-              className="mt-0.5 cursor-grab rounded p-1 text-muted-foreground/50 hover:bg-muted hover:text-muted-foreground active:cursor-grabbing"
-              title="Drag to reorder"
-            >
-              <GripVertical className="h-4 w-4" />
-            </button>
-            <div className="space-y-0.5">
-              <CardTitle className="text-sm font-semibold">{label}</CardTitle>
-              <p className="text-xs text-muted-foreground">{description}</p>
-              <Badge variant="outline" className="text-[9px] mt-1">
-                {category}
-              </Badge>
-            </div>
-          </div>
-          <Toggle checked={isEnabled} onChange={onToggle} />
-        </CardHeader>
-        <CardContent className="pt-0">{children}</CardContent>
-      </Card>
+        {/* Drag handle */}
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab rounded p-1 text-muted-foreground/50 hover:bg-muted hover:text-muted-foreground active:cursor-grabbing"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+
+        {/* Icon */}
+        <div
+          className={cn(
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+            widget.visible
+              ? 'bg-indigo-50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400'
+              : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600'
+          )}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+
+        {/* Text */}
+        <div className="min-w-0 flex-1">
+          <p className={cn(
+            'text-sm font-medium truncate',
+            !widget.visible && 'text-muted-foreground'
+          )}>
+            {meta.label}
+          </p>
+          <p className="text-xs text-muted-foreground truncate">
+            {meta.description}
+          </p>
+        </div>
+
+        {/* Toggle */}
+        <Toggle
+          checked={widget.visible}
+          onChange={onToggle}
+          label={`Toggle ${meta.label}`}
+        />
+      </div>
     </div>
   );
 }
 
 /* ------------------------------------------------------------------ */
-/*  Page component                                                    */
+/*  Layout Preview Grid                                                */
 /* ------------------------------------------------------------------ */
 
-export default function WidgetsClient(props: WidgetsClientProps) {
-  const { format } = useCurrency();
-  const hasData =
-    props.revenueTrend.length > 0 || props.pnlSummary.length > 0;
+function LayoutPreview({
+  widgets,
+  availableWidgets,
+}: {
+  widgets: WidgetConfig[];
+  availableWidgets: AvailableWidget[];
+}) {
+  const activeWidgets = widgets
+    .filter((w) => w.visible)
+    .sort((a, b) => a.order - b.order);
 
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(
-    Object.fromEntries(ALL_EXTENDED_WIDGET_TYPES.map((w) => [w, true]))
+  const metaMap = new Map(availableWidgets.map((w) => [w.type, w]));
+
+  if (activeWidgets.length === 0) {
+    return (
+      <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-zinc-200 dark:border-zinc-800 p-8">
+        <div className="text-center">
+          <EyeOff className="mx-auto h-8 w-8 text-muted-foreground/40" />
+          <p className="mt-2 text-sm text-muted-foreground">
+            No widgets visible
+          </p>
+          <p className="text-xs text-muted-foreground/60">
+            Toggle widgets on to see them here
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {activeWidgets.map((widget) => {
+        const meta = metaMap.get(widget.type);
+        const Icon = WIDGET_ICONS[widget.type] ?? BarChart3;
+        return (
+          <div
+            key={widget.type}
+            className="flex items-center gap-2 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/30 px-3 py-2.5"
+          >
+            <Icon className="h-3.5 w-3.5 text-indigo-500 shrink-0" />
+            <span className="text-xs font-medium text-foreground truncate">
+              {meta?.label ?? widget.type}
+            </span>
+          </div>
+        );
+      })}
+    </div>
   );
-  // Widget order — determines rendering sequence on dashboard
-  const [widgetOrder, setWidgetOrder] = useState<ExtendedWidgetType[]>([
-    ...ALL_EXTENDED_WIDGET_TYPES,
-  ]);
-  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
-  const [templateSelectorOpen, setTemplateSelectorOpen] = useState(false);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Main WidgetsClient Component                                       */
+/* ------------------------------------------------------------------ */
+
+export function WidgetsClient({
+  initialWidgets,
+  availableWidgets,
+  defaultWidgets,
+}: WidgetsClientProps) {
+  const [widgets, setWidgets] = useState<WidgetConfig[]>(initialWidgets);
   const [saving, setSaving] = useState(false);
-  const [loaded, setLoaded] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const metaMap = new Map(availableWidgets.map((w) => [w.type, w]));
 
   // DnD sensors
   const sensors = useSensors(
@@ -480,288 +286,242 @@ export default function WidgetsClient(props: WidgetsClientProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  // Load saved config from API on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function loadConfig() {
-      try {
-        const res = await fetch('/api/dashboard/widget-config');
-        if (res.ok) {
-          const { config } = await res.json();
-          if (config && !cancelled) {
-            const savedWidgets = config.widgets as string[];
-            const savedSet = new Set(savedWidgets);
-            const newEnabled: Record<string, boolean> = {};
-            for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
-              newEnabled[wt] = savedSet.has(wt);
-            }
-            setEnabled(newEnabled);
-            // Restore order: saved widgets first (in order), then any new types at the end
-            const orderedTypes = savedWidgets.filter((w): w is ExtendedWidgetType =>
-              ALL_EXTENDED_WIDGET_TYPES.includes(w as ExtendedWidgetType)
-            );
-            const remaining = ALL_EXTENDED_WIDGET_TYPES.filter((w) => !savedSet.has(w));
-            setWidgetOrder([...orderedTypes, ...remaining]);
-            setActiveTemplate(config.template_name ?? null);
-          }
-        }
-      } catch {
-        // Fall back to all enabled
-      } finally {
-        if (!cancelled) setLoaded(true);
-      }
-    }
-    loadConfig();
-    return () => { cancelled = true; };
+  const markChanged = useCallback(() => {
+    setHasChanges(true);
+    setSaveSuccess(false);
+    setSaveError(null);
   }, []);
 
-  // Save config to API (now includes order via the widgets array)
-  const saveConfig = useCallback(async (
-    widgetState: Record<string, boolean>,
-    order: ExtendedWidgetType[],
-    templateName: string | null,
-  ) => {
-    if (!loaded) return;
+  /* ── Toggle visibility ── */
+  const toggleWidget = useCallback((type: string) => {
+    setWidgets((prev) =>
+      prev.map((w) =>
+        w.type === type ? { ...w, visible: !w.visible } : w
+      )
+    );
+    markChanged();
+  }, [markChanged]);
+
+  /* ── Drag end handler ── */
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setWidgets((prev) => {
+      const oldIndex = prev.findIndex((w) => w.type === active.id);
+      const newIndex = prev.findIndex((w) => w.type === over.id);
+      if (oldIndex === -1 || newIndex === -1) return prev;
+
+      const reordered = arrayMove(prev, oldIndex, newIndex);
+      return reordered.map((w, i) => ({ ...w, order: i }));
+    });
+    markChanged();
+  }, [markChanged]);
+
+  /* ── Save to API ── */
+  const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
     try {
-      // Send enabled widgets in their current order
-      const widgets = order.filter((wt) => widgetState[wt]);
-      await fetch('/api/dashboard/widget-config', {
+      const res = await fetch('/api/dashboard/widgets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateName, widgets }),
+        body: JSON.stringify({ widgets }),
       });
-    } catch {
-      // Silently fail — config will be re-saved next time
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as Record<string, string>).error || 'Failed to save');
+      }
+
+      setSaveSuccess(true);
+      setHasChanges(false);
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : 'Failed to save widget configuration');
     } finally {
       setSaving(false);
     }
-  }, [loaded]);
+  }, [widgets]);
 
-  const toggle = (id: string) => {
-    setActiveTemplate(null);
-    const newEnabled = { ...enabled, [id]: !enabled[id] };
-    setEnabled(newEnabled);
-    saveConfig(newEnabled, widgetOrder, null);
-  };
+  /* ── Reset to defaults ── */
+  const handleReset = useCallback(() => {
+    setWidgets(defaultWidgets.map((w, i) => ({ ...w, order: i })));
+    markChanged();
+  }, [defaultWidgets, markChanged]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (over && active.id !== over.id) {
-      setWidgetOrder((prev) => {
-        const oldIndex = prev.indexOf(active.id as ExtendedWidgetType);
-        const newIndex = prev.indexOf(over.id as ExtendedWidgetType);
-        const newOrder = arrayMove(prev, oldIndex, newIndex);
-        saveConfig(enabled, newOrder, activeTemplate);
-        return newOrder;
-      });
-    }
-  };
-
-  const applyTemplate = (template: WidgetTemplate) => {
-    const templateWidgets = new Set<string>(template.widgets);
-    const newEnabled: Record<string, boolean> = {};
-    for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
-      newEnabled[wt] = templateWidgets.has(wt);
-    }
-    // Reorder: template widgets first, then the rest
-    const orderedTypes = template.widgets.filter((w): w is ExtendedWidgetType =>
-      ALL_EXTENDED_WIDGET_TYPES.includes(w as ExtendedWidgetType)
-    );
-    const remaining = ALL_EXTENDED_WIDGET_TYPES.filter((w) => !templateWidgets.has(w));
-    const newOrder = [...orderedTypes, ...remaining];
-    setEnabled(newEnabled);
-    setWidgetOrder(newOrder);
-    setActiveTemplate(template.id);
-    setTemplateSelectorOpen(false);
-    saveConfig(newEnabled, newOrder, template.id);
-  };
-
-  const handleStartFromScratch = () => {
-    const newEnabled: Record<string, boolean> = {};
-    for (const wt of ALL_EXTENDED_WIDGET_TYPES) {
-      newEnabled[wt] = false;
-    }
-    setEnabled(newEnabled);
-    setActiveTemplate(null);
-    setTemplateSelectorOpen(false);
-    saveConfig(newEnabled, widgetOrder, null);
-  };
-
-  const enabledCount = Object.values(enabled).filter(Boolean).length;
-
-  // Get label for a widget type — check both registries
-  function getWidgetLabel(wt: ExtendedWidgetType): string {
-    const full = FULL_WIDGET_REGISTRY[wt];
-    if (full) return full.title;
-    const legacy = WIDGET_REGISTRY[wt as WidgetType];
-    if (legacy) return legacy.label;
-    return wt;
-  }
-
-  function getWidgetDescription(wt: ExtendedWidgetType): string {
-    const full = FULL_WIDGET_REGISTRY[wt];
-    if (full) return full.description;
-    const legacy = WIDGET_REGISTRY[wt as WidgetType];
-    if (legacy) return legacy.description;
-    return '';
-  }
+  const visibleCount = widgets.filter((w) => w.visible).length;
+  const totalCount = widgets.length;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 pb-12">
-      {/* Template Selector Modal */}
-      <WidgetTemplateSelector
-        open={templateSelectorOpen}
-        onClose={() => setTemplateSelectorOpen(false)}
-        onSelectTemplate={applyTemplate}
-        onStartFromScratch={handleStartFromScratch}
-        currentTemplateId={activeTemplate}
-      />
-
+    <div className="mx-auto max-w-5xl space-y-6 pb-12">
       {/* Back link */}
       <Link
         href="/dashboard"
-        className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
       >
-        &larr; Back to Dashboard
+        <ArrowLeft className="h-3.5 w-3.5" />
+        Back to Dashboard
       </Link>
 
       {/* Header */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Dashboard Widgets
+          <h1 className="text-2xl font-bold tracking-tight">
+            Customise Dashboard
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Choose a template or toggle individual widgets to customise your dashboard view.
+            Drag to reorder, toggle to show or hide. Changes apply after saving.
           </p>
         </div>
-        <div className="mt-2 flex items-center gap-3 sm:mt-0">
-          {saving && (
-            <span className="text-xs text-muted-foreground animate-pulse">Saving...</span>
-          )}
-          <Badge variant="secondary">
-            {enabledCount} of {ALL_EXTENDED_WIDGET_TYPES.length} active
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-xs">
+            {visibleCount} of {totalCount} visible
           </Badge>
-          <button
-            onClick={() => setTemplateSelectorOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 transition-colors"
+        </div>
+      </div>
+
+      {/* Action bar */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/30 px-4 py-3">
+        <div className="flex items-center gap-2">
+          {saveSuccess && (
+            <span className="inline-flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400">
+              <Check className="h-3.5 w-3.5" />
+              Saved successfully
+            </span>
+          )}
+          {saveError && (
+            <span className="inline-flex items-center gap-1 text-sm text-red-600 dark:text-red-400">
+              <AlertCircle className="h-3.5 w-3.5" />
+              {saveError}
+            </span>
+          )}
+          {hasChanges && !saveSuccess && !saveError && (
+            <span className="text-sm text-amber-600 dark:text-amber-400">
+              You have unsaved changes
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleReset}
+            disabled={saving}
           >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Change Template
-          </button>
-        </div>
-      </div>
-
-      {/* Template Picker (inline quick access) */}
-      <div className="space-y-3">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-          Templates
-        </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {ENHANCED_TEMPLATES.map((template) => {
-            const Icon = TEMPLATE_ICONS[template.role] ?? User;
-            const isActive = activeTemplate === template.id;
-            return (
-              <button
-                key={template.id}
-                onClick={() => applyTemplate(template)}
-                className={`flex items-start gap-3 rounded-lg border p-4 text-left transition-all hover:shadow-md ${
-                  isActive
-                    ? 'border-indigo-400 bg-indigo-50 shadow-sm dark:bg-indigo-950/20'
-                    : 'border-border hover:border-indigo-300'
-                }`}
-              >
-                <div
-                  className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
-                    isActive
-                      ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900 dark:text-indigo-300'
-                      : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold truncate">
-                    {template.name}
-                  </p>
-                  <p className="mt-0.5 text-xs text-muted-foreground line-clamp-2">
-                    {template.description}
-                  </p>
-                  <p className="mt-1 text-[10px] text-muted-foreground">
-                    {template.widgets.length} widgets
-                  </p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* No-data banner */}
-      {(!props.connected || !hasData) && (
-        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
-          <CardContent className="py-8 text-center">
-            <p className="text-lg font-semibold text-amber-800 dark:text-amber-200">
-              {!props.connected
-                ? 'No accounting platform connected'
-                : 'No financial data available yet'}
-            </p>
-            <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">
-              {!props.connected
-                ? 'Connect your Xero account in Settings to see real widget data.'
-                : 'Data will appear here once your first sync completes.'}
-            </p>
-            {!props.connected && (
-              <Link
-                href="/dashboard/settings"
-                className="mt-4 inline-block rounded-md bg-amber-600 px-4 py-2 text-sm font-medium text-white hover:bg-amber-700"
-              >
-                Go to Settings
-              </Link>
+            <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
+            Reset to Default
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || (!hasChanges && !saveError)}
+            className={cn(
+              hasChanges && 'bg-indigo-600 hover:bg-indigo-700 text-white'
             )}
-          </CardContent>
-        </Card>
-      )}
+          >
+            {saving ? (
+              <>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-1.5 h-3.5 w-3.5" />
+                Save
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
 
-      {/* Individual Widgets heading */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-            Individual Widgets
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            Drag to reorder &middot; Toggle to show/hide
-          </p>
+      {/* Main content: widget list + preview */}
+      <div className="grid gap-6 lg:grid-cols-5">
+        {/* Widget list (drag + toggle) */}
+        <div className="lg:col-span-3 space-y-2">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+              Widgets
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              Drag to reorder
+            </p>
+          </div>
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={widgets.map((w) => w.type)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {widgets.map((widget) => {
+                  const meta = metaMap.get(widget.type);
+                  if (!meta) return null;
+                  return (
+                    <SortableWidgetItem
+                      key={widget.type}
+                      id={widget.type}
+                      widget={widget}
+                      meta={meta}
+                      onToggle={() => toggleWidget(widget.type)}
+                    />
+                  );
+                })}
+              </div>
+            </SortableContext>
+          </DndContext>
         </div>
 
-        {/* Sortable widget grid */}
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext items={widgetOrder} strategy={rectSortingStrategy}>
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2">
-              {widgetOrder.map((wt) => {
-                const renderer = widgetRenderers[wt];
-                return (
-                  <SortableWidgetCard
-                    key={wt}
-                    id={wt}
-                    isEnabled={enabled[wt]}
-                    onToggle={() => toggle(wt)}
-                    label={getWidgetLabel(wt)}
-                    description={getWidgetDescription(wt)}
-                    category={FULL_WIDGET_REGISTRY[wt]?.category ?? 'financial'}
-                  >
-                    {renderer(props, format)}
-                  </SortableWidgetCard>
-                );
-              })}
+        {/* Layout preview */}
+        <div className="lg:col-span-2">
+          <div className="sticky top-6">
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Layout Preview
+            </h2>
+            <Card className="border-zinc-200 dark:border-zinc-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <Eye className="h-3.5 w-3.5" />
+                  Active widgets ({visibleCount})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <LayoutPreview
+                  widgets={widgets}
+                  availableWidgets={availableWidgets}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Quick stats */}
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <div className="rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/30 px-3 py-2 text-center">
+                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                  {visibleCount}
+                </p>
+                <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 font-medium">
+                  Visible
+                </p>
+              </div>
+              <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/30 px-3 py-2 text-center">
+                <p className="text-lg font-bold text-muted-foreground">
+                  {totalCount - visibleCount}
+                </p>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Hidden
+                </p>
+              </div>
             </div>
-          </SortableContext>
-        </DndContext>
+          </div>
+        </div>
       </div>
     </div>
   );

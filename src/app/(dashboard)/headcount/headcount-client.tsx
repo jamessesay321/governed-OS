@@ -29,6 +29,7 @@ import {
   Legend,
 } from 'recharts';
 import { formatCurrency } from '@/lib/formatting/currency';
+import { ExportButton } from '@/components/shared/export-button';
 import type {
   HeadcountDepartment,
   HeadcountRole,
@@ -229,38 +230,66 @@ export function HeadcountClient({
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Headcount Register</h1>
-          <p className="text-muted-foreground">
-            Staff breakdown by department, roles, and employer on-costs
-          </p>
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between flex-1 min-w-0">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Headcount Register</h1>
+            <p className="text-muted-foreground">
+              Staff breakdown by department, roles, and employer on-costs
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setView('register')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                view === 'register'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
+                  : 'text-muted-foreground hover:bg-muted'
+              )}
+            >
+              <LayoutList className="h-4 w-4" />
+              Register
+            </button>
+            <button
+              onClick={() => setView('orgchart')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                view === 'orgchart'
+                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
+                  : 'text-muted-foreground hover:bg-muted'
+              )}
+            >
+              <Network className="h-4 w-4" />
+              Org Chart
+            </button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setView('register')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-              view === 'register'
-                ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
-                : 'text-muted-foreground hover:bg-muted'
-            )}
-          >
-            <LayoutList className="h-4 w-4" />
-            Register
-          </button>
-          <button
-            onClick={() => setView('orgchart')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
-              view === 'orgchart'
-                ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
-                : 'text-muted-foreground hover:bg-muted'
-            )}
-          >
-            <Network className="h-4 w-4" />
-            Org Chart
-          </button>
+        <div className="ml-4 shrink-0">
+          <ExportButton
+            data={roles.map((r) => ({
+              role: r.roleName,
+              department: departments.find((d) => d.roles.some((dr) => dr.roleId === r.roleId))?.name ?? '',
+              annualCost: r.annualCost,
+              monthlyAvg: r.monthlyAvg,
+              salary: r.salaryTotal,
+              nic: r.nicTotal,
+              pension: r.pensionTotal,
+              other: r.otherTotal,
+            }))}
+            columns={[
+              { header: 'Role', key: 'role', format: 'text' },
+              { header: 'Department', key: 'department', format: 'text' },
+              { header: 'Annual Cost', key: 'annualCost', format: 'currency' },
+              { header: 'Monthly Avg', key: 'monthlyAvg', format: 'currency' },
+              { header: 'Salary', key: 'salary', format: 'currency' },
+              { header: 'NIC', key: 'nic', format: 'currency' },
+              { header: 'Pension', key: 'pension', format: 'currency' },
+              { header: 'Other', key: 'other', format: 'currency' },
+            ]}
+            filename="headcount-register"
+            title="Headcount Register"
+          />
         </div>
       </div>
 

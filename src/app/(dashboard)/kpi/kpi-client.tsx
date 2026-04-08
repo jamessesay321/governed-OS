@@ -15,6 +15,8 @@ import { ROLE_HIERARCHY } from '@/types';
 import { NumberLegend } from '@/components/data-primitives';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { CrossRef } from '@/components/shared/in-page-link';
+import { ExportButton } from '@/components/shared/export-button';
+import type { ExportColumn } from '@/components/shared/export-button';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -134,6 +136,26 @@ export function KPIDashboardClient({
 
   const selectedKPIData = kpis.find((k) => k.key === selectedKPI);
 
+  // ── Export data ───────────────────────────────────────────────────
+  const exportData = kpis.map((k) => ({
+    name: k.label,
+    value: k.value,
+    formatted_value: k.formatted_value,
+    benchmark_value: k.benchmark_value,
+    benchmark_status: k.benchmark_status,
+    trend_direction: k.trend_direction,
+    trend_percentage: k.trend_percentage,
+  }));
+
+  const exportColumns: ExportColumn[] = [
+    { header: 'KPI Name', key: 'name', format: 'text' },
+    { header: 'Value', key: 'formatted_value', format: 'text' },
+    { header: 'Benchmark Value', key: 'benchmark_value', format: 'number' },
+    { header: 'Benchmark Status', key: 'benchmark_status', format: 'text' },
+    { header: 'Trend', key: 'trend_direction', format: 'text' },
+    { header: 'Trend %', key: 'trend_percentage', format: 'percentage' },
+  ];
+
   if (periods.length === 0) {
     return (
       <div className="space-y-6">
@@ -170,6 +192,14 @@ export function KPIDashboardClient({
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <ExportButton
+            data={exportData}
+            columns={exportColumns}
+            filename={`kpi-dashboard-${selectedPeriod}`}
+            title="KPI Dashboard"
+            subtitle={`Period: ${selectedPeriod}`}
+            disabled={kpis.length === 0}
+          />
           <ChallengeButton
             page="kpi"
             metricLabel="KPI Dashboard"

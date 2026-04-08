@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { ExportButton } from '@/components/shared/export-button';
 import {
   Users,
   TrendingUp,
@@ -159,11 +160,36 @@ export function StaffCostsClient({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Staff Cost Analysis</h1>
-        <p className="text-muted-foreground">
-          Payroll breakdown by role, employer on-costs, and headcount trends
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Staff Cost Analysis</h1>
+          <p className="text-muted-foreground">
+            Payroll breakdown by role, employer on-costs, and headcount trends
+          </p>
+        </div>
+        <ExportButton
+        data={roles.map((r) => ({
+          role: r.roleName,
+          annualCost: r.total,
+          salary: r.salaryTotal,
+          nic: r.nicTotal,
+          pension: r.pensionTotal,
+          accounts: r.accounts.length,
+          percentOfTotal: ((r.total / totalStaffCost) * 100).toFixed(1),
+        }))}
+        columns={[
+          { header: 'Role', key: 'role', format: 'text' },
+          { header: 'Annual Cost', key: 'annualCost', format: 'currency' },
+          { header: 'Salary', key: 'salary', format: 'currency' },
+          { header: 'NIC', key: 'nic', format: 'currency' },
+          { header: 'Pension', key: 'pension', format: 'currency' },
+          { header: 'Accounts', key: 'accounts', format: 'number' },
+          { header: '% of Total', key: 'percentOfTotal', format: 'percentage' },
+        ]}
+        filename="staff-costs"
+        title="Staff Cost Analysis"
+        subtitle={`Total: ${fmtCompact(totalStaffCost)} · ${activeRoles} roles · On-cost ratio: ${(employerOnCostRatio * 100).toFixed(1)}%`}
+      />
       </div>
 
       {/* Key Metrics */}

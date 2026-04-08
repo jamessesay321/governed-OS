@@ -3,6 +3,8 @@
 import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { ExportButton } from '@/components/shared/export-button';
+import type { ExportColumn } from '@/components/shared/export-button';
 import {
   Factory,
   Package,
@@ -162,14 +164,41 @@ export function ProductionClient({
     );
   }
 
+  // Export data — one row per active production line
+  const exportData = useMemo(() => {
+    return productionLines
+      .filter((l) => l.total > 0)
+      .map((l) => ({
+        name: l.name,
+        code: l.code,
+        total: l.total,
+        pctOfTotal: l.pctOfTotal / 100, // ExportButton formats as percentage (0–1 scale)
+      }));
+  }, [productionLines]);
+
+  const exportColumns: ExportColumn[] = [
+    { header: 'Product Line', key: 'name', format: 'text' },
+    { header: 'Code', key: 'code', format: 'text' },
+    { header: 'Total CoGS Cost', key: 'total', format: 'currency' },
+    { header: '% of Total CoGS', key: 'pctOfTotal', format: 'percentage' },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">WIP & Production Intelligence</h1>
-        <p className="text-muted-foreground">
-          Work-in-progress, stock movements, and production cost analysis
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">WIP & Production Intelligence</h1>
+          <p className="text-muted-foreground">
+            Work-in-progress, stock movements, and production cost analysis
+          </p>
+        </div>
+        <ExportButton
+          data={exportData}
+          columns={exportColumns}
+          filename="production-cost-by-product-line"
+          title="WIP & Production Intelligence"
+        />
       </div>
 
       {/* Summary Cards */}

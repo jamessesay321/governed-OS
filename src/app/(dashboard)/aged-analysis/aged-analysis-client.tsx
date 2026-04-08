@@ -32,6 +32,7 @@ import {
   Legend,
 } from 'recharts';
 import { formatCurrency } from '@/lib/formatting/currency';
+import { ExportButton } from '@/components/shared/export-button';
 import type { AgedAnalysisData, AgingBucket } from './page';
 
 /* ================================================================== */
@@ -320,13 +321,49 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6 lg:p-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Aged Analysis &mdash; Debtors &amp; Creditors
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          Receivables and payables aging, DSO/DPO, and working capital cycle.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Aged Analysis &mdash; Debtors &amp; Creditors
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            Receivables and payables aging, DSO/DPO, and working capital cycle.
+          </p>
+        </div>
+        <ExportButton
+          data={[
+            ...data.topDebtorAccounts.map((a) => ({
+              type: 'Debtor',
+              name: a.accountName,
+              current: data.debtorBuckets[0]?.amount ?? 0,
+              thirtyDays: data.debtorBuckets[1]?.amount ?? 0,
+              sixtyDays: data.debtorBuckets[2]?.amount ?? 0,
+              ninetyPlusDays: data.debtorBuckets[3]?.amount ?? 0,
+              total: a.amount,
+            })),
+            ...data.topCreditorAccounts.map((a) => ({
+              type: 'Creditor',
+              name: a.accountName,
+              current: data.creditorBuckets[0]?.amount ?? 0,
+              thirtyDays: data.creditorBuckets[1]?.amount ?? 0,
+              sixtyDays: data.creditorBuckets[2]?.amount ?? 0,
+              ninetyPlusDays: data.creditorBuckets[3]?.amount ?? 0,
+              total: a.amount,
+            })),
+          ]}
+          columns={[
+            { header: 'Type', key: 'type', format: 'text' },
+            { header: 'Name', key: 'name', format: 'text' },
+            { header: 'Current', key: 'current', format: 'currency' },
+            { header: '30 Days', key: 'thirtyDays', format: 'currency' },
+            { header: '60 Days', key: 'sixtyDays', format: 'currency' },
+            { header: '90+ Days', key: 'ninetyPlusDays', format: 'currency' },
+            { header: 'Total Outstanding', key: 'total', format: 'currency' },
+          ]}
+          filename="aged-analysis"
+          title="Aged Analysis — Debtors & Creditors"
+          subtitle={`Total Debtors: ${formatCurrency(data.totalDebtors)} · Total Creditors: ${formatCurrency(data.totalCreditors)} · DSO: ${data.dso} days · DPO: ${data.dpo} days`}
+        />
       </div>
 
       {/* Summary Cards */}

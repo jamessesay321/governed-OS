@@ -17,6 +17,7 @@ import { CrossRef } from '@/components/shared/in-page-link';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
+import { ExportButton, ExportColumn } from '@/components/shared/export-button';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type SubGroup = { label: string; accounts: AccountEntry[]; total: number };
@@ -181,6 +182,39 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
     return rows;
   });
 
+  // Build export data with fixed keys for ExportButton
+  const exportData: Record<string, unknown>[] = currentData.flatMap((section) =>
+    section.subGroups.flatMap((sg) =>
+      sg.accounts.map((acc) => ({
+        section: CLASS_LABELS[section.class] ?? section.class,
+        subgroup: sg.label,
+        account: acc.name,
+        code: acc.code,
+        amount: acc.amount,
+        ...(priorPeriod
+          ? {
+              prior_amount: priorLookup.get(section.class)?.get(acc.name) ?? 0,
+              change: acc.amount - (priorLookup.get(section.class)?.get(acc.name) ?? 0),
+            }
+          : {}),
+      }))
+    )
+  );
+
+  const exportColumns: ExportColumn[] = [
+    { header: 'Section', key: 'section', format: 'text' },
+    { header: 'Sub-group', key: 'subgroup', format: 'text' },
+    { header: 'Account', key: 'account', format: 'text' },
+    { header: 'Code', key: 'code', format: 'text' },
+    { header: formatPeriodLabel(currentPeriod), key: 'amount', format: 'currency' },
+    ...(priorPeriod
+      ? ([
+          { header: formatPeriodLabel(priorPeriod), key: 'prior_amount', format: 'currency' },
+          { header: 'Change', key: 'change', format: 'currency' },
+        ] as ExportColumn[])
+      : []),
+  ];
+
   // Totals
   const totalAssets = currentData.find((s) => s.class === 'ASSET')?.total ?? 0;
   const totalLiabilities = currentData.find((s) => s.class === 'LIABILITY')?.total ?? 0;
@@ -212,17 +246,25 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div>
-        <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-          &larr; Back to Financials
-        </Link>
-        <div className="flex items-center gap-3 mt-1">
-          <h2 className="text-2xl font-bold">Balance Sheet</h2>
-          <DataFreshness lastSyncAt={lastSyncAt} />
+      <div className="flex items-start justify-between">
+        <div>
+          <Link href="/financials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            &larr; Back to Financials
+          </Link>
+          <div className="flex items-center gap-3 mt-1">
+            <h2 className="text-2xl font-bold">Balance Sheet</h2>
+            <DataFreshness lastSyncAt={lastSyncAt} />
+          </div>
+          <p className="text-sm text-muted-foreground mt-1">
+            As at {formatPeriodLabel(currentPeriod)}
+          </p>
         </div>
-        <p className="text-sm text-muted-foreground mt-1">
-          As at {formatPeriodLabel(currentPeriod)}
-        </p>
+        <ExportButton
+          data={exportData}
+          columns={exportColumns}
+          filename="balance-sheet"
+          title="Balance Sheet"
+        />
       </div>
       <ChallengeButton
         page="balance-sheet"

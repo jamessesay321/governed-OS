@@ -12,6 +12,8 @@ import { useAccountingConfig } from '@/components/providers/accounting-config-co
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
+import { ExportButton } from '@/components/shared/export-button';
+import type { ExportColumn } from '@/components/shared/export-button';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { DrillableNumber } from '@/components/data-primitives';
 import type { DrillableValue } from '@/components/data-primitives';
@@ -247,6 +249,30 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
     marginPcts: netMargins,
   });
 
+  // Build flat export data: all account rows plus section totals and profit rows
+  const exportColumns: ExportColumn[] = [
+    { header: 'Category', key: 'category', format: 'text' },
+    { header: 'Account', key: 'account', format: 'text' },
+    ...sortedPeriods.map((p) => ({
+      header: formatMonth(p.period),
+      key: p.period,
+      format: 'currency' as const,
+    })),
+    { header: 'Total', key: 'total', format: 'currency' as const },
+  ];
+
+  const exportData: Record<string, unknown>[] = rows.map((row) => {
+    const obj: Record<string, unknown> = {
+      category: row.sectionClass ? (sectionLabels[row.sectionClass] ?? row.sectionClass) : row.label,
+      account: row.indent ? row.label : row.label,
+    };
+    sortedPeriods.forEach((p, i) => {
+      obj[p.period] = row.values[i] ?? 0;
+    });
+    obj['total'] = row.values.reduce((a, b) => a + b, 0);
+    return obj;
+  });
+
   // Apply search filter to rows
   const displayRows = controls.searchQuery
     ? rows.filter((row) => {
@@ -290,11 +316,20 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
             {formatPeriodRange(filteredPeriods.map((p) => p.period))}
           </p>
         </div>
-        <ChallengeButton
-          page="income-statement"
-          metricLabel="Income Statement"
-          period={filteredPeriods[filteredPeriods.length - 1]?.period}
-        />
+        <div className="flex items-center gap-2">
+          <ExportButton
+            data={exportData}
+            columns={exportColumns}
+            filename="income-statement"
+            title="Income Statement (P&L)"
+            subtitle={formatPeriodRange(filteredPeriods.map((p) => p.period))}
+          />
+          <ChallengeButton
+            page="income-statement"
+            metricLabel="Income Statement"
+            period={filteredPeriods[filteredPeriods.length - 1]?.period}
+          />
+        </div>
       </div>
 
       {/* AI Narrative Summary */}

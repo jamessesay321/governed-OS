@@ -9,6 +9,8 @@ import { VarianceTable } from '@/components/variance/variance-table';
 import { VarianceDetail } from '@/components/variance/variance-detail';
 import { AIExplanationCard } from '@/components/variance/ai-explanation';
 import { VisualiseButton } from '@/components/ui/visualise-button';
+import { ExportButton } from '@/components/shared/export-button';
+import type { ExportColumn } from '@/components/shared/export-button';
 import { formatPence } from '@/lib/formatting/currency';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
@@ -120,7 +122,7 @@ export function VarianceClient({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between">
         <div>
           <h2 className="text-2xl font-bold">
             <FinancialTooltip term="Variance" orgId={orgId}>Variance Analysis</FinancialTooltip>
@@ -137,6 +139,41 @@ export function VarianceClient({
             period={selectedPeriod}
           />
           <VisualiseButton context="variance" />
+          <ExportButton
+            data={
+              report
+                ? report.lines.map((line) => ({
+                    metric: line.category
+                      .split('_')
+                      .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                      .join(' '),
+                    actual: line.actual_pence / 100,
+                    comparison: line.budget_pence / 100,
+                    variance_amount: line.variance_pence / 100,
+                    variance_pct: line.variance_percentage / 100,
+                    direction: line.direction,
+                  }))
+                : []
+            }
+            columns={
+              [
+                { header: 'Metric', key: 'metric', format: 'text' },
+                { header: 'Actual (£)', key: 'actual', format: 'currency' },
+                {
+                  header: `${COMPARE_LABELS[compareMode]} (£)`,
+                  key: 'comparison',
+                  format: 'currency',
+                },
+                { header: 'Variance (£)', key: 'variance_amount', format: 'currency' },
+                { header: 'Variance (%)', key: 'variance_pct', format: 'percentage' },
+                { header: 'Direction', key: 'direction', format: 'text' },
+              ] satisfies ExportColumn[]
+            }
+            filename={`variance-${selectedPeriod}`}
+            title="Variance Analysis"
+            subtitle={`${COMPARE_LABELS[compareMode]} · ${selectedPeriod}`}
+            disabled={!report || report.lines.length === 0}
+          />
           {/* Compare mode selector */}
           <div className="flex flex-col items-end gap-1">
             <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
