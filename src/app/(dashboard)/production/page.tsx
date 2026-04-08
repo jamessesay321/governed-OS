@@ -32,6 +32,26 @@ export interface ProductionPeriodSummary {
   total: number;
 }
 
+export interface BiggestCOGSLine {
+  name: string;
+  total: number;
+  percentOfRevenue: number;
+  perCustomer: number;
+}
+
+export interface GrossMarginImpact {
+  grossProfit: number;
+  grossMargin: number;
+  marginWithoutBiggestLine: number;
+}
+
+export interface WaterfallEntry {
+  name: string;
+  value: number;
+  runningTotal: number;
+  type: 'revenue' | 'cost' | 'result';
+}
+
 // ── Account Code Mapping ──
 
 const WIP_CODES = {
@@ -228,6 +248,107 @@ export default async function ProductionPage() {
     return { period, label: monthLabel(period), byLine, total };
   });
 
+  // ── Customer Cost Attribution ──
+
+  // Fetch total revenue for the analysis period (REVENUE + OTHERINCOME classes)
+  const { data: revCoaData } = await supabase
+    .from('chart_of_accounts')
+    .select('id')
+    .eq('org_id', orgId)
+    .in('class', ['REVENUE', 'OTHERINCOME']);
+
+  const revAccountIds = ((revCoaData ?? []) as unknown as Array<{ id: string }>).map((a) => a.id);
+
+  let totalRevenue = 0;
+  if (revAccountIds.length > 0) {
+    const { data: revFinancials } = await supabase
+      .from('normalised_financials')
+      .select('amount')
+      .eq('org_id', orgId)
+      .in('account_id', revAccountIds)
+      .in('period', sortedPeriods);
+
+    totalRevenue = ((revFinancials ?? []) as unknown as Array<{ amount: number }>)
+      .reduce((s, r) => s + Number(r.amount), 0);
+  }
+
+  // Fetch active customer count from clients table
+  // Customers with transactions overlapping the analysis period
+  const earliestPeriod = sortedPeriods[0] ?? null;
+  const latestPeriod = sortedPeriods[sortedPeriods.length - 1] ?? null;
+
+  let activeCustomerCount = 0;
+  if (earliestPeriod && latestPeriod) {
+    const { count } = await supabase
+      .from('clients')
+      .select('id', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .in('client_type', ['customer', 'both'])
+      .eq('is_active', true)
+      .lte('first_transaction_date', latestPeriod)
+      .gte('last_transaction_date', earliestPeriod);
+
+    activeCustomerCount = count ?? 0;
+  }
+
+  // Fallback: if no client records yet, use a minimum of 1 to avoid division by zero
+  const safeCustomerCount = Math.max(activeCustomerCount, 1);
+
+  // Average COGS per customer
+  const averageCOGSPerCustomer = totalProductionCost / safeCustomerCount;
+
+  // Biggest COGS line analysis (already sorted descending — first item is biggest)
+  const biggestLine = productionLines.length > 0 ? productionLines[0] : null;
+  const biggestCOGSLine: BiggestCOGSLine = biggestLine
+    ? {
+        name: biggestLine.name,
+        total: biggestLine.total,
+        percentOfRevenue: totalRevenue > 0 ? (biggestLine.total / totalRevenue) * 100 : 0,
+        perCustomer: biggestLine.total / safeCustomerCount,
+      }
+    : { name: 'N/A', total: 0, percentOfRevenue: 0, perCustomer: 0 };
+
+  // Gross margin computation
+  const grossProfit = totalRevenue - totalProductionCost;
+  const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+  const grossProfitWithoutBiggest = totalRevenue - (totalProductionCost - (biggestLine?.total ?? 0));
+  const marginWithoutBiggestLine = totalRevenue > 0
+    ? (grossProfitWithoutBiggest / totalRevenue) * 100
+    : 0;
+
+  const grossMarginImpact: GrossMarginImpact = {
+    grossProfit,
+    grossMargin,
+    marginWithoutBiggestLine,
+  };
+
+  // Gross margin waterfall: Revenue -> minus each COGS line -> = Gross Profit
+  const waterfallData: WaterfallEntry[] = [];
+  let runningTotal = totalRevenue;
+  waterfallData.push({
+    name: 'Revenue',
+    value: totalRevenue,
+    runningTotal,
+    type: 'revenue',
+  });
+
+  for (const line of productionLines.filter((l) => l.total > 0)) {
+    runningTotal -= line.total;
+    waterfallData.push({
+      name: line.name,
+      value: -line.total,
+      runningTotal,
+      type: 'cost',
+    });
+  }
+
+  waterfallData.push({
+    name: 'Gross Profit',
+    value: grossProfit,
+    runningTotal: grossProfit,
+    type: 'result',
+  });
+
   return (
     <ProductionClient
       wipBalance={wipBalance}
@@ -245,6 +366,12 @@ export default async function ProductionPage() {
       shippingTotal={shippingTotal}
       periodSummaries={periodSummaries}
       periods={sortedPeriods}
+      activeCustomerCount={activeCustomerCount}
+      averageCOGSPerCustomer={averageCOGSPerCustomer}
+      biggestCOGSLine={biggestCOGSLine}
+      grossMarginImpact={grossMarginImpact}
+      totalRevenue={totalRevenue}
+      waterfallData={waterfallData}
     />
   );
 }

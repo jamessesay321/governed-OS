@@ -13,6 +13,9 @@ import {
   TrendingUp,
   TrendingDown,
   AlertCircle,
+  Users,
+  Target,
+  ArrowDown,
 } from 'lucide-react';
 import {
   BarChart,
@@ -28,6 +31,8 @@ import {
   Legend,
   AreaChart,
   Area,
+  ComposedChart,
+  ReferenceLine,
 } from 'recharts';
 import { formatCurrency } from '@/lib/formatting/currency';
 import type {
@@ -35,6 +40,9 @@ import type {
   MaterialBreakdown,
   StockMovement,
   ProductionPeriodSummary,
+  BiggestCOGSLine,
+  GrossMarginImpact,
+  WaterfallEntry,
 } from './page';
 
 /* ================================================================== */
@@ -57,6 +65,12 @@ interface ProductionClientProps {
   shippingTotal: number;
   periodSummaries: ProductionPeriodSummary[];
   periods: string[];
+  activeCustomerCount: number;
+  averageCOGSPerCustomer: number;
+  biggestCOGSLine: BiggestCOGSLine;
+  grossMarginImpact: GrossMarginImpact;
+  totalRevenue: number;
+  waterfallData: WaterfallEntry[];
 }
 
 /* ================================================================== */
@@ -107,6 +121,12 @@ export function ProductionClient({
   totalCogsProductionCost,
   shippingTotal,
   periodSummaries,
+  activeCustomerCount,
+  averageCOGSPerCustomer,
+  biggestCOGSLine,
+  grossMarginImpact,
+  totalRevenue,
+  waterfallData,
 }: ProductionClientProps) {
   const { openDrill } = useDrillDown();
   const hasData = periodSummaries.length > 0;
@@ -143,6 +163,53 @@ export function ProductionClient({
       'Finished Goods': Math.round(s.finishedGoods),
     }));
   }, [stockMovements]);
+
+  // Waterfall chart data — each bar shows the invisible base + visible portion
+  const waterfallChartData = useMemo(() => {
+    return waterfallData.map((entry) => {
+      if (entry.type === 'revenue') {
+        // Revenue: starts at 0, visible bar goes up to value
+        return {
+          name: entry.name,
+          base: 0,
+          positive: entry.value,
+          negative: 0,
+          result: 0,
+          total: entry.value,
+        };
+      } else if (entry.type === 'cost') {
+        // Cost: invisible base up to previous running total, visible bar drops down
+        const costAmount = Math.abs(entry.value);
+        return {
+          name: entry.name,
+          base: entry.runningTotal,
+          positive: 0,
+          negative: costAmount,
+          result: 0,
+          total: entry.runningTotal,
+        };
+      } else {
+        // Result: starts at 0, shows final gross profit
+        return {
+          name: entry.name,
+          base: 0,
+          positive: 0,
+          negative: 0,
+          result: Math.max(entry.value, 0),
+          total: entry.value,
+        };
+      }
+    });
+  }, [waterfallData]);
+
+  // 10% reduction scenario
+  const reducedMargin = useMemo(() => {
+    if (totalRevenue <= 0 || !biggestCOGSLine.total) return grossMarginImpact.grossMargin;
+    const reducedCost = biggestCOGSLine.total * 0.9;
+    const savings = biggestCOGSLine.total - reducedCost;
+    const newGrossProfit = grossMarginImpact.grossProfit + savings;
+    return (newGrossProfit / totalRevenue) * 100;
+  }, [totalRevenue, biggestCOGSLine, grossMarginImpact]);
 
   if (!hasData) {
     return (
@@ -463,6 +530,151 @@ export function ProductionClient({
         {productionLines.filter((l) => l.total > 0).length === 0 && (
           <p className="text-sm text-muted-foreground py-4 text-center">
             No product-line CoGS data available
+          </p>
+        )}
+      </div>
+
+      {/* ── Customer Cost Attribution Section ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Customer Cost Attribution Card */}
+        <div className={cn(
+          'rounded-xl border p-6',
+          'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800',
+        )}>
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-lg font-semibold">Customer Cost Attribution</h2>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Average COGS per Customer</p>
+              <p className="text-3xl font-bold tracking-tight">
+                {formatCurrency(averageCOGSPerCustomer)}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 pt-2 border-t border-indigo-200/50 dark:border-indigo-800/50">
+              <div>
+                <p className="text-xs text-muted-foreground">Active Customers</p>
+                <p className="text-xl font-semibold">{activeCustomerCount}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Total COGS</p>
+                <p className="text-xl font-semibold">{fmtCompact(totalCogsProductionCost)}</p>
+              </div>
+            </div>
+            {activeCustomerCount === 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                No client records found. Run client resolution to populate.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Biggest COGS Line Impact Card */}
+        <div className={cn(
+          'rounded-xl border p-6',
+          'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800',
+        )}>
+          <div className="flex items-center gap-2 mb-4">
+            <Target className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            <h2 className="text-lg font-semibold">Biggest COGS Line Impact</h2>
+          </div>
+          {biggestCOGSLine.total > 0 ? (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Largest Production Line</p>
+                <p className="text-2xl font-bold tracking-tight">{biggestCOGSLine.name}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Cost</p>
+                  <p className="text-lg font-semibold">
+                    {fmtCompact(biggestCOGSLine.total)}
+                    <span className="text-sm font-normal text-muted-foreground ml-1">
+                      ({biggestCOGSLine.percentOfRevenue.toFixed(1)}% of revenue)
+                    </span>
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Per Customer</p>
+                  <p className="text-lg font-semibold">{formatCurrency(biggestCOGSLine.perCustomer)}</p>
+                </div>
+              </div>
+              <div className="pt-2 border-t border-rose-200/50 dark:border-rose-800/50">
+                <p className="text-sm text-muted-foreground flex items-center gap-1">
+                  <ArrowDown className="h-3 w-3" />
+                  If <span className="font-medium text-foreground">{biggestCOGSLine.name}</span> were reduced by 10%, gross margin would improve from{' '}
+                  <span className="font-semibold text-foreground">{grossMarginImpact.grossMargin.toFixed(1)}%</span> to{' '}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{reducedMargin.toFixed(1)}%</span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-4 text-center">
+              No COGS line data available
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* ── Gross Margin Waterfall ── */}
+      <div className="rounded-xl border bg-card p-6">
+        <h2 className="text-lg font-semibold mb-2">Gross Margin Waterfall</h2>
+        <p className="text-sm text-muted-foreground mb-4">
+          Revenue minus each COGS line to arrive at Gross Profit
+          {grossMarginImpact.grossMargin !== 0 && (
+            <span className="ml-2 font-medium">
+              — Gross Margin: <span className={cn(
+                grossMarginImpact.grossMargin >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-red-600 dark:text-red-400'
+              )}>{grossMarginImpact.grossMargin.toFixed(1)}%</span>
+            </span>
+          )}
+        </p>
+        {waterfallChartData.length > 2 ? (
+          <div className="h-[400px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={waterfallChartData} margin={{ left: 10, right: 10, bottom: 60 }}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-gray-200 dark:stroke-gray-700" />
+                <XAxis
+                  dataKey="name"
+                  tick={{ fontSize: 10 }}
+                  className="fill-gray-500 dark:fill-gray-400"
+                  angle={-45}
+                  textAnchor="end"
+                  height={70}
+                />
+                <YAxis
+                  tickFormatter={fmtAxis}
+                  tick={{ fontSize: 10 }}
+                  className="fill-gray-500 dark:fill-gray-400"
+                />
+                <RechartsTooltip
+                  formatter={(value, name) => {
+                    if (name === 'base') return [null, null];
+                    const label = name === 'positive' ? 'Revenue' : name === 'negative' ? 'Cost' : 'Gross Profit';
+                    return [formatCurrency(Number(value ?? 0)), label];
+                  }}
+                  contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  itemStyle={{ padding: 0 }}
+                />
+                <ReferenceLine y={0} stroke="#6b7280" strokeDasharray="3 3" />
+                {/* Invisible base bar */}
+                <Bar dataKey="base" stackId="waterfall" fill="transparent" />
+                {/* Revenue (green) */}
+                <Bar dataKey="positive" stackId="waterfall" fill="#10b981" radius={[4, 4, 0, 0]} />
+                {/* Cost deductions (red) */}
+                <Bar dataKey="negative" stackId="waterfall" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                {/* Result bar (blue) */}
+                <Bar dataKey="result" stackId="waterfall" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground py-8 text-center">
+            Insufficient data for waterfall chart
           </p>
         )}
       </div>

@@ -1,8 +1,31 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createUntypedServiceClient } from '@/lib/supabase/server';
+import { calculateFullyLoadedCost } from '@/lib/financial/uk-tax';
 import { HeadcountClient } from './headcount-client';
 
 // ── Types ──
+
+export interface Employee {
+  id: string;
+  name: string;
+  roleTitle: string;
+  department: string; // from payroll_group name
+  departmentId: string; // payroll_group id for the add form
+  annualGrossSalary: number;
+  monthlyGross: number;
+  employerNIC: number;
+  employerPension: number;
+  totalMonthlyCost: number;
+  totalAnnualCost: number;
+  startDate: string | null;
+  endDate: string | null;
+  isForecast: boolean;
+}
+
+export interface PayrollGroupOption {
+  id: string;
+  name: string;
+}
 
 export interface HeadcountRole {
   roleId: string;
@@ -348,6 +371,71 @@ export default async function HeadcountPage() {
     ? ((totalNIC + totalPension) / totalSalaries) * 100
     : 0;
 
+  // ── 7. Fetch payroll register data ──
+
+  const { data: payrollGroups } = await supabase
+    .from('payroll_groups')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('name');
+
+  const { data: payrollMembers } = await supabase
+    .from('payroll_group_members')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('name');
+
+  const groups = (payrollGroups ?? []) as unknown as Array<{
+    id: string; name: string; employer_ni_rate: number;
+    employer_ni_threshold: number; employer_pension_rate: number;
+  }>;
+
+  const members = (payrollMembers ?? []) as unknown as Array<{
+    id: string; payroll_group_id: string; name: string; role_title: string | null;
+    annual_gross_salary: number; start_date: string | null; end_date: string | null;
+    is_forecast: boolean;
+  }>;
+
+  // Build group lookup
+  const groupLookup = new Map(groups.map((g) => [g.id, g]));
+
+  // Build Employee[] with fully loaded costs
+  const employees: Employee[] = members.map((m) => {
+    const group = groupLookup.get(m.payroll_group_id);
+    const salary = Number(m.annual_gross_salary);
+
+    const settings = {
+      employer_ni_rate: group ? Number(group.employer_ni_rate) : 0.138,
+      employer_ni_threshold: group ? Number(group.employer_ni_threshold) : 9100,
+      employer_pension_rate: group ? Number(group.employer_pension_rate) : 0.03,
+    };
+
+    const costs = calculateFullyLoadedCost(salary, settings);
+
+    return {
+      id: m.id,
+      name: m.name,
+      roleTitle: m.role_title ?? '',
+      department: group?.name ?? 'Unassigned',
+      departmentId: m.payroll_group_id,
+      annualGrossSalary: salary,
+      monthlyGross: Math.round((salary / 12) * 100) / 100,
+      employerNIC: costs.employerNI,
+      employerPension: costs.employerPension,
+      totalMonthlyCost: costs.monthlyTotal,
+      totalAnnualCost: costs.totalCost,
+      startDate: m.start_date,
+      endDate: m.end_date,
+      isForecast: m.is_forecast,
+    };
+  });
+
+  // Payroll group options for the add form
+  const payrollGroupOptions: PayrollGroupOption[] = groups.map((g) => ({
+    id: g.id,
+    name: g.name,
+  }));
+
   return (
     <HeadcountClient
       departments={departments}
@@ -361,6 +449,9 @@ export default async function HeadcountPage() {
       avgCostPerRole={avgCostPerRole}
       employerOnCostPct={employerOnCostPct}
       periodCount={periodCount}
+      employees={employees}
+      payrollGroupOptions={payrollGroupOptions}
+      orgId={orgId}
     />
   );
 }

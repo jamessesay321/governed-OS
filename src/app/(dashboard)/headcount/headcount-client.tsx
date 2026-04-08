@@ -1,6 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Users,
@@ -14,6 +15,10 @@ import {
   PoundSterling,
   Percent,
   Plus,
+  UserPlus,
+  X,
+  Loader2,
+  FileText,
 } from 'lucide-react';
 import {
   BarChart,
@@ -34,6 +39,8 @@ import type {
   HeadcountDepartment,
   HeadcountRole,
   HeadcountPeriodSummary,
+  Employee,
+  PayrollGroupOption,
 } from './page';
 
 /* ================================================================== */
@@ -52,6 +59,9 @@ interface HeadcountClientProps {
   avgCostPerRole: number;
   employerOnCostPct: number;
   periodCount: number;
+  employees: Employee[];
+  payrollGroupOptions: PayrollGroupOption[];
+  orgId: string;
 }
 
 /* ================================================================== */
@@ -188,11 +198,23 @@ export function HeadcountClient({
   avgCostPerRole,
   employerOnCostPct,
   periodCount,
+  employees,
+  payrollGroupOptions,
+  orgId,
 }: HeadcountClientProps) {
   const [activeDept, setActiveDept] = useState<string | null>(null);
   const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
   const [view, setView] = useState<'register' | 'orgchart'>('register');
   const [newDeptInput, setNewDeptInput] = useState('');
+  const [dataSource, setDataSource] = useState<'xero' | 'payroll'>('xero');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [addFormLoading, setAddFormLoading] = useState(false);
+  const [addFormError, setAddFormError] = useState<string | null>(null);
+  const [addFormName, setAddFormName] = useState('');
+  const [addFormRole, setAddFormRole] = useState('');
+  const [addFormGroupId, setAddFormGroupId] = useState(payrollGroupOptions[0]?.id ?? '');
+  const [addFormSalary, setAddFormSalary] = useState('');
+  const [addFormStartDate, setAddFormStartDate] = useState('');
 
   // Filter departments by active pill
   const filteredDepartments = useMemo(() => {
@@ -266,32 +288,126 @@ export function HeadcountClient({
           </div>
         </div>
         <div className="ml-4 shrink-0">
-          <ExportButton
-            data={roles.map((r) => ({
-              role: r.roleName,
-              department: departments.find((d) => d.roles.some((dr) => dr.roleId === r.roleId))?.name ?? '',
-              annualCost: r.annualCost,
-              monthlyAvg: r.monthlyAvg,
-              salary: r.salaryTotal,
-              nic: r.nicTotal,
-              pension: r.pensionTotal,
-              other: r.otherTotal,
-            }))}
-            columns={[
-              { header: 'Role', key: 'role', format: 'text' },
-              { header: 'Department', key: 'department', format: 'text' },
-              { header: 'Annual Cost', key: 'annualCost', format: 'currency' },
-              { header: 'Monthly Avg', key: 'monthlyAvg', format: 'currency' },
-              { header: 'Salary', key: 'salary', format: 'currency' },
-              { header: 'NIC', key: 'nic', format: 'currency' },
-              { header: 'Pension', key: 'pension', format: 'currency' },
-              { header: 'Other', key: 'other', format: 'currency' },
-            ]}
-            filename="headcount-register"
-            title="Headcount Register"
-          />
+          {dataSource === 'payroll' ? (
+            <ExportButton
+              data={employees.map((e) => ({
+                name: e.name,
+                role: e.roleTitle,
+                department: e.department,
+                monthlyGross: e.monthlyGross,
+                employerNIC: e.employerNIC,
+                employerPension: e.employerPension,
+                totalMonthlyCost: e.totalMonthlyCost,
+                annualSalary: e.annualGrossSalary,
+              }))}
+              columns={[
+                { header: 'Name', key: 'name', format: 'text' },
+                { header: 'Role', key: 'role', format: 'text' },
+                { header: 'Department', key: 'department', format: 'text' },
+                { header: 'Monthly Gross', key: 'monthlyGross', format: 'currency' },
+                { header: 'Employer NIC', key: 'employerNIC', format: 'currency' },
+                { header: 'Employer Pension', key: 'employerPension', format: 'currency' },
+                { header: 'Total Monthly Cost', key: 'totalMonthlyCost', format: 'currency' },
+                { header: 'Annual Salary', key: 'annualSalary', format: 'currency' },
+              ]}
+              filename="employee-register"
+              title="Employee Register"
+            />
+          ) : (
+            <ExportButton
+              data={roles.map((r) => ({
+                role: r.roleName,
+                department: departments.find((d) => d.roles.some((dr) => dr.roleId === r.roleId))?.name ?? '',
+                annualCost: r.annualCost,
+                monthlyAvg: r.monthlyAvg,
+                salary: r.salaryTotal,
+                nic: r.nicTotal,
+                pension: r.pensionTotal,
+                other: r.otherTotal,
+              }))}
+              columns={[
+                { header: 'Role', key: 'role', format: 'text' },
+                { header: 'Department', key: 'department', format: 'text' },
+                { header: 'Annual Cost', key: 'annualCost', format: 'currency' },
+                { header: 'Monthly Avg', key: 'monthlyAvg', format: 'currency' },
+                { header: 'Salary', key: 'salary', format: 'currency' },
+                { header: 'NIC', key: 'nic', format: 'currency' },
+                { header: 'Pension', key: 'pension', format: 'currency' },
+                { header: 'Other', key: 'other', format: 'currency' },
+              ]}
+              filename="headcount-register"
+              title="Headcount Register"
+            />
+          )}
         </div>
       </div>
+
+      {/* ── Data Source Tabs ── */}
+      <div className="flex items-center gap-1 rounded-lg border bg-muted/30 p-1 w-fit">
+        <button
+          onClick={() => setDataSource('xero')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+            dataSource === 'xero'
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <FileText className="h-3.5 w-3.5" />
+          GL Accounts
+          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">from Xero</span>
+        </button>
+        <button
+          onClick={() => setDataSource('payroll')}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+            dataSource === 'payroll'
+              ? 'bg-background shadow-sm text-foreground'
+              : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <Users className="h-3.5 w-3.5" />
+          Employee Register
+          <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">from payroll</span>
+          {employees.length > 0 && (
+            <span className="ml-1 px-1.5 py-0.5 rounded-full text-[10px] bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+              {employees.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/*  PAYROLL REGISTER VIEW                                        */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {dataSource === 'payroll' && (
+        <EmployeeRegisterSection
+          employees={employees}
+          payrollGroupOptions={payrollGroupOptions}
+          orgId={orgId}
+          showAddForm={showAddForm}
+          setShowAddForm={setShowAddForm}
+          addFormLoading={addFormLoading}
+          setAddFormLoading={setAddFormLoading}
+          addFormError={addFormError}
+          setAddFormError={setAddFormError}
+          addFormName={addFormName}
+          setAddFormName={setAddFormName}
+          addFormRole={addFormRole}
+          setAddFormRole={setAddFormRole}
+          addFormGroupId={addFormGroupId}
+          setAddFormGroupId={setAddFormGroupId}
+          addFormSalary={addFormSalary}
+          setAddFormSalary={setAddFormSalary}
+          addFormStartDate={addFormStartDate}
+          setAddFormStartDate={setAddFormStartDate}
+        />
+      )}
+
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {/*  XERO GL VIEW (existing)                                      */}
+      {/* ══════════════════════════════════════════════════════════════ */}
+      {dataSource === 'xero' && (<>
 
       {/* ── Summary Cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -626,6 +742,353 @@ export function HeadcountClient({
           </div>
         </div>
       </div>
+
+      </>)}
     </div>
+  );
+}
+
+/* ================================================================== */
+/*  Employee Register Section                                          */
+/* ================================================================== */
+
+function EmployeeRegisterSection({
+  employees,
+  payrollGroupOptions,
+  orgId,
+  showAddForm,
+  setShowAddForm,
+  addFormLoading,
+  setAddFormLoading,
+  addFormError,
+  setAddFormError,
+  addFormName,
+  setAddFormName,
+  addFormRole,
+  setAddFormRole,
+  addFormGroupId,
+  setAddFormGroupId,
+  addFormSalary,
+  setAddFormSalary,
+  addFormStartDate,
+  setAddFormStartDate,
+}: {
+  employees: Employee[];
+  payrollGroupOptions: PayrollGroupOption[];
+  orgId: string;
+  showAddForm: boolean;
+  setShowAddForm: (v: boolean) => void;
+  addFormLoading: boolean;
+  setAddFormLoading: (v: boolean) => void;
+  addFormError: string | null;
+  setAddFormError: (v: string | null) => void;
+  addFormName: string;
+  setAddFormName: (v: string) => void;
+  addFormRole: string;
+  setAddFormRole: (v: string) => void;
+  addFormGroupId: string;
+  setAddFormGroupId: (v: string) => void;
+  addFormSalary: string;
+  setAddFormSalary: (v: string) => void;
+  addFormStartDate: string;
+  setAddFormStartDate: (v: string) => void;
+}) {
+  const router = useRouter();
+
+  // Compute summary totals
+  const totalHeadcount = employees.length;
+  const totalMonthlyPayroll = employees.reduce((s, e) => s + e.totalMonthlyCost, 0);
+  const totalAnnualCost = employees.reduce((s, e) => s + e.totalAnnualCost, 0);
+  const totalMonthlyGross = employees.reduce((s, e) => s + e.monthlyGross, 0);
+  const totalNIC = employees.reduce((s, e) => s + e.employerNIC, 0);
+  const totalPension = employees.reduce((s, e) => s + e.employerPension, 0);
+
+  const handleAddEmployee = useCallback(async () => {
+    setAddFormError(null);
+
+    if (!addFormName.trim()) { setAddFormError('Name is required'); return; }
+    if (!addFormGroupId) { setAddFormError('Please select a department'); return; }
+    const salary = parseFloat(addFormSalary);
+    if (isNaN(salary) || salary < 0) { setAddFormError('Enter a valid salary'); return; }
+
+    setAddFormLoading(true);
+    try {
+      const res = await fetch(`/api/payroll/${orgId}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          payroll_group_id: addFormGroupId,
+          name: addFormName.trim(),
+          role_title: addFormRole.trim() || undefined,
+          annual_gross_salary: salary,
+          start_date: addFormStartDate || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setAddFormError((body as Record<string, string>).error ?? 'Failed to add employee');
+        return;
+      }
+
+      // Reset form and refresh page
+      setAddFormName('');
+      setAddFormRole('');
+      setAddFormSalary('');
+      setAddFormStartDate('');
+      setShowAddForm(false);
+      router.refresh();
+    } catch {
+      setAddFormError('Network error. Please try again.');
+    } finally {
+      setAddFormLoading(false);
+    }
+  }, [
+    addFormName, addFormRole, addFormGroupId, addFormSalary, addFormStartDate,
+    orgId, router, setAddFormError, setAddFormLoading, setAddFormName,
+    setAddFormRole, setAddFormSalary, setAddFormStartDate, setShowAddForm,
+  ]);
+
+  return (
+    <>
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="rounded-xl border bg-purple-50 dark:bg-purple-950/30 p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+            <Users className="h-4 w-4" />
+            Total Headcount
+          </div>
+          <p className="text-2xl font-bold">{totalHeadcount}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            employees in payroll register
+          </p>
+        </div>
+
+        <div className="rounded-xl border bg-purple-50 dark:bg-purple-950/30 p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+            <Wallet className="h-4 w-4" />
+            Monthly Payroll
+          </div>
+          <p className="text-2xl font-bold">{fmtCompact(totalMonthlyPayroll)}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            fully loaded monthly cost
+          </p>
+        </div>
+
+        <div className="rounded-xl border bg-purple-50 dark:bg-purple-950/30 p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+            <PoundSterling className="h-4 w-4" />
+            Annual Cost
+          </div>
+          <p className="text-2xl font-bold">{fmtCompact(totalAnnualCost)}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            salary + NIC + pension
+          </p>
+        </div>
+
+        <div className="rounded-xl border bg-purple-50 dark:bg-purple-950/30 p-5">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground mb-2">
+            <Percent className="h-4 w-4" />
+            Avg Cost Per Head
+          </div>
+          <p className="text-2xl font-bold">
+            {totalHeadcount > 0 ? fmtCompact(totalAnnualCost / totalHeadcount) : '\u00A30'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            fully loaded annual cost
+          </p>
+        </div>
+      </div>
+
+      {/* Add Employee Button */}
+      <div className="flex items-center justify-between">
+        <div />
+        <button
+          onClick={() => setShowAddForm(!showAddForm)}
+          className={cn(
+            'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+            showAddForm
+              ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300'
+              : 'bg-purple-600 text-white hover:bg-purple-700'
+          )}
+        >
+          {showAddForm ? (
+            <>
+              <X className="h-4 w-4" />
+              Cancel
+            </>
+          ) : (
+            <>
+              <UserPlus className="h-4 w-4" />
+              Add Employee
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Add Employee Form */}
+      {showAddForm && (
+        <div className="rounded-xl border bg-card p-6">
+          <h3 className="text-sm font-semibold mb-4">Add New Employee</h3>
+          {addFormError && (
+            <div className="mb-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 px-4 py-2.5 text-sm text-red-700 dark:text-red-300">
+              {addFormError}
+            </div>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Name *</label>
+              <input
+                type="text"
+                value={addFormName}
+                onChange={(e) => setAddFormName(e.target.value)}
+                placeholder="e.g. Jane Smith"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Role Title</label>
+              <input
+                type="text"
+                value={addFormRole}
+                onChange={(e) => setAddFormRole(e.target.value)}
+                placeholder="e.g. Senior Developer"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Department *</label>
+              <select
+                value={addFormGroupId}
+                onChange={(e) => setAddFormGroupId(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              >
+                {payrollGroupOptions.length === 0 && (
+                  <option value="">No departments available</option>
+                )}
+                {payrollGroupOptions.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Annual Gross Salary *</label>
+              <input
+                type="number"
+                value={addFormSalary}
+                onChange={(e) => setAddFormSalary(e.target.value)}
+                placeholder="e.g. 45000"
+                min="0"
+                step="100"
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Start Date</label>
+              <input
+                type="date"
+                value={addFormStartDate}
+                onChange={(e) => setAddFormStartDate(e.target.value)}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+              />
+            </div>
+            <div className="flex items-end">
+              <button
+                onClick={handleAddEmployee}
+                disabled={addFormLoading || payrollGroupOptions.length === 0}
+                className={cn(
+                  'flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors w-full justify-center',
+                  'bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                {addFormLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="h-4 w-4" />
+                    Add Employee
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          {payrollGroupOptions.length === 0 && (
+            <p className="mt-3 text-xs text-amber-600 dark:text-amber-400">
+              You need to create a payroll group (department) first before adding employees.
+              Use the Payroll API or Staff Costs page to create one.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Employee Table */}
+      {employees.length > 0 ? (
+        <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-muted/30">
+                  <th className="py-2.5 px-4 text-left font-medium text-muted-foreground text-xs">Name</th>
+                  <th className="py-2.5 px-4 text-left font-medium text-muted-foreground text-xs">Role</th>
+                  <th className="py-2.5 px-4 text-left font-medium text-muted-foreground text-xs">Department</th>
+                  <th className="py-2.5 px-4 text-right font-medium text-muted-foreground text-xs">Monthly Gross</th>
+                  <th className="py-2.5 px-4 text-right font-medium text-muted-foreground text-xs">Employer NIC</th>
+                  <th className="py-2.5 px-4 text-right font-medium text-muted-foreground text-xs">Employer Pension</th>
+                  <th className="py-2.5 px-4 text-right font-medium text-muted-foreground text-xs">Total Monthly</th>
+                  <th className="py-2.5 px-4 text-right font-medium text-muted-foreground text-xs">Annual Salary</th>
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((emp) => (
+                  <tr key={emp.id} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{emp.name}</span>
+                        {emp.isForecast && (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+                            forecast
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-muted-foreground">{emp.roleTitle || '\u2014'}</td>
+                    <td className="py-3 px-4">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300">
+                        {emp.department}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-right">{formatCurrency(emp.monthlyGross)}</td>
+                    <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(emp.employerNIC / 12)}</td>
+                    <td className="py-3 px-4 text-right text-muted-foreground">{formatCurrency(emp.employerPension / 12)}</td>
+                    <td className="py-3 px-4 text-right font-medium">{formatCurrency(emp.totalMonthlyCost)}</td>
+                    <td className="py-3 px-4 text-right">{formatCurrency(emp.annualGrossSalary)}</td>
+                  </tr>
+                ))}
+                {/* Totals row */}
+                <tr className="bg-muted/40 font-semibold border-t">
+                  <td className="py-2.5 px-4 text-xs">Total ({totalHeadcount} employees)</td>
+                  <td className="py-2.5 px-4" />
+                  <td className="py-2.5 px-4" />
+                  <td className="py-2.5 px-4 text-right text-xs">{formatCurrency(totalMonthlyGross)}</td>
+                  <td className="py-2.5 px-4 text-right text-xs">{formatCurrency(totalNIC / 12)}</td>
+                  <td className="py-2.5 px-4 text-right text-xs">{formatCurrency(totalPension / 12)}</td>
+                  <td className="py-2.5 px-4 text-right text-xs">{formatCurrency(totalMonthlyPayroll)}</td>
+                  <td className="py-2.5 px-4 text-right text-xs">{formatCurrency(employees.reduce((s, e) => s + e.annualGrossSalary, 0))}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-xl border bg-card p-8 text-center text-muted-foreground">
+          <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
+          <p className="text-sm font-medium mb-1">No employees added to the payroll register yet.</p>
+          <p className="text-xs">Add employees to see individual cost breakdowns.</p>
+        </div>
+      )}
+    </>
   );
 }

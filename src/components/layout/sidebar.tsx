@@ -169,11 +169,20 @@ const navigation: NavGroup[] = [
     ],
   },
   {
+    group: 'Bridal Orders',
+    icon: 'ClipboardList',
+    href: '/orders',
+    children: [
+      { href: '/orders', label: 'Order Management' },
+    ],
+  },
+  {
     group: 'Debt',
     icon: 'Landmark',
     href: '/debt',
     children: [
       { href: '/debt', label: 'Command Centre' },
+      { href: '/debt/mca-projections', label: 'MCA Projections' },
       { href: '/aged-analysis', label: 'Aged Analysis' },
     ],
   },
@@ -191,6 +200,14 @@ const navigation: NavGroup[] = [
     href: '/valuation',
     children: [
       { href: '/valuation', label: 'Business Valuation' },
+    ],
+  },
+  {
+    group: 'Breakeven',
+    icon: 'Target',
+    href: '/breakeven',
+    children: [
+      { href: '/breakeven', label: 'Breakeven & Normalised P&L' },
     ],
   },
   {
@@ -596,6 +613,13 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
     </svg>
   ),
+  Target: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <circle cx="12" cy="12" r="10" />
+      <circle cx="12" cy="12" r="6" />
+      <circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
   HeartPulse: (
     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
       <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
@@ -702,6 +726,13 @@ const icons: Record<string, React.ReactNode> = {
       <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h8M8 14h4" />
     </svg>
   ),
+  ClipboardList: (
+    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+      <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 11h4M12 16h4M8 11h.01M8 16h.01" />
+    </svg>
+  ),
 };
 
 /* ------------------------------------------------------------------ */
@@ -710,13 +741,13 @@ const icons: Record<string, React.ReactNode> = {
 
 const sectionBreaks: Record<number, string> = {
   0: 'OVERVIEW',              // Dashboard, Business Profile
-  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions, Revenue & Costs, Debt, Production, Valuation, Anomalies
-  15: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
-  23: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
-  26: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
-  29: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
-  33: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
-  37: 'ADMIN',                // Billing & Plans, Settings, Help & Support
+  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions, Revenue & Costs, Debt, Production, Valuation, Breakeven, Anomalies
+  17: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
+  25: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
+  28: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
+  31: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
+  35: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
+  39: 'ADMIN',                // Billing & Plans, Settings, Help & Support
 };
 
 /* ------------------------------------------------------------------ */
