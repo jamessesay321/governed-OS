@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { runAllPnLChecks } from '@/lib/financial/sense-check';
+import { fetchFinanceCosts } from '@/lib/financial/finance-costs';
 import { FinancialsClient } from './financials-client';
 
 export default async function FinancialsPage() {
@@ -56,6 +57,10 @@ export default async function FinancialsPage() {
 
   const lastSyncAt = lastCompletedSync?.completed_at ?? null;
 
+  // Fetch finance costs for accurate profit figures
+  const financeCosts = await fetchFinanceCosts(orgId);
+  const monthlyInterest = financeCosts.totalMonthlyInterest;
+
   // Build period summary
   const periodSummary = new Map<string, { revenue: number; costs: number; expenses: number; accounts: number }>();
 
@@ -83,7 +88,8 @@ export default async function FinancialsPage() {
       revenue: data.revenue,
       costs: data.costs,
       expenses: data.expenses,
-      netProfit: data.revenue - data.costs - data.expenses,
+      // Net profit MUST include finance costs for businesses with debt
+      netProfit: data.revenue - data.costs - data.expenses - monthlyInterest,
       accountLines: data.accounts,
     }));
 

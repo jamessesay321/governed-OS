@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import { getDefaultTemplate, getTemplateById } from '@/lib/dashboard/templates';
 import { DashboardClient } from './dashboard-client';
 import type { AccountMapping } from '@/types';
@@ -81,6 +82,10 @@ export default async function DashboardPage() {
   const periods = getAvailablePeriods(financials || []);
   const defaultPeriod = periods[0] || '';
 
+  // Fetch finance costs from debt facilities (shared utility — see finance-costs.ts)
+  // This ensures net profit includes interest expense on ALL pages, not just Income Statement.
+  const financeCosts = await fetchFinanceCosts(orgId);
+
   // Build P&L for all periods — use semantic mapping when available
   const hasMappings = mappings.length > 0;
   const pnlByPeriod: Record<string, ReturnType<typeof buildPnL>> = {};
@@ -109,11 +114,15 @@ export default async function DashboardPage() {
         costOfSales: spnl.costOfSales,
         grossProfit: spnl.grossProfit,
         expenses: spnl.operatingExpenses,
-        netProfit: spnl.netProfit,
+        netProfit: adjustNetProfitForFinanceCosts(spnl.netProfit, financeCosts),
         period,
       };
     } else {
-      pnlByPeriod[period] = buildPnL(financials || [], accounts || [], period);
+      const pnl = buildPnL(financials || [], accounts || [], period);
+      pnlByPeriod[period] = {
+        ...pnl,
+        netProfit: adjustNetProfitForFinanceCosts(pnl.netProfit, financeCosts),
+      };
     }
   }
 

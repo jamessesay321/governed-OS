@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { WelcomeIllustration } from '@/components/ui/illustrations';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatPercent } from '@/lib/formatting/currency';
 import type { PnLSummary, PnLSection } from '@/lib/financial/aggregate';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -73,13 +73,13 @@ function getContextualInsight(
 
   if (pnl.revenue > 0 && previousPnl.revenue > 0) {
     const change = ((pnl.revenue - previousPnl.revenue) / previousPnl.revenue) * 100;
-    if (change > 0) return `Your revenue is up ${change.toFixed(0)}% this period. Nice work.`;
-    if (change < -5) return `Revenue dipped ${Math.abs(change).toFixed(0)}% this period. Worth a closer look.`;
+    if (change > 0) return `Your revenue is up ${formatPercent(change)} this period. Nice work.`;
+    if (change < -5) return `Revenue dipped ${formatPercent(Math.abs(change))} this period. Worth a closer look.`;
   }
   if (pnl.netProfit > 0 && previousPnl.netProfit <= 0) return 'You moved into profit this period. Great momentum.';
   if (pnl.grossProfit > 0 && previousPnl.grossProfit > 0) {
     const gpMargin = (pnl.grossProfit / pnl.revenue) * 100;
-    if (gpMargin > 60) return `Gross margin is strong at ${gpMargin.toFixed(0)}%. Keep it up.`;
+    if (gpMargin > 60) return `Gross margin is strong at ${formatPercent(gpMargin)}. Keep it up.`;
   }
   return null;
 }
@@ -391,7 +391,7 @@ export function DashboardClient({
               : metric === 'expenses' ? pnl.expenses
               : pnl.netProfit;
             const formatted = metric === 'gross_margin'
-              ? `${value.toFixed(1)}%`
+              ? formatPercent(value)
               : formatCurrency(value);
             openDrill({
               type: 'kpi',

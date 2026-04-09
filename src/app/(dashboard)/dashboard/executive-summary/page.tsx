@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import {
   checkVATRegistration,
   calculateFilingDeadlines,
@@ -112,6 +113,9 @@ export default async function ExecutiveSummaryPage() {
     );
   }
 
+  // Fetch finance costs from debt facilities — ensures profit figures include interest
+  const financeCosts = await fetchFinanceCosts(orgId);
+
   // Build P&L for all periods
   const hasMappings = mappings.length > 0;
   const pnlByPeriod: Record<string, {
@@ -120,6 +124,7 @@ export default async function ExecutiveSummaryPage() {
     grossProfit: number;
     expenses: number;
     netProfit: number;
+    financeCosts: number;
   }> = {};
 
   for (const period of periods) {
@@ -130,7 +135,8 @@ export default async function ExecutiveSummaryPage() {
         costOfSales: spnl.costOfSales,
         grossProfit: spnl.grossProfit,
         expenses: spnl.operatingExpenses,
-        netProfit: spnl.netProfit,
+        netProfit: adjustNetProfitForFinanceCosts(spnl.netProfit, financeCosts),
+        financeCosts: financeCosts.totalMonthlyInterest,
       };
     } else {
       const pnl = buildPnL(financials, accounts, period);
@@ -139,7 +145,8 @@ export default async function ExecutiveSummaryPage() {
         costOfSales: pnl.costOfSales,
         grossProfit: pnl.grossProfit,
         expenses: pnl.expenses,
-        netProfit: pnl.netProfit,
+        netProfit: adjustNetProfitForFinanceCosts(pnl.netProfit, financeCosts),
+        financeCosts: financeCosts.totalMonthlyInterest,
       };
     }
   }

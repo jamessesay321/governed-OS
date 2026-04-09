@@ -19,6 +19,7 @@ import { ROLE_HIERARCHY } from '@/types';
 import { EmptyStateIllustration } from '@/components/ui/illustrations';
 import { NumberLegend } from '@/components/data-primitives';
 import { useCurrency } from '@/components/providers/currency-context';
+import { formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import {
   ReportControls,
   getDefaultReportState,
@@ -610,7 +611,7 @@ function KpiSummaryCards({
       label: 'Gross Profit',
       value: formatCurrency(grossProfit),
       change: grossChange,
-      sub: `${grossMargin.toFixed(1)}% margin`,
+      sub: `${formatPercent(grossMargin)} margin`,
       icon: TrendingUp,
       iconBg: 'bg-green-100 dark:bg-green-950',
       iconColor: 'text-green-600',
@@ -628,7 +629,7 @@ function KpiSummaryCards({
       label: 'Net Profit',
       value: formatCurrency(current.netProfit),
       change: netChange,
-      sub: `${netMargin.toFixed(1)}% margin`,
+      sub: `${formatPercent(netMargin)} margin`,
       icon: PiggyBank,
       iconBg: current.netProfit >= 0 ? 'bg-emerald-100 dark:bg-emerald-950' : 'bg-red-100 dark:bg-red-950',
       iconColor: current.netProfit >= 0 ? 'text-emerald-600' : 'text-red-600',
@@ -665,7 +666,7 @@ function KpiSummaryCards({
               {c.change != null && (
                 <span className={changeColor}>
                   {c.change > 0 ? '+' : ''}
-                  {c.change.toFixed(1)}% vs prior
+                  {formatPercent(c.change)} vs prior
                 </span>
               )}
               {c.sub && (
@@ -706,11 +707,7 @@ function MiniTrendChart({
             <YAxis
               tick={{ fontSize: 11 }}
               className="text-muted-foreground"
-              tickFormatter={(v: number) => {
-                if (Math.abs(v) >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-                if (Math.abs(v) >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
-                return String(v);
-              }}
+              tickFormatter={chartAxisFormatter()}
             />
             <Tooltip
               formatter={(value) => typeof value === 'number' ? formatCurrency(value) : String(value ?? '')}

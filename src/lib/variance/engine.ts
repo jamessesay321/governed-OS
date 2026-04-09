@@ -1,6 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { buildPnL } from '@/lib/financial/aggregate';
 import { roundCurrency } from '@/lib/financial/normalise';
+import type { FinanceCostsResult } from '@/lib/financial/finance-costs';
 import type { NormalisedFinancial, ChartOfAccount, BudgetLine } from '@/types';
 
 export type VarianceLine = {
@@ -46,19 +47,30 @@ function offsetPeriod(period: string, months: number): string {
 
 /**
  * Build a category→pence map from a P&L for a given period.
+ * When financeCosts is provided, net_profit is adjusted to include interest expense.
  */
 function buildCategoryMap(
   financials: NormalisedFinancial[],
   accounts: ChartOfAccount[],
-  period: string
+  period: string,
+  financeCosts?: FinanceCostsResult
 ): Map<string, number> {
   const pnl = buildPnL(financials, accounts, period);
   const map = new Map<string, number>();
   map.set('revenue', Math.round(pnl.revenue * 100));
   map.set('cost_of_sales', Math.round(pnl.costOfSales * 100));
   map.set('operating_expenses', Math.round(pnl.expenses * 100));
-  map.set('net_profit', Math.round(pnl.netProfit * 100));
+
+  // Adjust net profit for finance costs if debt exists
+  const monthlyInterest = financeCosts?.totalMonthlyInterest ?? 0;
+  const adjustedNetProfit = pnl.netProfit - monthlyInterest;
+  map.set('net_profit', Math.round(adjustedNetProfit * 100));
   map.set('gross_profit', Math.round(pnl.grossProfit * 100));
+
+  // Add finance costs as its own category for variance tracking
+  if (monthlyInterest > 0) {
+    map.set('finance_costs', Math.round(monthlyInterest * 100));
+  }
 
   for (const section of pnl.sections) {
     for (const row of section.rows) {
@@ -80,6 +92,9 @@ export async function calculateVariances(
   compareMode: CompareMode = 'budget'
 ): Promise<VarianceReport> {
   const supabase = await createServiceClient();
+  // Import dynamically to avoid circular deps in some environments
+  const { fetchFinanceCosts } = await import('@/lib/financial/finance-costs');
+  const financeCosts = await fetchFinanceCosts(orgId);
 
   // Fetch chart of accounts (needed for all modes)
   const { data: accounts, error: accError } = await supabase
@@ -110,7 +125,7 @@ export async function calculateVariances(
   const fins = (financials ?? []) as NormalisedFinancial[];
 
   // Build current period actuals
-  const actualsByCategory = buildCategoryMap(fins, accs, period);
+  const actualsByCategory = buildCategoryMap(fins, accs, period, financeCosts);
 
   // Build comparison baseline depending on mode
   let baselineByCategory: Map<string, number>;
@@ -142,7 +157,7 @@ export async function calculateVariances(
     if (priorError) throw new Error(`Failed to fetch prior period: ${priorError.message}`);
     const priorData = (priorFins ?? []) as NormalisedFinancial[];
 
-    baselineByCategory = buildCategoryMap(priorData, accs, comparePeriod!);
+    baselineByCategory = buildCategoryMap(priorData, accs, comparePeriod!, financeCosts);
   }
 
   // Build variance lines from whichever baseline categories exist

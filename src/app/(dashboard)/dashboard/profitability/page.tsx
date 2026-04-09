@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import ProfitabilityClient from './profitability-client';
 
@@ -32,6 +33,9 @@ export default async function ProfitabilityPage() {
   const financials = (financialsRaw ?? []) as NormalisedFinancial[];
   const accounts = (accountsRaw ?? []) as ChartOfAccount[];
 
+  /* ── Fetch finance costs for accurate net profit ── */
+  const financeCosts = await fetchFinanceCosts(orgId);
+
   /* ── Build P&L per period ── */
   const availablePeriods = getAvailablePeriods(financials);
   // Sort ascending for charting (oldest first)
@@ -39,11 +43,13 @@ export default async function ProfitabilityPage() {
 
   const periods = sortedPeriods.map((period) => {
     const pnl = buildPnL(financials, accounts, period);
+    const adjustedNetProfit = adjustNetProfitForFinanceCosts(pnl.netProfit, financeCosts);
     const grossMargin = pnl.revenue > 0
       ? (pnl.grossProfit / pnl.revenue) * 100
       : 0;
+    // Operating margin uses adjusted net profit (after finance costs)
     const operatingMargin = pnl.revenue > 0
-      ? (pnl.netProfit / pnl.revenue) * 100
+      ? (adjustedNetProfit / pnl.revenue) * 100
       : 0;
 
     return {
@@ -51,7 +57,7 @@ export default async function ProfitabilityPage() {
       revenue: pnl.revenue,
       grossMargin: Math.round(grossMargin * 10) / 10,
       operatingMargin: Math.round(operatingMargin * 10) / 10,
-      netProfit: pnl.netProfit,
+      netProfit: adjustedNetProfit,
       expenses: pnl.expenses,
     };
   });

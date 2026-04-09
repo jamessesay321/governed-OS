@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
+import { formatPercent } from '@/lib/formatting/currency';
 import {
   ReportControls,
   getDefaultReportState,
@@ -236,7 +237,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
     if (cls === 'DIRECTCOSTS') {
       const gpValues = sortedPeriods.map((p) => p.grossProfit);
       const gpMargins = sortedPeriods.map((p) =>
-        p.revenue > 0 ? `${((p.grossProfit / p.revenue) * 100).toFixed(1)}%` : null
+        p.revenue > 0 ? formatPercent(p.grossProfit / p.revenue, true) : null
       );
       rows.push({
         label: 'Gross Profit',
@@ -253,7 +254,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
   // Net Profit with inline margin %
   const netProfitValues = sortedPeriods.map((p) => p.netProfit);
   const netMargins = sortedPeriods.map((p) =>
-    p.revenue > 0 ? `${((p.netProfit / p.revenue) * 100).toFixed(1)}%` : null
+    p.revenue > 0 ? formatPercent(p.netProfit / p.revenue, true) : null
   );
   rows.push({
     label: 'Net Profit',
@@ -313,8 +314,8 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
   const totalRevenue = filteredPeriods.reduce((s, p) => s + p.revenue, 0);
   const totalGrossProfit = filteredPeriods.reduce((s, p) => s + p.grossProfit, 0);
   const totalNetProfit = filteredPeriods.reduce((s, p) => s + p.netProfit, 0);
-  const grossMargin = totalRevenue > 0 ? ((totalGrossProfit / totalRevenue) * 100).toFixed(1) : '0.0';
-  const netMargin = totalRevenue > 0 ? ((totalNetProfit / totalRevenue) * 100).toFixed(1) : '0.0';
+  const grossMargin = totalRevenue > 0 ? formatPercent(totalGrossProfit / totalRevenue, true) : '0%';
+  const netMargin = totalRevenue > 0 ? formatPercent(totalNetProfit / totalRevenue, true) : '0%';
 
   return (
     <div className="space-y-6 max-w-[1400px]">
@@ -389,7 +390,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
             {displayRows.map((row, idx) => {
               const total = row.values.reduce((a, b) => a + b, 0);
               const totalMarginPct = row.marginPcts && totalRevenue > 0
-                ? `${((total / totalRevenue) * 100).toFixed(1)}%`
+                ? formatPercent(total / totalRevenue, true)
                 : null;
               return (
                 <tr
@@ -561,8 +562,8 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: 'Total Revenue', value: formatCurrency(totalRevenue), positive: true },
-          { label: 'Gross Margin', value: `${grossMargin}%`, positive: totalGrossProfit > 0 },
-          { label: 'Net Margin', value: `${netMargin}%`, positive: totalNetProfit > 0 },
+          { label: 'Gross Margin', value: grossMargin, positive: totalGrossProfit > 0 },
+          { label: 'Net Margin', value: netMargin, positive: totalNetProfit > 0 },
           { label: 'Net Profit', value: formatCurrency(totalNetProfit), positive: totalNetProfit > 0 },
         ].map((card, i) => (
           <div key={i} className="rounded-lg border bg-card p-4">

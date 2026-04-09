@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import { roundCurrency } from '@/lib/financial/normalise';
 import { getKPIsForBusinessType, emptyKPIInputData } from './definitions';
 import { parseLineItems, getPeriodDateRange } from '@/lib/intelligence/line-item-parser';
@@ -145,15 +146,22 @@ export async function calculateKPIs(
   const fins = (financials ?? []) as NormalisedFinancial[];
   const accs = (accounts ?? []) as ChartOfAccount[];
 
+  // Fetch finance costs — net profit MUST include interest for businesses with debt
+  const financeCosts = await fetchFinanceCosts(orgId);
+
   // Build P&L for current and previous period
   const periods = getAvailablePeriods(fins);
   const currentPnL = buildPnL(fins, accs, period);
+  const currentNetProfit = adjustNetProfitForFinanceCosts(currentPnL.netProfit, financeCosts);
 
   const periodIdx = periods.indexOf(period);
   const previousPeriod = periodIdx < periods.length - 1 ? periods[periodIdx + 1] : null;
   const previousPnL = previousPeriod ? buildPnL(fins, accs, previousPeriod) : null;
+  const previousNetProfit = previousPnL
+    ? adjustNetProfitForFinanceCosts(previousPnL.netProfit, financeCosts)
+    : null;
 
-  // Build KPI input data from P&L
+  // Build KPI input data from P&L (net profit adjusted for finance costs)
   const currentData = {
     ...emptyKPIInputData(),
     revenue: Math.round(currentPnL.revenue * 100),
@@ -161,8 +169,8 @@ export async function calculateKPIs(
     cost_of_sales: Math.round(currentPnL.costOfSales * 100),
     operating_expenses: Math.round(currentPnL.expenses * 100),
     gross_profit: Math.round(currentPnL.grossProfit * 100),
-    net_profit: Math.round(currentPnL.netProfit * 100),
-    monthly_burn_rate: currentPnL.netProfit < 0 ? Math.round(Math.abs(currentPnL.netProfit) * 100) : 0,
+    net_profit: Math.round(currentNetProfit * 100),
+    monthly_burn_rate: currentNetProfit < 0 ? Math.round(Math.abs(currentNetProfit) * 100) : 0,
   };
 
   const previousData = previousPnL
@@ -172,7 +180,7 @@ export async function calculateKPIs(
         cost_of_sales: Math.round(previousPnL.costOfSales * 100),
         operating_expenses: Math.round(previousPnL.expenses * 100),
         gross_profit: Math.round(previousPnL.grossProfit * 100),
-        net_profit: Math.round(previousPnL.netProfit * 100),
+        net_profit: Math.round((previousNetProfit ?? previousPnL.netProfit) * 100),
       }
     : null;
 

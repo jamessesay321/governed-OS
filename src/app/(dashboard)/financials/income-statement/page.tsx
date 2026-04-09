@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, buildFinanceCostsSection } from '@/lib/financial/finance-costs';
 import type { NormalisedFinancial, ChartOfAccount, AccountMapping } from '@/types';
 import { IncomeStatementClient } from './income-statement-client';
 
@@ -32,26 +33,10 @@ export default async function IncomeStatementPage() {
       .eq('org_id', orgId),
   ]);
 
-  // Fetch debt facilities for finance costs line
-  const debtResult = await untypedDb
-    .from('debt_facilities')
-    .select('name, annual_interest_amount, monthly_repayment, outstanding_balance, status')
-    .eq('org_id', orgId)
-    .eq('status', 'active');
-
-  const debtFacilities = (debtResult.data ?? []) as Array<{
-    name: string;
-    annual_interest_amount: number | null;
-    monthly_repayment: number | null;
-    outstanding_balance: number | null;
-    status: string;
-  }>;
-
-  // Compute monthly finance costs from active debt
-  const totalMonthlyInterest = debtFacilities.reduce((sum, d) => {
-    if (d.annual_interest_amount) return sum + (d.annual_interest_amount / 12);
-    return sum;
-  }, 0);
+  // Fetch finance costs using shared utility (single source of truth)
+  const financeCosts = await fetchFinanceCosts(orgId);
+  const totalMonthlyInterest = financeCosts.totalMonthlyInterest;
+  const debtFacilities = financeCosts.facilities;
 
   // Fetch last sync timestamp for DataFreshness
   const syncResult = await supabase

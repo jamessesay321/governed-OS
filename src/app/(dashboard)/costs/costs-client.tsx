@@ -31,7 +31,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import type { CostAccount, CostPeriodSummary } from './page';
 
 /* ================================================================== */
@@ -63,23 +63,6 @@ const COLORS = [
   '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1',
   '#84cc16', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
 ];
-
-/* ================================================================== */
-/*  Formatters                                                         */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
-}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -193,7 +176,7 @@ export function CostsClient({
           ]}
           filename="cost-analysis"
           title="Cost Analysis"
-          subtitle={`Total Costs: ${fmtCompact(totalCosts)} · Cost:Revenue Ratio: ${(costToRevenueRatio * 100).toFixed(1)}%`}
+          subtitle={`Total Costs: ${formatCurrencyCompact(totalCosts)} · Cost:Revenue Ratio: ${formatPercent(costToRevenueRatio)}`}
         />
       </div>
 
@@ -204,9 +187,9 @@ export function CostsClient({
             <DollarSign className="h-4 w-4" />
             Total Costs (12mo)
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalCosts)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalCosts)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            Direct: {fmtCompact(totalDirectCosts)} · Overheads: {fmtCompact(totalOverheads)}
+            Direct: {formatCurrencyCompact(totalDirectCosts)} · Overheads: {formatCurrencyCompact(totalOverheads)}
           </p>
         </div>
 
@@ -219,9 +202,9 @@ export function CostsClient({
             )}
             Latest Month
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(lastPeriodTotal)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(lastPeriodTotal)}</p>
           <p className={cn('text-xs mt-1 font-medium', momGrowth >= 0 ? 'text-red-600' : 'text-emerald-600')}>
-            {momGrowth >= 0 ? '+' : ''}{momGrowth.toFixed(1)}% MoM
+            {momGrowth >= 0 ? '+' : ''}{formatPercent(momGrowth)} MoM
             {momGrowth > 10 && <span className="text-red-500 ml-1">⚠</span>}
           </p>
         </div>
@@ -235,10 +218,10 @@ export function CostsClient({
             'text-2xl font-bold',
             grossMargin < 30 ? 'text-red-600' : grossMargin < 50 ? 'text-amber-600' : 'text-emerald-600'
           )}>
-            {grossMargin.toFixed(1)}%
+            {formatPercent(grossMargin)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Revenue {fmtCompact(totalRevenue)} − Direct {fmtCompact(totalDirectCosts)}
+            Revenue {formatCurrencyCompact(totalRevenue)} − Direct {formatCurrencyCompact(totalDirectCosts)}
           </p>
         </div>
 
@@ -256,9 +239,9 @@ export function CostsClient({
             )}
             Interest Expense
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(interestTotal)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(interestTotal)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {totalRevenue > 0 ? ((interestTotal / totalRevenue) * 100).toFixed(1) : 0}% of revenue
+            {totalRevenue > 0 ? formatPercent(interestTotal / totalRevenue, true) : formatPercent(0)} of revenue
           </p>
         </div>
       </div>
@@ -304,7 +287,7 @@ export function CostsClient({
                       paddingAngle={2}
                       dataKey="value"
                       label={({ name, percent }) =>
-                        `${(name ?? '').length > 16 ? (name ?? '').substring(0, 16) + '…' : (name ?? '')} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        `${(name ?? '').length > 16 ? (name ?? '').substring(0, 16) + '…' : (name ?? '')} ${formatPercent(percent ?? 0, true)}`
                       }
                       labelLine={{ strokeWidth: 1 }}
                     >
@@ -335,7 +318,7 @@ export function CostsClient({
                       textAnchor="end"
                       height={50}
                     />
-                    <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#6b7280' }} />
+                    <YAxis tickFormatter={chartAxisFormatter()} tick={{ fontSize: 10, fill: '#6b7280' }} />
                     <RechartsTooltip
                       formatter={(value, name) => [
                         formatCurrency(Number(value ?? 0)),
@@ -380,7 +363,7 @@ export function CostsClient({
                     textAnchor="end"
                     height={50}
                   />
-                  <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#6b7280' }} />
+                  <YAxis tickFormatter={chartAxisFormatter()} tick={{ fontSize: 10, fill: '#6b7280' }} />
                   <RechartsTooltip
                     formatter={(value) => [formatCurrency(Number(value ?? 0))]}
                     contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
@@ -435,7 +418,7 @@ export function CostsClient({
             <div className="rounded-xl border bg-card p-6">
               <h2 className="text-lg font-semibold mb-1">Cost-to-Revenue Ratio</h2>
               <p className="text-sm text-muted-foreground mb-4">
-                Overall: {costToRevenueRatio.toFixed(1)}% of revenue consumed by costs
+                Overall: {formatPercent(costToRevenueRatio)} of revenue consumed by costs
               </p>
               <div className="h-[250px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -489,7 +472,7 @@ export function CostsClient({
                       margin={{ left: 120, right: 20 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis type="number" tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#6b7280' }} />
+                      <XAxis type="number" tickFormatter={chartAxisFormatter()} tick={{ fontSize: 10, fill: '#6b7280' }} />
                       <YAxis
                         type="category"
                         dataKey="name"
@@ -512,9 +495,9 @@ export function CostsClient({
               <div className="space-y-4">
                 <div className="p-4 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
                   <p className="text-sm font-medium text-red-800">Annual Interest Expense</p>
-                  <p className="text-3xl font-bold text-red-600 mt-1">{fmtCompact(interestTotal)}</p>
+                  <p className="text-3xl font-bold text-red-600 mt-1">{formatCurrencyCompact(interestTotal)}</p>
                   <p className="text-xs text-red-600 mt-1">
-                    {fmtCompact(interestTotal / 12)}/month average
+                    {formatCurrencyCompact(interestTotal / 12)}/month average
                   </p>
                 </div>
 
@@ -522,7 +505,7 @@ export function CostsClient({
                   <div className="p-4 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                     <p className="text-sm font-medium text-amber-800">Interest as % of Revenue</p>
                     <p className="text-3xl font-bold text-amber-600 mt-1">
-                      {((interestTotal / totalRevenue) * 100).toFixed(1)}%
+                      {formatPercent(interestTotal / totalRevenue, true)}
                     </p>
                     <p className="text-xs text-amber-600 mt-1">
                       {interestTotal / totalRevenue > 0.1
@@ -549,8 +532,8 @@ export function CostsClient({
                             { label: 'Lender', value: item.name },
                             { label: 'Annual Interest', value: formatCurrency(item.value) },
                             { label: 'Monthly Average', value: formatCurrency(item.value / 12) },
-                            { label: '% of Total Interest', value: `${interestTotal > 0 ? ((item.value / interestTotal) * 100).toFixed(1) : 0}%` },
-                            { label: '% of Revenue', value: `${totalRevenue > 0 ? ((item.value / totalRevenue) * 100).toFixed(2) : 0}%` },
+                            { label: '% of Total Interest', value: interestTotal > 0 ? formatPercent(item.value / interestTotal, true) : formatPercent(0) },
+                            { label: '% of Revenue', value: totalRevenue > 0 ? formatPercent(item.value / totalRevenue, true) : formatPercent(0) },
                           ],
                         });
                       }}
@@ -603,7 +586,7 @@ export function CostsClient({
                           { label: 'Category', value: acct.category },
                           { label: 'Class', value: acct.xeroClass === 'DIRECTCOSTS' ? 'Direct Cost' : 'Overhead' },
                           { label: 'Total (12mo)', value: formatCurrency(acct.total) },
-                          { label: '% of Total Costs', value: `${totalCosts > 0 ? ((acct.total / totalCosts) * 100).toFixed(1) : 0}%` },
+                          { label: '% of Total Costs', value: totalCosts > 0 ? formatPercent(acct.total / totalCosts, true) : formatPercent(0) },
                         ],
                       });
                     }}
@@ -624,7 +607,7 @@ export function CostsClient({
                     </td>
                     <td className="py-2 px-3 text-right font-medium">{formatCurrency(acct.total)}</td>
                     <td className="py-2 px-3 text-right text-muted-foreground">
-                      {totalCosts > 0 ? ((acct.total / totalCosts) * 100).toFixed(1) : 0}%
+                      {totalCosts > 0 ? formatPercent(acct.total / totalCosts, true) : formatPercent(0)}
                     </td>
                   </tr>
                 ))}

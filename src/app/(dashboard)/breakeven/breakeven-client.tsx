@@ -23,7 +23,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import { ExportButton } from '@/components/shared/export-button';
 import type { BreakevenPageData } from './page';
 import type { ActionLever } from '@/lib/financial/normalised-ebitda';
@@ -34,27 +34,6 @@ import type { ActionLever } from '@/lib/financial/normalised-ebitda';
 
 interface BreakevenClientProps {
   data: BreakevenPageData;
-}
-
-/* ================================================================== */
-/*  Compact formatters                                                 */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(1)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtPct(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
 }
 
 /* ================================================================== */
@@ -235,20 +214,20 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
       <div className="grid gap-4 md:grid-cols-4">
         <KPICard
           label="EBITDA"
-          value={fmtCompact(result.ebitda)}
-          detail={`${fmtPct(result.ebitdaMargin)} margin`}
+          value={formatCurrencyCompact(result.ebitda)}
+          detail={`${formatPercent(result.ebitdaMargin)} margin`}
           positive={result.ebitda >= 0}
         />
         <KPICard
           label="Breakeven Revenue"
-          value={`${fmtCompact(result.breakEvenRevenue)}/mo`}
-          detail={`Current: ${fmtCompact(result.currentMonthlyRevenue)}/mo`}
+          value={`${formatCurrencyCompact(result.breakEvenRevenue)}/mo`}
+          detail={`Current: ${formatCurrencyCompact(result.currentMonthlyRevenue)}/mo`}
           positive={result.currentMonthlyRevenue >= result.breakEvenRevenue}
         />
         <KPICard
           label="Interest Overpayment"
-          value={`${fmtCompact(Math.max(0, result.interestDelta))}/yr`}
-          detail={`${fmtPct(result.actualWeightedRate * 100)} vs ${fmtPct(result.benchmarkRate * 100)} benchmark`}
+          value={`${formatCurrencyCompact(Math.max(0, result.interestDelta))}/yr`}
+          detail={`${formatPercent(result.actualWeightedRate * 100)} vs ${formatPercent(result.benchmarkRate * 100)} benchmark`}
           positive={result.interestDelta <= 0}
         />
         <KPICard
@@ -263,7 +242,7 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
           detail={
             result.monthsToBreakEven === 0
               ? 'Operating above breakeven'
-              : `Gap: ${fmtCompact(result.revenueGapToBreakEven)}/mo`
+              : `Gap: ${formatCurrencyCompact(result.revenueGapToBreakEven)}/mo`
           }
           positive={result.monthsToBreakEven !== null && result.monthsToBreakEven <= 12}
         />
@@ -282,7 +261,7 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
                 className="text-muted-foreground"
               />
               <YAxis
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 11 }}
                 className="text-muted-foreground"
               />
@@ -312,24 +291,24 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="text-sm font-medium text-muted-foreground mb-2">Actual Interest Cost</div>
             <div className="text-2xl font-bold text-red-500">
-              {fmtCompact(result.actualInterestExpense)}/yr
+              {formatCurrencyCompact(result.actualInterestExpense)}/yr
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Weighted avg rate: {fmtPct(result.actualWeightedRate * 100)} on {fmtCompact(result.totalDebtBalance)} debt
+              Weighted avg rate: {formatPercent(result.actualWeightedRate * 100)} on {formatCurrencyCompact(result.totalDebtBalance)} debt
             </div>
           </div>
           <div className="rounded-lg border bg-muted/30 p-4">
             <div className="text-sm font-medium text-muted-foreground mb-2">Normalised Interest Cost</div>
             <div className="text-2xl font-bold text-emerald-500">
-              {fmtCompact(result.normalisedInterestExpense)}/yr
+              {formatCurrencyCompact(result.normalisedInterestExpense)}/yr
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              Benchmark rate: {fmtPct(result.benchmarkRate * 100)} (BoE base + SME margin)
+              Benchmark rate: {formatPercent(result.benchmarkRate * 100)} (BoE base + SME margin)
             </div>
             {result.interestDelta > 0 && (
               <div className="mt-2 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
                 <ArrowDownRight className="h-3 w-3" />
-                {fmtCompact(result.interestDelta)}/yr savings opportunity from refinancing
+                {formatCurrencyCompact(result.interestDelta)}/yr savings opportunity from refinancing
               </div>
             )}
           </div>
@@ -383,7 +362,7 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
                 normalised={-result.depreciationAddback}
               />
               <PLRow
-                label={`Interest Expense (${fmtPct(result.actualWeightedRate * 100)} actual vs ${fmtPct(result.benchmarkRate * 100)} benchmark)`}
+                label={`Interest Expense (${formatPercent(result.actualWeightedRate * 100)} actual vs ${formatPercent(result.benchmarkRate * 100)} benchmark)`}
                 actual={-result.actualInterestExpense}
                 normalised={-result.normalisedInterestExpense}
                 isHighlighted
@@ -397,14 +376,14 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
               <tr className="border-t">
                 <td className="py-3 px-4 text-xs text-muted-foreground">Net Margin</td>
                 <td className="text-right py-3 px-4 text-xs text-muted-foreground">
-                  {result.revenue > 0 ? fmtPct((result.actualNetProfit / result.revenue) * 100) : '-'}
+                  {result.revenue > 0 ? formatPercent((result.actualNetProfit / result.revenue) * 100) : '-'}
                 </td>
                 <td className="text-right py-3 px-4 text-xs text-muted-foreground">
-                  {fmtPct(result.normalisedNetMargin)}
+                  {formatPercent(result.normalisedNetMargin)}
                 </td>
                 <td className="text-right py-3 px-4 text-xs text-muted-foreground">
                   {result.revenue > 0
-                    ? fmtPct(result.normalisedNetMargin - (result.actualNetProfit / result.revenue) * 100)
+                    ? formatPercent(result.normalisedNetMargin - (result.actualNetProfit / result.revenue) * 100)
                     : '-'}
                 </td>
               </tr>
@@ -449,10 +428,10 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
             </div>
             <div className="text-center">
               <p className="text-sm font-medium">
-                {fmtCompact(result.currentMonthlyRevenue)}/mo current
+                {formatCurrencyCompact(result.currentMonthlyRevenue)}/mo current
               </p>
               <p className="text-xs text-muted-foreground">
-                {fmtCompact(result.breakEvenRevenue)}/mo needed
+                {formatCurrencyCompact(result.breakEvenRevenue)}/mo needed
               </p>
             </div>
           </div>
@@ -461,28 +440,28 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
           <div className="space-y-4">
             <StatRow
               label="Monthly Revenue"
-              value={fmtCompact(result.currentMonthlyRevenue)}
+              value={formatCurrencyCompact(result.currentMonthlyRevenue)}
             />
             <StatRow
               label="Breakeven Revenue"
-              value={`${fmtCompact(result.breakEvenRevenue)}/mo`}
+              value={`${formatCurrencyCompact(result.breakEvenRevenue)}/mo`}
             />
             <StatRow
               label="Revenue Gap"
-              value={fmtCompact(result.revenueGapToBreakEven)}
+              value={formatCurrencyCompact(result.revenueGapToBreakEven)}
               negative={result.revenueGapToBreakEven > 0}
             />
             <StatRow
               label="Monthly Fixed Costs"
-              value={fmtCompact(result.monthlyFixedCosts)}
+              value={formatCurrencyCompact(result.monthlyFixedCosts)}
             />
             <StatRow
               label="Variable Cost Ratio"
-              value={fmtPct(result.monthlyVariableCostRatio * 100)}
+              value={formatPercent(result.monthlyVariableCostRatio * 100)}
             />
             <StatRow
               label="Contribution Margin"
-              value={fmtPct((1 - result.monthlyVariableCostRatio) * 100)}
+              value={formatPercent((1 - result.monthlyVariableCostRatio) * 100)}
             />
           </div>
         </div>
@@ -605,10 +584,10 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
                     />
                   </div>
                   <div className="w-20 text-right text-sm font-medium">
-                    {fmtCompact(cat.amount)}
+                    {formatCurrencyCompact(cat.amount)}
                   </div>
                   <div className="w-12 text-right text-xs text-muted-foreground">
-                    {fmtPct(pctOfTotal)}
+                    {formatPercent(pctOfTotal)}
                   </div>
                 </div>
               );
@@ -677,10 +656,10 @@ function PLRow({
         {label}
       </td>
       <td className={cn('text-right py-3 px-4 text-sm', actual < 0 ? 'text-red-600 dark:text-red-400' : '')}>
-        {fmtCompact(actual)}
+        {formatCurrencyCompact(actual)}
       </td>
       <td className={cn('text-right py-3 px-4 text-sm', normalised < 0 ? 'text-red-600 dark:text-red-400' : '')}>
-        {fmtCompact(normalised)}
+        {formatCurrencyCompact(normalised)}
       </td>
       <td
         className={cn(
@@ -695,7 +674,7 @@ function PLRow({
         {Math.abs(delta) > 0.5 ? (
           <span className="flex items-center justify-end gap-1">
             {delta > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-            {fmtCompact(Math.abs(delta))}
+            {formatCurrencyCompact(Math.abs(delta))}
           </span>
         ) : (
           '-'

@@ -78,7 +78,7 @@ function TrendBadge({
       }`}
     >
       <Icon className="h-3 w-3" />
-      {Math.abs(v.pct).toFixed(1)}%
+      {formatPercent(Math.abs(v.pct))}
     </span>
   );
 }
