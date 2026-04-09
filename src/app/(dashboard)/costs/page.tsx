@@ -1,5 +1,6 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createUntypedServiceClient } from '@/lib/supabase/server';
+import { analyseCostStructure, type CostStructureSummary } from '@/lib/financial/cost-structure';
 import { CostsClient } from './costs-client';
 
 // ── Types ──
@@ -347,6 +348,19 @@ export default async function CostsPage() {
     return row;
   });
 
+  // Auto-classify costs as fixed/variable/discretionary
+  const costStructure = analyseCostStructure(
+    Array.from(accountData.values()).map(a => ({
+      accountId: a.accountId,
+      accountName: a.accountName,
+      accountCode: a.accountCode,
+      xeroClass: a.xeroClass,
+      total: a.total,
+    })),
+    totalRevenue,
+    sortedPeriods.length
+  );
+
   return (
     <CostsClient
       periodSummaries={periodSummaries}
@@ -362,6 +376,7 @@ export default async function CostsPage() {
       costToRevenueRatio={costToRevenueRatio}
       momGrowth={momGrowth}
       lastPeriodTotal={lastPeriodTotal}
+      costStructure={costStructure}
     />
   );
 }

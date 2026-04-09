@@ -2,6 +2,7 @@ import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
+import { computeDebtServiceMetrics } from '@/lib/financial/cash-flow-analysis';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { HealthClient } from './health-client';
 
@@ -55,6 +56,15 @@ function computeGrowthScore(latestRevenue: number, firstRevenue: number): number
   if (growth >= 5) return 55;
   if (growth >= 0) return 40;
   return 25;
+}
+
+function computeDebtServiceScore(dscr: number, hasDebt: boolean): number {
+  if (!hasDebt) return 85; // No debt = good but not perfect (could be leveraging for growth)
+  if (dscr >= 2.0) return 90;
+  if (dscr >= 1.5) return 75;
+  if (dscr >= 1.0) return 55;
+  if (dscr >= 0.5) return 30;
+  return 15;
 }
 
 function computeTrend(recentScores: number[], priorScores: number[]): 'up' | 'down' | 'flat' {
@@ -117,11 +127,19 @@ export default async function HealthPage() {
   const latestPnl = pnls[0];
   const firstPnl = pnls[pnls.length - 1];
 
+  // Compute debt service metrics (DSCR)
+  const debtMetrics = computeDebtServiceMetrics(
+    latestPnl.grossProfit - latestPnl.expenses, // operating profit before finance costs
+    latestPnl.revenue,
+    financeCosts
+  );
+
   // Compute individual scores for latest period
   const liquidityScore = computeLiquidityScore(totalAssets, totalLiabilities);
   const profitabilityScore = computeProfitabilityScore(latestPnl.netProfit, latestPnl.revenue);
   const efficiencyScore = computeEfficiencyScore(latestPnl.expenses, latestPnl.revenue);
   const growthScore = computeGrowthScore(latestPnl.revenue, firstPnl.revenue);
+  const debtServiceScore = computeDebtServiceScore(debtMetrics.dscr, financeCosts.hasDebt);
 
   // Compute trends: compare latest 3 months vs prior 3 months
   const recentPnls = pnls.slice(0, Math.min(3, pnls.length));
@@ -176,13 +194,21 @@ export default async function HealthPage() {
   // Growth trend: compare revenue trend in recent vs prior
   const growthTrend = latestPnl.revenue >= firstPnl.revenue ? 'up' : 'down';
 
-  // Overall score: weighted average
-  const overallScore = Math.round(
-    liquidityScore * 0.25 +
-    profitabilityScore * 0.30 +
-    efficiencyScore * 0.20 +
-    growthScore * 0.25
-  );
+  // Overall score: weighted average (5 categories when debt exists, 4 when no debt)
+  const overallScore = financeCosts.hasDebt
+    ? Math.round(
+        liquidityScore * 0.20 +
+        profitabilityScore * 0.25 +
+        efficiencyScore * 0.15 +
+        growthScore * 0.20 +
+        debtServiceScore * 0.20
+      )
+    : Math.round(
+        liquidityScore * 0.25 +
+        profitabilityScore * 0.30 +
+        efficiencyScore * 0.20 +
+        growthScore * 0.25
+      );
 
   const currentRatio = totalLiabilities > 0 ? (totalAssets / totalLiabilities).toFixed(1) : 'N/A';
   const netMargin = latestPnl.revenue > 0 ? ((latestPnl.netProfit / latestPnl.revenue) * 100).toFixed(1) : '0';
@@ -218,6 +244,17 @@ export default async function HealthPage() {
       trend: growthTrend as 'up' | 'down' | 'flat',
       summary: `Revenue growth: ${revenueGrowth}%. ${growthScore >= 75 ? 'Strong growth trajectory.' : growthScore >= 55 ? 'Moderate growth.' : 'Growth needs acceleration.'}`,
     },
+    ...(financeCosts.hasDebt ? [{
+      name: 'Debt Service',
+      score: debtServiceScore,
+      status: scoreToStatus(debtServiceScore),
+      trend: 'flat' as const,
+      summary: `DSCR: ${debtMetrics.dscr}x. Monthly debt service: £${Math.round(debtMetrics.totalMonthlyDebtService).toLocaleString()}. ${
+        debtServiceScore >= 75 ? 'Comfortable debt coverage.'
+        : debtServiceScore >= 55 ? 'Debt serviceable but limited headroom.'
+        : `Debt service strain — ${debtMetrics.debtToRevenuePercent.toFixed(1)}% of revenue.`
+      }`,
+    }] : []),
   ];
 
   return <HealthClient overallScore={overallScore} categories={categories} hasData={true} />;

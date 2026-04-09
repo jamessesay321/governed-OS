@@ -2,6 +2,7 @@ import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
+import { diagnoseCashFlow, type CashFlowDiagnosis } from '@/lib/financial/cash-flow-analysis';
 import { getDefaultTemplate, getTemplateById } from '@/lib/dashboard/templates';
 import { DashboardClient } from './dashboard-client';
 import type { AccountMapping } from '@/types';
@@ -126,6 +127,24 @@ export default async function DashboardPage() {
     }
   }
 
+  // Cash flow root cause diagnosis (requires latest period P&L + debt data)
+  // Operating profit = revenue - costOfSales - expenses (BEFORE finance costs)
+  const latestPeriod = periods[0];
+  const latestPnl = latestPeriod ? pnlByPeriod[latestPeriod] : null;
+  // Note: netProfit in pnlByPeriod already has finance costs deducted,
+  // so we reconstruct operating profit from grossProfit - expenses
+  const latestOperatingProfit = latestPnl
+    ? latestPnl.grossProfit - latestPnl.expenses
+    : 0;
+  const cashFlowDiagnosis: CashFlowDiagnosis | null = latestPnl
+    ? diagnoseCashFlow(
+        latestPnl.revenue,
+        latestOperatingProfit,
+        financeCosts,
+        latestPnl.expenses
+      )
+    : null;
+
   // Determine dashboard template based on preference or role
   const templateId = (dashPref?.template_id as string) || null;
   const activeTemplate = templateId
@@ -193,6 +212,7 @@ export default async function DashboardPage() {
         challenges: (orgProfile?.key_challenges as string[]) || [],
         goals: (orgProfile?.growth_goals as string[]) || [],
       }}
+      cashFlowDiagnosis={cashFlowDiagnosis}
     />
   );
 }

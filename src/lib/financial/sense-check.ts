@@ -1,3 +1,6 @@
+import type { SeasonalProfile } from './seasonal-profile';
+import { getSeasonalThresholdMultiplier, isSeasonallyExpected } from './seasonal-profile';
+
 /**
  * Financial Sense-Check Engine
  * --------------------------------------------------
@@ -188,18 +191,44 @@ export function checkBalanceSheet(input: BSCheckInput): SenseCheckFlag[] {
 
 export function checkPeriodMovement(
   current: PnLCheckInput,
-  prior: PnLCheckInput
+  prior: PnLCheckInput,
+  seasonalProfile?: SeasonalProfile | null
 ): SenseCheckFlag[] {
   const flags: SenseCheckFlag[] = [];
 
-  // WARNING: Revenue change > 100% in a single month
+  // WARNING: Revenue change exceeds threshold (seasonally adjusted)
   if (prior.revenue > 0) {
     const change = ((current.revenue - prior.revenue) / prior.revenue) * 100;
-    if (Math.abs(change) > 100) {
+    const currentMonth = new Date(current.period).getMonth() + 1;
+    const priorMonth = new Date(prior.period).getMonth() + 1;
+
+    // Adjust threshold for seasonal businesses
+    let threshold = 100;
+    let seasonallyExplained = false;
+
+    if (seasonalProfile?.isSeasonal) {
+      const multiplier = getSeasonalThresholdMultiplier(seasonalProfile, currentMonth);
+      threshold = 100 * multiplier;
+      seasonallyExplained = isSeasonallyExpected(seasonalProfile, currentMonth, priorMonth, change);
+    }
+
+    if (Math.abs(change) > threshold && !seasonallyExplained) {
       flags.push({
         severity: 'warning',
         code: 'PERIOD_REVENUE_SPIKE',
-        message: `Revenue changed ${change > 0 ? '+' : ''}${change.toFixed(0)}% from ${current.period} to ${prior.period}. This may be correct but is worth reviewing.`,
+        message: seasonalProfile?.isSeasonal
+          ? `Revenue changed ${change > 0 ? '+' : ''}${change.toFixed(0)}% from ${current.period} to ${prior.period}. This exceeds the seasonal-adjusted threshold of ±${threshold.toFixed(0)}%.`
+          : `Revenue changed ${change > 0 ? '+' : ''}${change.toFixed(0)}% from ${current.period} to ${prior.period}. This may be correct but is worth reviewing.`,
+        period: current.period,
+        field: 'revenue',
+        value: change,
+      });
+    } else if (Math.abs(change) > 100 && seasonallyExplained) {
+      // Still note it but as info since seasonality explains it
+      flags.push({
+        severity: 'info',
+        code: 'PERIOD_REVENUE_SEASONAL',
+        message: `Revenue changed ${change > 0 ? '+' : ''}${change.toFixed(0)}% from ${current.period} to ${prior.period}. This is within expected seasonal patterns.`,
         period: current.period,
         field: 'revenue',
         value: change,
@@ -207,14 +236,22 @@ export function checkPeriodMovement(
     }
   }
 
-  // WARNING: Expenses change > 200% in a single month
+  // WARNING: Expenses change exceeds threshold (seasonally adjusted)
   if (prior.expenses > 0) {
     const change = ((current.expenses - prior.expenses) / prior.expenses) * 100;
-    if (Math.abs(change) > 200) {
+    const currentMonth = new Date(current.period).getMonth() + 1;
+
+    let threshold = 200;
+    if (seasonalProfile?.isSeasonal) {
+      const multiplier = getSeasonalThresholdMultiplier(seasonalProfile, currentMonth);
+      threshold = 200 * multiplier;
+    }
+
+    if (Math.abs(change) > threshold) {
       flags.push({
         severity: 'warning',
         code: 'PERIOD_EXPENSE_SPIKE',
-        message: `Expenses changed ${change > 0 ? '+' : ''}${change.toFixed(0)}% from ${current.period} to ${prior.period}. Verify this isn't a data issue.`,
+        message: `Expenses changed ${change > 0 ? '+' : ''}${change.toFixed(0)}% from ${current.period} to ${prior.period}. ${seasonalProfile?.isSeasonal ? `Seasonal-adjusted threshold: ±${threshold.toFixed(0)}%.` : 'Verify this isn\'t a data issue.'}`,
         period: current.period,
         field: 'expenses',
         value: change,
@@ -227,7 +264,10 @@ export function checkPeriodMovement(
 
 // ─── Batch Check ────────────────────────────────────────────────
 
-export function runAllPnLChecks(periods: PnLCheckInput[]): SenseCheckFlag[] {
+export function runAllPnLChecks(
+  periods: PnLCheckInput[],
+  seasonalProfile?: SeasonalProfile | null
+): SenseCheckFlag[] {
   const flags: SenseCheckFlag[] = [];
 
   for (const p of periods) {
@@ -237,7 +277,7 @@ export function runAllPnLChecks(periods: PnLCheckInput[]): SenseCheckFlag[] {
   // Period-over-period checks (sorted ascending)
   const sorted = [...periods].sort((a, b) => a.period.localeCompare(b.period));
   for (let i = 1; i < sorted.length; i++) {
-    flags.push(...checkPeriodMovement(sorted[i], sorted[i - 1]));
+    flags.push(...checkPeriodMovement(sorted[i], sorted[i - 1], seasonalProfile));
   }
 
   // Sort: errors first, then warnings, then info

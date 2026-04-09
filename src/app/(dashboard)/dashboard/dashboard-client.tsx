@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { KPICards } from '@/components/dashboard/kpi-cards';
@@ -32,6 +33,7 @@ import { NumberLegend } from '@/components/data-primitives';
 import { ActivityFeed } from '@/components/collaboration';
 import type { DashboardTemplate } from '@/lib/dashboard/templates';
 import type { DashboardRecommendations } from './page';
+import type { CashFlowDiagnosis } from '@/lib/financial/cash-flow-analysis';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -117,6 +119,7 @@ interface DashboardClientProps {
   template: DashboardTemplate;
   recommendations: DashboardRecommendations;
   businessContext: BusinessContext;
+  cashFlowDiagnosis?: CashFlowDiagnosis | null;
 }
 
 // Recommended sections based on industry
@@ -175,6 +178,7 @@ export function DashboardClient({
   template,
   recommendations,
   businessContext,
+  cashFlowDiagnosis,
 }: DashboardClientProps) {
   const { period: selectedPeriod } = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
@@ -403,6 +407,66 @@ export function DashboardClient({
             });
           }}
         />
+      )}
+
+      {/* Cash Flow Diagnosis Banner */}
+      {cashFlowDiagnosis && cashFlowDiagnosis.rootCause !== 'insufficient_data' && (
+        <Card className={cn(
+          'border',
+          cashFlowDiagnosis.severity === 'healthy' ? 'border-emerald-200 bg-emerald-50/50' :
+          cashFlowDiagnosis.severity === 'watch' ? 'border-amber-200 bg-amber-50/50' :
+          cashFlowDiagnosis.severity === 'concern' ? 'border-amber-200 bg-amber-50/50' :
+          'border-red-200 bg-red-50/50'
+        )}>
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className={cn(
+                'mt-0.5 h-2.5 w-2.5 rounded-full shrink-0',
+                cashFlowDiagnosis.severity === 'healthy' ? 'bg-emerald-500' :
+                cashFlowDiagnosis.severity === 'watch' ? 'bg-amber-500' :
+                cashFlowDiagnosis.severity === 'concern' ? 'bg-amber-500' :
+                'bg-red-500'
+              )} />
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  'text-sm font-semibold',
+                  cashFlowDiagnosis.severity === 'healthy' ? 'text-emerald-900' :
+                  cashFlowDiagnosis.severity === 'critical' ? 'text-red-900' :
+                  'text-amber-900'
+                )}>
+                  Cash Position: {cashFlowDiagnosis.label}
+                </p>
+                <p className={cn(
+                  'text-xs mt-0.5',
+                  cashFlowDiagnosis.severity === 'healthy' ? 'text-emerald-700' :
+                  cashFlowDiagnosis.severity === 'critical' ? 'text-red-700' :
+                  'text-amber-700'
+                )}>
+                  {cashFlowDiagnosis.explanation}
+                </p>
+                {cashFlowDiagnosis.debtMetrics && (
+                  <div className="flex flex-wrap gap-4 mt-2 text-xs">
+                    <span className="font-medium">
+                      DSCR: <span className={cn(
+                        cashFlowDiagnosis.debtMetrics.dscrStatus === 'healthy' ? 'text-emerald-700' :
+                        cashFlowDiagnosis.debtMetrics.dscrStatus === 'adequate' ? 'text-amber-700' :
+                        'text-red-700'
+                      )}>{cashFlowDiagnosis.debtMetrics.dscr}x</span>
+                    </span>
+                    <span className="font-medium">
+                      Monthly Debt Service: {formatCurrency(cashFlowDiagnosis.debtMetrics.totalMonthlyDebtService)}
+                    </span>
+                    {cashFlowDiagnosis.debtMetrics.totalOutstanding > 0 && (
+                      <span className="font-medium">
+                        Outstanding: {formatCurrency(cashFlowDiagnosis.debtMetrics.totalOutstanding)}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* P&L + Sidebar */}

@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import type { CostAccount, CostPeriodSummary } from './page';
+import type { CostStructureSummary } from '@/lib/financial/cost-structure';
 
 /* ================================================================== */
 /*  Props                                                              */
@@ -52,6 +53,7 @@ interface CostsClientProps {
   costToRevenueRatio: number;
   momGrowth: number;
   lastPeriodTotal: number;
+  costStructure?: CostStructureSummary | null;
 }
 
 /* ================================================================== */
@@ -82,10 +84,11 @@ export function CostsClient({
   costToRevenueRatio,
   momGrowth,
   lastPeriodTotal,
+  costStructure,
 }: CostsClientProps) {
   const { openDrill } = useDrillDown();
   const [showAccounts, setShowAccounts] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'interest'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'interest' | 'structure'>('overview');
 
   // Pie chart data (group-level)
   const pieData = useMemo(() => {
@@ -265,6 +268,15 @@ export function CostsClient({
           )}
         >
           Interest & Debt Cost
+        </button>
+        <button
+          onClick={() => setActiveTab('structure')}
+          className={cn(
+            'px-4 py-2 text-sm font-medium rounded-t-lg transition-colors',
+            activeTab === 'structure' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
+          )}
+        >
+          Fixed vs Variable
         </button>
       </div>
 
@@ -549,6 +561,112 @@ export function CostsClient({
         </>
       )}
 
+      {activeTab === 'structure' && costStructure && (
+        <>
+          {/* Fixed vs Variable Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="rounded-xl border bg-card p-5">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Fixed Costs</p>
+              <p className="text-2xl font-bold">{formatCurrencyCompact(costStructure.totalFixed)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatPercent(costStructure.fixedCostRatio * 100)} of revenue
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Rent, salaries, insurance, debt repayments — don&apos;t change with sales volume
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card p-5">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Variable Costs</p>
+              <p className="text-2xl font-bold">{formatCurrencyCompact(costStructure.totalVariable)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {formatPercent(costStructure.variableCostRatio * 100)} of revenue
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Materials, shipping, commissions — scale with sales volume
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card p-5">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Discretionary</p>
+              <p className="text-2xl font-bold text-amber-600">{formatCurrencyCompact(costStructure.totalDiscretionary)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Available for reduction without structural change
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Marketing, travel, training, subscriptions
+              </p>
+            </div>
+          </div>
+
+          {/* Breakeven & Contribution Margin */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="rounded-xl border bg-card p-5">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Contribution Margin</p>
+              <p className={cn(
+                'text-3xl font-bold',
+                costStructure.contributionMargin > 0.5 ? 'text-emerald-600' :
+                costStructure.contributionMargin > 0.3 ? 'text-amber-600' : 'text-red-600'
+              )}>
+                {formatPercent(costStructure.contributionMargin * 100)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                For every £1 of revenue, {formatCurrency(costStructure.contributionMargin)} contributes to covering fixed costs
+              </p>
+            </div>
+            <div className="rounded-xl border bg-card p-5">
+              <p className="text-sm font-medium text-muted-foreground mb-1">Monthly Breakeven Revenue</p>
+              <p className="text-3xl font-bold">
+                {costStructure.monthlyBreakevenRevenue > 0
+                  ? formatCurrencyCompact(costStructure.monthlyBreakevenRevenue)
+                  : 'N/A'}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Minimum monthly revenue needed to cover all fixed costs
+              </p>
+            </div>
+          </div>
+
+          {/* Operating Leverage */}
+          <div className="rounded-xl border bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800 p-5">
+            <p className="text-sm font-semibold text-blue-900 dark:text-blue-100">Operating Leverage</p>
+            <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">{costStructure.operatingLeverage}</p>
+          </div>
+
+          {/* Fixed vs Variable Pie */}
+          <div className="rounded-xl border bg-card p-6">
+            <h2 className="text-lg font-semibold mb-4">Cost Nature Breakdown</h2>
+            <div className="h-[280px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Fixed', value: costStructure.totalFixed },
+                      { name: 'Variable', value: costStructure.totalVariable },
+                      { name: 'Semi-Variable', value: costStructure.totalSemiVariable },
+                    ].filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={100}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={({ name, percent }) => `${name} ${formatPercent((percent ?? 0) * 100)}`}
+                  >
+                    <Cell fill="#6366f1" />
+                    <Cell fill="#10b981" />
+                    <Cell fill="#f59e0b" />
+                  </Pie>
+                  <RechartsTooltip
+                    formatter={(value) => [formatCurrency(Number(value ?? 0))]}
+                    contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Top Cost Accounts Table */}
       <div className="rounded-xl border bg-card p-6">
         <button
@@ -567,6 +685,7 @@ export function CostsClient({
                   <th className="py-2 px-3 text-left font-medium text-muted-foreground">Account</th>
                   <th className="py-2 px-3 text-left font-medium text-muted-foreground">Category</th>
                   <th className="py-2 px-3 text-left font-medium text-muted-foreground">Class</th>
+                  <th className="py-2 px-3 text-left font-medium text-muted-foreground">Nature</th>
                   <th className="py-2 px-3 text-right font-medium text-muted-foreground">Total</th>
                   <th className="py-2 px-3 text-right font-medium text-muted-foreground">% of Costs</th>
                 </tr>
@@ -604,6 +723,23 @@ export function CostsClient({
                       )}>
                         {acct.xeroClass === 'DIRECTCOSTS' ? 'Direct' : 'Overhead'}
                       </span>
+                    </td>
+                    <td className="py-2 px-3">
+                      {(() => {
+                        const classified = costStructure?.accounts?.find(a => a.accountId === acct.accountId);
+                        if (!classified) return null;
+                        const natureColor = classified.costNature === 'fixed'
+                          ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
+                          : classified.costNature === 'variable'
+                            ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300'
+                            : 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300';
+                        return (
+                          <span className={cn('text-xs px-2 py-0.5 rounded-full', natureColor)}>
+                            {classified.costNature === 'fixed' ? 'Fixed' : classified.costNature === 'variable' ? 'Variable' : 'Semi-Var'}
+                            {classified.isDiscretionary && ' ✂'}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-2 px-3 text-right font-medium">{formatCurrency(acct.total)}</td>
                     <td className="py-2 px-3 text-right text-muted-foreground">
