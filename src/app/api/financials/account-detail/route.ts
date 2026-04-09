@@ -9,7 +9,7 @@ import { z } from 'zod';
  */
 const querySchema = z.object({
   orgId: z.string().uuid('orgId must be a valid UUID'),
-  accountId: z.string().uuid('accountId must be a valid UUID'),
+  accountId: z.string().min(1, 'accountId is required'), // UUID or account code
   periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'periodStart must be YYYY-MM-DD'),
   periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'periodEnd must be YYYY-MM-DD'),
 });
@@ -61,13 +61,13 @@ export async function GET(request: NextRequest) {
 
     const supabase = await createServiceClient();
 
-    // Look up the account code from chart_of_accounts
-    const { data: account } = await supabase
-      .from('chart_of_accounts')
-      .select('code, name')
-      .eq('id', accountId)
-      .eq('org_id', orgId)
-      .single();
+    // Look up the account — try by UUID first, then by code (fallback)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accountId);
+    const accountQuery = isUuid
+      ? supabase.from('chart_of_accounts').select('id, code, name').eq('id', accountId).eq('org_id', orgId).single()
+      : supabase.from('chart_of_accounts').select('id, code, name').eq('code', accountId).eq('org_id', orgId).single();
+
+    const { data: account } = await accountQuery;
 
     if (!account) {
       return NextResponse.json({ error: 'Account not found' }, { status: 404 });

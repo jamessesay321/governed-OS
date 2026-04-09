@@ -186,6 +186,18 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
   }, [context]);
 
   const popLevel = useCallback(() => {
+    // If showing invoice detail, just clear invoice state to return to account list
+    if (invoiceAccount !== null) {
+      setInvoiceLines([]);
+      setInvoiceAccount(null);
+      return;
+    }
+    // If showing transactions, just clear transaction state
+    if (txAccount !== null) {
+      setTransactions([]);
+      setTxAccount(null);
+      return;
+    }
     if (breadcrumbs.length > 0) {
       const prev = breadcrumbs[breadcrumbs.length - 1];
       setBreadcrumbs((crumbs) => crumbs.slice(0, -1));
@@ -195,7 +207,7 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
       setInvoiceLines([]);
       setInvoiceAccount(null);
     }
-  }, [breadcrumbs]);
+  }, [breadcrumbs, invoiceAccount, txAccount]);
 
   const fetchTransactions = useCallback(async (accountId: string, period: string, account: { name: string; code: string; amount: number }) => {
     setLoadingTx(true);
@@ -524,13 +536,15 @@ function ContextContent({
           section={context.section}
           period={context.period}
           onAccountClick={(row) => {
-            // Use invoice-level detail endpoint for richer drill-down
+            // Drill into invoice-level detail for this account.
+            // Do NOT call onPushLevel — it clears invoiceAccount/invoiceLines.
+            // The invoice detail view replaces the content in-place, and the
+            // back button (popLevel / clear invoiceAccount) returns here.
             onFetchInvoiceDetail(row.accountId, context.period, {
               name: row.accountName,
               code: row.accountCode,
               amount: row.amount,
             });
-            onPushLevel(context.section.label, context);
           }}
         />
       );

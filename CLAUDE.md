@@ -117,6 +117,23 @@ Ask: "Would a staff engineer approve this?" If not — refine.
 
 ---
 
+## Visual Verification Gate (MANDATORY — P0)
+
+**NEVER tell the user a feature or fix is "done" without visually checking it in the browser first.**
+
+After ANY code change that affects what the user sees:
+1. Open the affected page(s) in Chrome using `mcp__Claude_in_Chrome` tools (navigate → wait → screenshot)
+2. Verify the page shows **real data** — not empty states, loading spinners, or error banners
+3. If the feature depends on a data sync or API call, trigger it and confirm data flows through
+4. If you cannot visually verify (tools unavailable), explicitly say: **"Built and compiles, but I haven't visually verified it yet — let me check"**
+5. Only say "done" or "fixed" AFTER you have seen the correct output with your own eyes
+
+A passing build means nothing. `npm run build` only checks TypeScript — it says zero about whether data renders, APIs return results, or the UI shows what the user expects. Treat build-only verification as insufficient.
+
+**Violation of this gate is a trust-destroying event.** The user's exact words: *"never tell me a feature or update is done without you checking."*
+
+---
+
 ## Post-Error Protocol
 
 After any bug, failed build, or correction:

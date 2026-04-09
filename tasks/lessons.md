@@ -233,3 +233,31 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Key insight:** 69% of monthly repayments (£38K/month) go to Merchant Cash Advances (MCAs) which are the most expensive form of debt. The Shopify/YouLend loan alone has a £186K balance. The BBL (Bounce Back Loan) at £233/month is the only "good" debt. A refinance strategy to consolidate MCA debt into a single term loan could save £150K+/year.
 
 **Preventative rule:** (1) For ANY business with debt, always build the full debt schedule before presenting P&L analysis. Interest expense alone tells you nothing — you need balance, rate, term, and type. (2) Classify debt: GOOD (low rate, long term, productive), OKAY (moderate, manageable), BAD (high rate, short term, MCA). (3) Always calculate debt service coverage ratio (DSCR) = operating profit / total debt service. Below 1.0 means the business cannot service its debt from operations. (4) MCAs are NEVER "good" debt regardless of what the user thinks — they have effective APRs of 30-100%+. Flag them prominently.
+
+---
+
+## Lesson 20: NEVER claim a feature is done without visually verifying it in the browser
+
+**Mistake:** Told James that Balance Sheet, Cash Flow, and COGS fixes were "done" based solely on the build passing. When James asked "have you gone into the website to check yourself?" — the answer was no. The build passing means zero about whether data actually renders. In this case:
+- The BS sync had a UUID vs code mismatch (0 rows returned despite API succeeding)
+- COGS classification required a re-sync to take effect
+- The "done" claim wasted James's time and eroded trust
+
+**Root cause:** Treating `npm run build` success as proof of correctness. A build only checks TypeScript compilation — it says nothing about runtime data flow, API response parsing, database queries returning results, or UI rendering real content.
+
+**Preventative rule:**
+1. After ANY feature change, **open the actual page in the browser** using Chrome/Preview tools and take a screenshot
+2. Verify the page shows **real data, not empty states or loading spinners**
+3. If data depends on a sync or API call, trigger it and wait for completion before checking
+4. Only tell the user "done" AFTER you have visually confirmed the output yourself
+5. This is NON-NEGOTIABLE — no exceptions, no shortcuts. If you can't verify it visually, say "built but not yet verified" instead of "done"
+
+---
+
+## Lesson 21: Xero API returns UUIDs in Trial Balance, not account codes
+
+**Mistake:** The Trial Balance parser assumed `Attributes[0].Value` contained the Xero account code (e.g. "600"). It actually contains the Xero account UUID (e.g. "bc2e66f4-5037-49fe-9cc5-84f0be2f55e0"). The lookup map was keyed by code, so every account lookup failed silently and 0 BS rows were written.
+
+**Root cause:** Assumed the Xero API structure without checking the actual response. The debug logs clearly showed 0 results but the first version didn't log the raw response to diagnose why.
+
+**Preventative rule:** (1) When integrating with any external API, always log a sample of the raw response on first call to verify assumptions about the data shape. (2) For Xero specifically: `chart_of_accounts.xero_account_id` stores the UUID — always build lookup maps by UUID, not just by code. (3) When a function returns 0 results, add temporary debug logging to see what the API actually sent before assuming the logic is wrong.

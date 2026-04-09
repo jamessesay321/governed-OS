@@ -414,7 +414,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                             class: section.class,
                             total: section.total,
                             rows: section.rows.map((r) => ({
-                              accountId: r.code, // use code as ID fallback
+                              accountId: r.id || r.code,
                               accountCode: r.code,
                               accountName: r.name,
                               accountType: '',
