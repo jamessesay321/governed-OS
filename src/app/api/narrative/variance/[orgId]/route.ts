@@ -9,7 +9,8 @@ import { getSkillAsSystemPrompt } from '@/lib/skills/company-skill';
 import { governedOutput, xeroFinancialsSource, accountMappingsSource, companySkillSource } from '@/lib/governance/checkpoint';
 import { llmLimiter } from '@/lib/rate-limit';
 import { z } from 'zod';
-import type { NormalisedFinancial, ChartOfAccount, AccountMapping } from '@/types';
+import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { adaptMappingsFromDB } from '@/lib/financial/adapt-mappings';
 
 const querySchema = z.object({
   period: z.string().regex(/^\d{4}-\d{2}$/).optional(),
@@ -60,7 +61,11 @@ export async function GET(
 
     const fins = (financialsResult.data ?? []) as NormalisedFinancial[];
     const accs = (accountsResult.data ?? []) as ChartOfAccount[];
-    const mappings = (mappingsResult.data ?? []) as AccountMapping[];
+    const mappings = adaptMappingsFromDB(
+      (mappingsResult.data ?? []) as Array<Record<string, unknown>>,
+      accs,
+      orgId
+    );
     const lastSync = syncResult.data;
 
     const periods = getAvailablePeriods(fins);

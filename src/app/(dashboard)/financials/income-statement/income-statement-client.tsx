@@ -22,8 +22,9 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 
-type AccountRow = { id?: string; name: string; code: string; amount: number };
-type Section = { label: string; class: string; total: number; rows: AccountRow[] };
+type AccountRow = { id?: string; name: string; code: string; amount: number; category?: string };
+type SubCategory = { label: string; key: string; rows: AccountRow[]; total: number };
+type Section = { label: string; class: string; total: number; rows: AccountRow[]; subCategories?: SubCategory[] };
 type PeriodPnL = {
   period: string;
   sections: Section[];
@@ -121,36 +122,81 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
   const hasFinanceCosts = filteredPeriods.some((p) =>
     p.sections.some((s) => s.class === 'FINANCE_COSTS')
   );
-  const sectionOrder = hasFinanceCosts
-    ? ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS', 'FINANCE_COSTS']
-    : ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'];
+
+  // Detect actual section class names from data (supports both legacy Xero classes
+  // and semantic taxonomy section names from buildSemanticPnL)
+  const actualSectionClasses = new Set<string>();
+  for (const p of filteredPeriods) {
+    for (const s of p.sections) {
+      actualSectionClasses.add(s.class);
+    }
+  }
+
+  // Normalise section lookup: both legacy (DIRECTCOSTS) and semantic (COST_OF_SALES)
+  // map to the same position in the P&L
+  const normaliseSectionClass = (cls: string): string => {
+    const map: Record<string, string> = {
+      COST_OF_SALES: 'DIRECTCOSTS',
+      OPERATING_EXPENSES: 'EXPENSE',
+      OTHER_INCOME: 'OTHER_INCOME',
+      TAX: 'TAX',
+      INTEREST_PAYABLE: 'INTEREST_PAYABLE',
+    };
+    return map[cls] ?? cls;
+  };
+
+  // Build ordered list of sections from actual data
+  const canonicalOrder = ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS', 'INTEREST_PAYABLE', 'FINANCE_COSTS', 'OTHER_INCOME', 'TAX'];
+  const sectionOrder = canonicalOrder.filter((c) => {
+    return actualSectionClasses.has(c) ||
+      [...actualSectionClasses].some((actual) => normaliseSectionClass(actual) === c);
+  });
+
   const sectionLabels: Record<string, string> = {
     REVENUE: 'Revenue',
     DIRECTCOSTS: 'Cost of Goods Sold',
+    COST_OF_SALES: 'Cost of Goods Sold',
     EXPENSE: 'Operating Expenses',
+    OPERATING_EXPENSES: 'Operating Expenses',
     OVERHEADS: 'Overheads',
     FINANCE_COSTS: 'Finance Costs',
+    INTEREST_PAYABLE: 'Interest Payable',
+    OTHER_INCOME: 'Other Income',
+    TAX: 'Tax',
   };
 
   // Plain-English descriptions for each P&L section
   const sectionDescriptions: Record<string, string> = {
     REVENUE: 'What the business earned from sales and services',
     DIRECTCOSTS: 'Costs directly tied to delivering your products or services',
+    COST_OF_SALES: 'Costs directly tied to delivering your products or services',
     EXPENSE: 'Day-to-day costs of running the business',
+    OPERATING_EXPENSES: 'Day-to-day costs of running the business',
     OVERHEADS: 'Fixed costs like rent, utilities, and insurance',
     FINANCE_COSTS: 'Interest and fees on loans, MCAs, and other debt facilities',
+    INTEREST_PAYABLE: 'Interest and fees on loans and borrowings',
+    OTHER_INCOME: 'Non-trading income like interest received and grants',
+    TAX: 'Corporation tax and other tax charges',
   };
 
   const isDetailedView = controls.viewMode === 'detailed';
 
+  // Helper: find section in period data, matching either exact or normalised class
+  const findSection = (p: PeriodPnL, cls: string): Section | undefined => {
+    return p.sections.find((s) => s.class === cls || normaliseSectionClass(s.class) === cls);
+  };
+
   // Collect all account names per section + name-to-code mapping
+  // Also collect sub-category structure when available
   const sectionAccounts = new Map<string, string[]>();
+  const sectionSubCategories = new Map<string, SubCategory[]>();
   const accountCodeMap = new Map<string, string>(); // accountName -> accountCode
   const accountIdMap = new Map<string, string>(); // accountName -> accountId (UUID)
   for (const cls of sectionOrder) {
     const names = new Set<string>();
+    const subCatMap = new Map<string, SubCategory>();
     for (const p of filteredPeriods) {
-      const section = p.sections.find((s) => s.class === cls);
+      const section = findSection(p, cls);
       if (section) {
         for (const r of section.rows) {
           names.add(r.name);
@@ -161,12 +207,21 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
             accountIdMap.set(r.name, r.id);
           }
         }
+        // Build sub-category list from first period that has them
+        if (section.subCategories && section.subCategories.length > 0 && subCatMap.size === 0) {
+          for (const sc of section.subCategories) {
+            subCatMap.set(sc.key, sc);
+          }
+        }
       }
     }
     sectionAccounts.set(cls, Array.from(names).sort());
+    if (subCatMap.size > 0) {
+      sectionSubCategories.set(cls, Array.from(subCatMap.values()));
+    }
   }
 
-  // Build lookup: period -> section class -> account name -> amount
+  // Build lookup: period -> section class (normalised) -> account name -> amount
   const lookup = new Map<string, Map<string, Map<string, number>>>();
   for (const p of filteredPeriods) {
     const sectionMap = new Map<string, Map<string, number>>();
@@ -175,7 +230,19 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
       for (const r of section.rows) {
         accMap.set(r.name, (accMap.get(r.name) ?? 0) + r.amount);
       }
-      sectionMap.set(section.class, accMap);
+      // Store under normalised key so both DIRECTCOSTS and COST_OF_SALES resolve
+      const normKey = normaliseSectionClass(section.class);
+      if (sectionMap.has(normKey)) {
+        // Merge if there's already a section (shouldn't happen but be safe)
+        const existing = sectionMap.get(normKey)!;
+        accMap.forEach((v, k) => existing.set(k, (existing.get(k) ?? 0) + v));
+      } else {
+        sectionMap.set(normKey, accMap);
+      }
+      // Also store under original key for exact lookups
+      if (normKey !== section.class) {
+        sectionMap.set(section.class, accMap);
+      }
     }
     lookup.set(p.period, sectionMap);
   }
@@ -193,6 +260,8 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
     /** Inline margin % for subtotal rows (e.g. Gross Profit = GP/Revenue) */
     marginPcts?: (string | null)[];
     sectionHeader?: boolean;
+    /** Sub-category header within a section (e.g. "Staff Costs" within Operating Expenses) */
+    subCategoryHeader?: boolean;
     /** If set, clicking this row opens the drill-down sheet for the first period */
     drillSectionClass?: string;
     /** Account code for individual account rows */
@@ -207,9 +276,10 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
 
   for (const cls of sectionOrder) {
     const names = sectionAccounts.get(cls) ?? [];
+    const subCategories = sectionSubCategories.get(cls);
     // Section total row with plain-English description
     const sectionTotals = sortedPeriods.map((p) => {
-      const section = p.sections.find((s) => s.class === cls);
+      const section = findSection(p, cls);
       return section?.total ?? 0;
     });
     rows.push({
@@ -223,18 +293,61 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
 
     // Individual account rows (only shown in detailed view)
     if (isDetailedView) {
-      for (const name of names) {
-        const values = sortedPeriods.map((p) => {
-          const sectionMap = lookup.get(p.period);
-          const accMap = sectionMap?.get(cls);
-          return accMap?.get(name) ?? 0;
-        });
-        rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), accountId: accountIdMap.get(name), sectionClass: cls });
+      if (subCategories && subCategories.length > 1) {
+        // Render accounts grouped by sub-category (management account style)
+        for (const sc of subCategories) {
+          const scAccountNames = sc.rows.map((r) => r.name);
+          // Sub-category total row
+          const scTotals = sortedPeriods.map((p) => {
+            const sectionMap = lookup.get(p.period);
+            const accMap = sectionMap?.get(cls);
+            if (!accMap) return 0;
+            return scAccountNames.reduce((sum, name) => sum + (accMap.get(name) ?? 0), 0);
+          });
+          rows.push({
+            label: sc.label,
+            values: scTotals,
+            indent: true,
+            bold: true,
+            subCategoryHeader: true,
+            sectionClass: cls,
+          });
+          // Individual accounts within sub-category
+          for (const name of scAccountNames) {
+            const values = sortedPeriods.map((p) => {
+              const sectionMap = lookup.get(p.period);
+              const accMap = sectionMap?.get(cls);
+              return accMap?.get(name) ?? 0;
+            });
+            rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), accountId: accountIdMap.get(name), sectionClass: cls });
+          }
+        }
+        // Any accounts not in sub-categories (unmapped)
+        const subCatAccountNames = new Set(subCategories.flatMap((sc) => sc.rows.map((r) => r.name)));
+        const unmapped = names.filter((n) => !subCatAccountNames.has(n));
+        for (const name of unmapped) {
+          const values = sortedPeriods.map((p) => {
+            const sectionMap = lookup.get(p.period);
+            const accMap = sectionMap?.get(cls);
+            return accMap?.get(name) ?? 0;
+          });
+          rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), accountId: accountIdMap.get(name), sectionClass: cls });
+        }
+      } else {
+        // Flat account list (no sub-categories or only one)
+        for (const name of names) {
+          const values = sortedPeriods.map((p) => {
+            const sectionMap = lookup.get(p.period);
+            const accMap = sectionMap?.get(cls);
+            return accMap?.get(name) ?? 0;
+          });
+          rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), accountId: accountIdMap.get(name), sectionClass: cls });
+        }
       }
     }
 
-    // After DIRECTCOSTS, add Gross Profit with inline margin %
-    if (cls === 'DIRECTCOSTS') {
+    // After DIRECTCOSTS/COST_OF_SALES, add Gross Profit with inline margin %
+    if (cls === 'DIRECTCOSTS' || cls === 'COST_OF_SALES') {
       const gpValues = sortedPeriods.map((p) => p.grossProfit);
       const gpMargins = sortedPeriods.map((p) =>
         p.revenue > 0 ? formatPercent(p.grossProfit / p.revenue, true) : null
@@ -293,7 +406,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
   // Apply search filter to rows
   const displayRows = controls.searchQuery
     ? rows.filter((row) => {
-        if (row.bold || row.separator || row.profitRow) return true; // Always show totals/summaries
+        if (row.bold || row.separator || row.profitRow || row.subCategoryHeader) return true; // Always show totals/summaries
         return row.label.toLowerCase().includes(controls.searchQuery.toLowerCase());
       })
     : rows;
@@ -431,8 +544,9 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                 >
                   <td
                     className={`px-4 py-2.5 sticky left-0 bg-card ${
-                      row.bold ? 'font-semibold bg-muted/20' : ''
-                    } ${row.indent ? 'pl-8 text-muted-foreground' : ''}`}
+                      row.bold && !row.subCategoryHeader ? 'font-semibold bg-muted/20' : ''
+                    } ${row.subCategoryHeader ? 'pl-6 font-medium text-foreground/80 text-[13px] border-t border-border/30 pt-3' : ''
+                    } ${row.indent && !row.subCategoryHeader ? 'pl-8 text-muted-foreground' : ''}`}
                   >
                     <div>
                       {(row.sectionHeader || row.profitRow) ? (

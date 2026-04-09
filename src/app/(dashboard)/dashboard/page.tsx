@@ -5,7 +5,7 @@ import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financi
 import { diagnoseCashFlow, type CashFlowDiagnosis } from '@/lib/financial/cash-flow-analysis';
 import { getDefaultTemplate, getTemplateById } from '@/lib/dashboard/templates';
 import { DashboardClient } from './dashboard-client';
-import type { AccountMapping } from '@/types';
+import { adaptMappingsFromDB } from '@/lib/financial/adapt-mappings';
 
 // Extract default recs for server-side fallback
 function getDefaultRecommendationsSync() {
@@ -78,7 +78,11 @@ export default async function DashboardPage() {
   const lastSync = syncResult.data;
   const orgProfile = profileResult.data as Record<string, unknown> | null;
   const dashPref = prefResult.data as Record<string, unknown> | null;
-  const mappings = (mappingsResult.data ?? []) as AccountMapping[];
+  const mappings = adaptMappingsFromDB(
+    (mappingsResult.data ?? []) as Array<Record<string, unknown>>,
+    (accounts ?? []) as import('@/types').ChartOfAccount[],
+    orgId
+  );
 
   const periods = getAvailablePeriods(financials || []);
   const defaultPeriod = periods[0] || '';

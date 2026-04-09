@@ -6,7 +6,7 @@ import {
   checkVATRegistration,
   calculateFilingDeadlines,
 } from '@/lib/compliance/uk-company-classification';
-import type { AccountMapping } from '@/types';
+import { adaptMappingsFromDB } from '@/lib/financial/adapt-mappings';
 import { ExecutiveSummaryClient } from './executive-summary-client';
 
 export default async function ExecutiveSummaryPage() {
@@ -48,7 +48,11 @@ export default async function ExecutiveSummaryPage() {
 
   const financials = financialsResult.data ?? [];
   const accounts = accountsResult.data ?? [];
-  const mappings = (mappingsResult.data ?? []) as AccountMapping[];
+  const mappings = adaptMappingsFromDB(
+    (mappingsResult.data ?? []) as Array<Record<string, unknown>>,
+    (accounts ?? []) as import('@/types').ChartOfAccount[],
+    orgId
+  );
   const connected = !!xeroResult.data;
   const lastSyncAt = syncResult.data?.completed_at ?? null;
   const orgData = profileResult.data as Record<string, unknown> | null;

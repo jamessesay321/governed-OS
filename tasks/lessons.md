@@ -261,3 +261,11 @@ Reviewed at session start. Updated after every bug, correction, failed build, or
 **Root cause:** Assumed the Xero API structure without checking the actual response. The debug logs clearly showed 0 results but the first version didn't log the raw response to diagnose why.
 
 **Preventative rule:** (1) When integrating with any external API, always log a sample of the raw response on first call to verify assumptions about the data shape. (2) For Xero specifically: `chart_of_accounts.xero_account_id` stores the UUID — always build lookup maps by UUID, not just by code. (3) When a function returns 0 results, add temporary debug logging to see what the API actually sent before assuming the logic is wrong.
+
+---
+
+### Lesson 22: Use Management Accounts as Classification Authority
+**Date:** 2026-04-09
+**Mistake:** Built a 27-category taxonomy, auto-mapper, and semantic P&L engine — but the income statement still showed 4 flat Xero classes. Never compared our output against the client's actual management accounts.
+**Root cause:** Infrastructure was built in isolation without validating against the real-world output (the accountant's management accounts). Features were "done" when code was written, not when output matched reality.
+**Rule:** Before shipping any financial presentation feature, compare its output against the client's management accounts. The accountant has already solved the classification problem — use their work as the answer key. When infrastructure exists but isn't wired to UI, it's not built — it's inventory.

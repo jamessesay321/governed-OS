@@ -2,7 +2,8 @@ import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { buildPnL, buildSemanticPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
 import { fetchFinanceCosts, buildFinanceCostsSection } from '@/lib/financial/finance-costs';
-import type { NormalisedFinancial, ChartOfAccount, AccountMapping } from '@/types';
+import type { NormalisedFinancial, ChartOfAccount } from '@/types';
+import { adaptMappingsFromDB } from '@/lib/financial/adapt-mappings';
 import { IncomeStatementClient } from './income-statement-client';
 
 export default async function IncomeStatementPage() {
@@ -51,9 +52,13 @@ export default async function IncomeStatementPage() {
 
   const finData = (financialsResult.data ?? []) as NormalisedFinancial[];
   const accData = (accountsResult.data ?? []) as ChartOfAccount[];
-  const mappings = (mappingsResult.data ?? []) as AccountMapping[];
   const periods = getAvailablePeriods(finData);
   const connected = !!xeroConnResult.data;
+
+  // Adapt migration-014 schema (source_account_code, target_category)
+  // to AccountMapping interface (account_id, standard_category) for buildSemanticPnL
+  const rawMappings = (mappingsResult.data ?? []) as Array<Record<string, unknown>>;
+  const mappings = adaptMappingsFromDB(rawMappings, accData, orgId);
 
   // Use semantic P&L when we have mappings, otherwise fall back to class-based
   const hasMappings = mappings.length > 0;
@@ -69,19 +74,29 @@ export default async function IncomeStatementPage() {
           .map((s) => {
             const isCostSection = ['cost_of_sales', 'operating_expenses', 'tax'].includes(s.section);
             // Group rows by category for sub-headings
-            const categoryGroups = new Map<string, { label: string; rows: Array<{ name: string; code: string; amount: number; category: string }> }>();
+            const categoryGroups = new Map<string, { label: string; key: string; rows: Array<{ id?: string; name: string; code: string; amount: number; category: string }> }>();
             for (const row of s.rows) {
               const key = row.standardCategory;
               if (!categoryGroups.has(key)) {
-                categoryGroups.set(key, { label: row.categoryLabel, rows: [] });
+                categoryGroups.set(key, { label: row.categoryLabel, key, rows: [] });
               }
               categoryGroups.get(key)!.rows.push({
+                id: row.accountId,
                 name: row.accountName,
                 code: row.accountCode,
                 amount: isCostSection ? Math.abs(row.amount) : row.amount,
                 category: row.categoryLabel,
               });
             }
+
+            // Build sub-categories array from the grouped data
+            const subCategories = Array.from(categoryGroups.values()).map((group) => ({
+              label: group.label,
+              key: group.key,
+              rows: group.rows,
+              total: group.rows.reduce((sum, r) => sum + r.amount, 0),
+            }));
+
             return {
               label: s.label,
               class: s.section.toUpperCase(),
@@ -93,6 +108,8 @@ export default async function IncomeStatementPage() {
                 amount: isCostSection ? Math.abs(r.amount) : r.amount,
                 category: r.categoryLabel,
               })),
+              // Pass sub-category groupings to client for management-account-style display
+              subCategories: subCategories.length > 1 ? subCategories : undefined,
             };
           }),
         revenue: spnl.revenue,
