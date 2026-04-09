@@ -296,16 +296,22 @@ async function syncBalanceSheetData(
 
   if (periods.length === 0) return 0;
 
-  // Get chart of accounts lookup (code → id, and check class)
+  // Get chart of accounts lookup — by xero_account_id (UUID) AND by code
+  // The Xero Trial Balance API returns the xero account UUID in Attributes, not the code
   const { data: accounts } = await supabase
     .from('chart_of_accounts')
-    .select('id, code, name, class')
+    .select('id, code, name, class, xero_account_id')
     .eq('org_id', orgId);
 
+  const accountByXeroId = new Map<string, { id: string; cls: string }>();
   const accountByCode = new Map<string, { id: string; cls: string }>();
   for (const acc of (accounts ?? [])) {
+    const entry = { id: acc.id, cls: (acc.class || '').toUpperCase() };
+    if (acc.xero_account_id) {
+      accountByXeroId.set(acc.xero_account_id, entry);
+    }
     if (acc.code) {
-      accountByCode.set(acc.code, { id: acc.id, cls: (acc.class || '').toUpperCase() });
+      accountByCode.set(acc.code, entry);
     }
   }
 
@@ -338,21 +344,33 @@ async function syncBalanceSheetData(
       // Xero TB structure: Rows[] → each Row has Cells[], RowType = 'Section'|'Row'|'SummaryRow'
       const rows: Array<{ period: string; accountId: string; amount: number }> = [];
 
+      // Debug: log the raw report structure for first period
+      if (period === periodsToFetch[0]) {
+        const sectionTypes = report.Rows.map((r: Record<string, unknown>) => r.RowType);
+        console.log(`[XERO SYNC] TB report structure — RowTypes:`, sectionTypes);
+        const firstSection = report.Rows.find((r: Record<string, unknown>) => r.RowType === 'Section');
+        if (firstSection?.Rows?.[0]) {
+          console.log(`[XERO SYNC] TB first data row sample:`, JSON.stringify(firstSection.Rows[0]).slice(0, 500));
+        }
+      }
+
       for (const section of report.Rows) {
         if (section.RowType === 'Section' && section.Rows) {
           for (const row of section.Rows) {
             if (row.RowType !== 'Row' || !row.Cells) continue;
 
             // Cells: [Account, Debit, Credit, YTD Debit, YTD Credit]
-            // Account cell has Attributes with Value = AccountID and Id = 'account'
+            // Account cell Attributes: Value = Xero account UUID, Id = 'account'
             const accountCell = row.Cells[0];
-            const accountCode = accountCell?.Attributes?.find(
+            const xeroAccountUuid = accountCell?.Attributes?.find(
               (a: { Id: string; Value: string }) => a.Id === 'account'
             )?.Value;
 
-            if (!accountCode) continue;
+            if (!xeroAccountUuid) continue;
 
-            const accInfo = accountByCode.get(accountCode);
+            // Look up by Xero UUID first (primary), then fall back to code
+            const accInfo = accountByXeroId.get(xeroAccountUuid)
+              || accountByCode.get(xeroAccountUuid);
             if (!accInfo) continue;
 
             // Only process balance sheet accounts
