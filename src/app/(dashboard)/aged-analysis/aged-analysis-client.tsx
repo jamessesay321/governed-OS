@@ -31,7 +31,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter, formatPercent } from '@/lib/formatting/currency';
 import { ExportButton } from '@/components/shared/export-button';
 import type { AgedAnalysisData, AgingBucket } from './page';
 
@@ -62,23 +62,6 @@ const CHART_COLORS = {
   dso: '#8b5cf6',       // violet
   dpo: '#ec4899',       // pink
 };
-
-/* ================================================================== */
-/*  Formatters                                                         */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `\u00A3${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `\u00A3${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `\u00A3${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `\u00A3${(value / 1_000).toFixed(0)}k`;
-  return `\u00A3${value}`;
-}
 
 /* ================================================================== */
 /*  Sub-components                                                     */
@@ -131,7 +114,7 @@ function DonutChart({
         dominantBaseline="central"
         fontSize={11}
       >
-        {(name ?? '')} {`${(((percent ?? 0)) * 100).toFixed(0)}%`}
+        {(name ?? '')} {formatPercent(percent ?? 0, true)}
       </text>
     );
   };
@@ -166,7 +149,7 @@ function DonutChart({
       </div>
       {/* Center label */}
       <div className="text-center -mt-4">
-        <p className="text-lg font-bold">{fmtCompact(total)}</p>
+        <p className="text-lg font-bold">{formatCurrencyCompact(total)}</p>
         <p className="text-xs text-muted-foreground">Total Outstanding</p>
       </div>
 
@@ -179,7 +162,7 @@ function DonutChart({
               style={{ backgroundColor: BUCKET_COLORS[b.colour] }}
             />
             <span className="text-muted-foreground">{b.label}</span>
-            <span className="ml-auto font-medium">{fmtCompact(b.amount)}</span>
+            <span className="ml-auto font-medium">{formatCurrencyCompact(b.amount)}</span>
           </div>
         ))}
       </div>
@@ -222,7 +205,7 @@ function TopAccountsBar({
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#e5e7eb" />
               <XAxis
                 type="number"
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 10, fill: '#6b7280' }}
               />
               <YAxis
@@ -526,7 +509,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                     height={50}
                   />
                   <YAxis
-                    tickFormatter={fmtAxis}
+                    tickFormatter={chartAxisFormatter()}
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                     width={70}
                   />
@@ -572,7 +555,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                 <tbody>
                   {data.debtorBuckets.map((b) => {
                     const total = data.debtorBuckets.reduce((s, x) => s + x.amount, 0);
-                    const pct = total > 0 ? ((b.amount / total) * 100).toFixed(1) : '0';
+                    const pct = total > 0 ? formatPercent(b.amount / total, true) : '0%';
                     return (
                       <tr
                         key={b.label}
@@ -581,11 +564,11 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                           openDrill({
                             type: 'custom',
                             title: `Debtors — ${b.label}`,
-                            subtitle: `${formatCurrency(b.amount)} (${pct}% of total debtors)`,
+                            subtitle: `${formatCurrency(b.amount)} (${pct} of total debtors)`,
                             rows: [
                               { label: 'Bucket', value: b.label },
                               { label: 'Amount', value: formatCurrency(b.amount) },
-                              { label: '% of Total', value: `${pct}%` },
+                              { label: '% of Total', value: pct },
                               { label: 'Status', value: b.colour === 'green' ? 'On Track' : b.colour === 'amber' ? 'Watch' : 'Overdue' },
                               { label: 'Total Debtors', value: formatCurrency(total) },
                             ],
@@ -602,7 +585,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                         <td className="py-2 px-3 text-right font-medium">
                           {formatCurrency(b.amount)}
                         </td>
-                        <td className="py-2 px-3 text-right text-muted-foreground">{pct}%</td>
+                        <td className="py-2 px-3 text-right text-muted-foreground">{pct}</td>
                         <td className="py-2 px-3">
                           <span
                             className={cn(
@@ -674,7 +657,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                     height={50}
                   />
                   <YAxis
-                    tickFormatter={fmtAxis}
+                    tickFormatter={chartAxisFormatter()}
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                     width={70}
                   />
@@ -720,7 +703,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                 <tbody>
                   {data.creditorBuckets.map((b) => {
                     const total = data.creditorBuckets.reduce((s, x) => s + x.amount, 0);
-                    const pct = total > 0 ? ((b.amount / total) * 100).toFixed(1) : '0';
+                    const pct = total > 0 ? formatPercent(b.amount / total, true) : '0%';
                     return (
                       <tr
                         key={b.label}
@@ -729,11 +712,11 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                           openDrill({
                             type: 'custom',
                             title: `Creditors — ${b.label}`,
-                            subtitle: `${formatCurrency(b.amount)} (${pct}% of total creditors)`,
+                            subtitle: `${formatCurrency(b.amount)} (${pct} of total creditors)`,
                             rows: [
                               { label: 'Bucket', value: b.label },
                               { label: 'Amount', value: formatCurrency(b.amount) },
-                              { label: '% of Total', value: `${pct}%` },
+                              { label: '% of Total', value: pct },
                               { label: 'Status', value: b.colour === 'green' ? 'Current' : b.colour === 'amber' ? 'Aging' : 'Overdue' },
                               { label: 'Total Creditors', value: formatCurrency(total) },
                             ],
@@ -750,7 +733,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                         <td className="py-2 px-3 text-right font-medium">
                           {formatCurrency(b.amount)}
                         </td>
-                        <td className="py-2 px-3 text-right text-muted-foreground">{pct}%</td>
+                        <td className="py-2 px-3 text-right text-muted-foreground">{pct}</td>
                         <td className="py-2 px-3">
                           <span
                             className={cn(
@@ -800,7 +783,7 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
                     height={50}
                   />
                   <YAxis
-                    tickFormatter={fmtAxis}
+                    tickFormatter={chartAxisFormatter()}
                     tick={{ fontSize: 11, fill: '#6b7280' }}
                     width={70}
                   />

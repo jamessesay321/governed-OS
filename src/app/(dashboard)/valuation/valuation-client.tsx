@@ -31,7 +31,7 @@ import {
   Line,
   Area,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter } from '@/lib/formatting/currency';
 import type {
   ValuationData,
   BridgeStep,
@@ -46,23 +46,6 @@ import type {
 
 interface ValuationClientProps {
   data: ValuationData;
-}
-
-/* ================================================================== */
-/*  Compact formatter for axes / cells                                 */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
 }
 
 /* ================================================================== */
@@ -257,7 +240,7 @@ export function ValuationClient({ data }: ValuationClientProps) {
         />
         <MetricCard
           label="Implied Equity Range"
-          value={`${fmtCompact(minEquity)} – ${fmtCompact(maxEquity)}`}
+          value={`${formatCurrencyCompact(minEquity)} – ${formatCurrencyCompact(maxEquity)}`}
           subtext={`EBITDA multiples ${ebitdaMultipleValues[0]}x–${ebitdaMultipleValues[ebitdaMultipleValues.length - 1]}x`}
           icon={<Scale className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />}
           accentClass="border-l-cyan-500"
@@ -352,7 +335,7 @@ export function ValuationClient({ data }: ValuationClientProps) {
                 className="text-gray-600 dark:text-gray-400"
               />
               <YAxis
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 12 }}
                 className="text-gray-600 dark:text-gray-400"
               />
@@ -439,7 +422,7 @@ export function ValuationClient({ data }: ValuationClientProps) {
                         cell.ebitdaScenarioLabel === 'Base' && 'font-semibold ring-1 ring-gray-300 dark:ring-gray-600',
                       )}
                     >
-                      {fmtCompact(cell.equityValue)}
+                      {formatCurrencyCompact(cell.equityValue)}
                     </td>
                   ))}
                 </tr>
@@ -499,7 +482,7 @@ export function ValuationClient({ data }: ValuationClientProps) {
             >
               <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
               <XAxis dataKey="year" tick={{ fontSize: 12 }} />
-              <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 12 }} />
+              <YAxis tickFormatter={chartAxisFormatter()} tick={{ fontSize: 12 }} />
               <RechartsTooltip
                 formatter={(value) => [formatCurrency(Number(value ?? 0)), 'Revenue']}
                 contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb', fontSize: 12 }}

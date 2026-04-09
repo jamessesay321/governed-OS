@@ -26,7 +26,7 @@ import {
   ReferenceLine,
   Legend,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter } from '@/lib/formatting/currency';
 import type { MonthlyCashProjection, DebtMaturityMarker } from './page';
 
 /* ================================================================== */
@@ -47,23 +47,6 @@ interface CashflowForecastClientProps {
 }
 
 type Scenario = 'base' | 'up' | 'down';
-
-/* ================================================================== */
-/*  Formatters                                                         */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
-}
 
 /* ================================================================== */
 /*  Client Component                                                   */
@@ -274,7 +257,7 @@ export function CashflowForecastClient({
                 height={60}
               />
               <YAxis
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 11, fill: '#6b7280' }}
                 width={80}
               />
@@ -357,7 +340,7 @@ export function CashflowForecastClient({
                   className="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-200"
                 >
                   <Calendar className="h-3 w-3" />
-                  {m.facilityName} · {fmtCompact(m.balance)} · {new Date(m.maturityDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                  {m.facilityName} · {formatCurrencyCompact(m.balance)} · {new Date(m.maturityDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
                 </span>
               ))}
             </div>

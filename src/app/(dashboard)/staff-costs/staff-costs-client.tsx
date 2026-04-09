@@ -28,7 +28,7 @@ import {
   AreaChart,
   Area,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter, formatPercent } from '@/lib/formatting/currency';
 import type { StaffRole, StaffPeriodSummary } from './page';
 
 /* ================================================================== */
@@ -58,23 +58,6 @@ const COLORS = [
   '#8b5cf6', '#ec4899', '#14b8a6', '#f97316', '#6366f1',
   '#84cc16', '#e11d48', '#0ea5e9', '#a855f7', '#22c55e',
 ];
-
-/* ================================================================== */
-/*  Formatters                                                         */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
-}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -175,7 +158,7 @@ export function StaffCostsClient({
           nic: r.nicTotal,
           pension: r.pensionTotal,
           accounts: r.accounts.length,
-          percentOfTotal: ((r.total / totalStaffCost) * 100).toFixed(1),
+          percentOfTotal: formatPercent(r.total / totalStaffCost, true),
         }))}
         columns={[
           { header: 'Role', key: 'role', format: 'text' },
@@ -188,7 +171,7 @@ export function StaffCostsClient({
         ]}
         filename="staff-costs"
         title="Staff Cost Analysis"
-        subtitle={`Total: ${fmtCompact(totalStaffCost)} · ${activeRoles} roles · On-cost ratio: ${(employerOnCostRatio * 100).toFixed(1)}%`}
+        subtitle={`Total: ${formatCurrencyCompact(totalStaffCost)} · ${activeRoles} roles · On-cost ratio: ${formatPercent(employerOnCostRatio)}`}
       />
       </div>
 
@@ -199,9 +182,9 @@ export function StaffCostsClient({
             <Wallet className="h-4 w-4" />
             Total Staff Costs (12mo)
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalStaffCost)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalStaffCost)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {fmtCompact(totalStaffCost / 12)}/month average
+            {formatCurrencyCompact(totalStaffCost / 12)}/month average
           </p>
         </div>
 
@@ -214,9 +197,9 @@ export function StaffCostsClient({
             )}
             Latest Month
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(lastMonthTotal)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(lastMonthTotal)}</p>
           <p className={cn('text-xs mt-1 font-medium', momChange >= 0 ? 'text-red-600' : 'text-emerald-600')}>
-            {momChange >= 0 ? '+' : ''}{momChange.toFixed(1)}% MoM
+            {momChange >= 0 ? '+' : ''}{formatPercent(momChange)} MoM
           </p>
         </div>
 
@@ -239,9 +222,9 @@ export function StaffCostsClient({
             <Building2 className="h-4 w-4" />
             Employer On-Costs
           </div>
-          <p className="text-2xl font-bold">{employerOnCostRatio.toFixed(1)}%</p>
+          <p className="text-2xl font-bold">{formatPercent(employerOnCostRatio)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            NIC {fmtCompact(totalNIC)} + Pension {fmtCompact(totalPension)}
+            NIC {formatCurrencyCompact(totalNIC)} + Pension {formatCurrencyCompact(totalPension)}
           </p>
         </div>
       </div>
@@ -270,7 +253,7 @@ export function StaffCostsClient({
               : staffToRevenue > 35 ? 'text-amber-600'
                 : 'text-emerald-600'
           )}>
-            {staffToRevenue.toFixed(1)}%
+            {formatPercent(staffToRevenue)}
           </p>
         </div>
       )}
@@ -292,7 +275,7 @@ export function StaffCostsClient({
                   paddingAngle={2}
                   dataKey="value"
                   label={({ name, percent }) =>
-                    `${(name ?? '').length > 14 ? (name ?? '').substring(0, 14) + '…' : (name ?? '')} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    `${(name ?? '').length > 14 ? (name ?? '').substring(0, 14) + '…' : (name ?? '')} ${formatPercent(percent ?? 0, true)}`
                   }
                   labelLine={{ strokeWidth: 1 }}
                 >
@@ -323,7 +306,7 @@ export function StaffCostsClient({
                   outerRadius={110}
                   paddingAngle={3}
                   dataKey="value"
-                  label={({ name, percent }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  label={({ name, percent }) => `${name ?? ''} ${formatPercent(percent ?? 0, true)}`}
                   labelLine={{ strokeWidth: 1 }}
                 >
                   {componentPieData.map((_, i) => (
@@ -354,7 +337,7 @@ export function StaffCostsClient({
                 textAnchor="end"
                 height={50}
               />
-              <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#6b7280' }} />
+              <YAxis tickFormatter={chartAxisFormatter()} tick={{ fontSize: 10, fill: '#6b7280' }} />
               <RechartsTooltip
                 formatter={(value, name) => {
                   const labels: Record<string, string> = {
@@ -391,7 +374,7 @@ export function StaffCostsClient({
                 textAnchor="end"
                 height={50}
               />
-              <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#6b7280' }} />
+              <YAxis tickFormatter={chartAxisFormatter()} tick={{ fontSize: 10, fill: '#6b7280' }} />
               <RechartsTooltip
                 formatter={(value) => [formatCurrency(Number(value ?? 0))]}
                 contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
@@ -428,7 +411,7 @@ export function StaffCostsClient({
                 </div>
                 <div className="flex items-center gap-6 text-sm">
                   <span className="text-muted-foreground">
-                    {totalStaffCost > 0 ? ((role.total / totalStaffCost) * 100).toFixed(1) : 0}%
+                    {totalStaffCost > 0 ? formatPercent(role.total / totalStaffCost, true) : '0%'}
                   </span>
                   <span
                     className="font-semibold w-24 text-right cursor-pointer hover:underline"
@@ -443,7 +426,7 @@ export function StaffCostsClient({
                           { label: 'Employer NIC', value: formatCurrency(role.nicTotal) },
                           { label: 'Pension', value: formatCurrency(role.pensionTotal) },
                           { label: 'Total Role Cost', value: formatCurrency(role.total) },
-                          { label: '% of Total Staff Cost', value: `${totalStaffCost > 0 ? ((role.total / totalStaffCost) * 100).toFixed(1) : 0}%` },
+                          { label: '% of Total Staff Cost', value: totalStaffCost > 0 ? formatPercent(role.total / totalStaffCost, true) : '0%' },
                           ...role.accounts.sort((a, b) => b.total - a.total).map((a) => ({
                             label: a.accountName,
                             value: formatCurrency(a.total),
@@ -453,7 +436,7 @@ export function StaffCostsClient({
                       });
                     }}
                   >
-                    {fmtCompact(role.total)}
+                    {formatCurrencyCompact(role.total)}
                   </span>
                 </div>
               </button>
@@ -525,8 +508,8 @@ export function StaffCostsClient({
                                   { label: 'Role', value: role.roleName },
                                   { label: 'Cost Type', value: acct.costType.charAt(0).toUpperCase() + acct.costType.slice(1) },
                                   { label: 'Total (12mo)', value: formatCurrency(acct.total) },
-                                  { label: '% of Role Cost', value: `${role.total > 0 ? ((acct.total / role.total) * 100).toFixed(1) : 0}%` },
-                                  { label: '% of Total Staff', value: `${totalStaffCost > 0 ? ((acct.total / totalStaffCost) * 100).toFixed(1) : 0}%` },
+                                  { label: '% of Role Cost', value: role.total > 0 ? formatPercent(acct.total / role.total, true) : '0%' },
+                                  { label: '% of Total Staff', value: totalStaffCost > 0 ? formatPercent(acct.total / totalStaffCost, true) : '0%' },
                                 ],
                               });
                             }}

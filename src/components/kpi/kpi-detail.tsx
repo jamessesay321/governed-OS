@@ -18,6 +18,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { formatKPIValue } from '@/lib/kpi/format';
+import { formatPercent } from '@/lib/formatting/currency';
 import type { CalculatedKPI } from '@/lib/kpi/format';
 import { AIReasoning } from '@/components/ui/ai-reasoning';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
@@ -110,7 +111,7 @@ export function KPIDetail({ kpi, history, period, onClose }: KPIDetailProps) {
             }`}
           >
             {kpi.trend_direction === 'up' ? '\u2191' : kpi.trend_direction === 'down' ? '\u2193' : '\u2192'}{' '}
-            {Math.abs(kpi.trend_percentage).toFixed(1)}% vs prior period
+            {formatPercent(Math.abs(kpi.trend_percentage))} vs prior period
           </span>
         </div>
 
@@ -190,7 +191,7 @@ export function KPIDetail({ kpi, history, period, onClose }: KPIDetailProps) {
         <AIReasoning
           reasoning={`${kpi.label} is currently ${kpi.formatted_value}, ${
             kpi.trend_direction === 'up' ? 'up' : kpi.trend_direction === 'down' ? 'down' : 'flat'
-          } ${Math.abs(kpi.trend_percentage).toFixed(1)}% vs prior period.${
+          } ${formatPercent(Math.abs(kpi.trend_percentage))} vs prior period.${
             kpi.benchmark_value !== null
               ? ` Compared to the sector benchmark of ${formatKPIValue(kpi.benchmark_value, kpi.format)}, your performance is ${kpi.benchmark_status}.`
               : ''

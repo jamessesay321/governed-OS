@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { HealthClient } from './health-client';
 
@@ -87,9 +88,16 @@ export default async function HealthPage() {
   }
 
   const periods = getAvailablePeriods(fin);
+  const financeCosts = await fetchFinanceCosts(orgId);
 
   // Build P&L for each period
-  const pnls = periods.map((p) => buildPnL(fin, accts, p));
+  const pnls = periods.map((p) => {
+    const pnl = buildPnL(fin, accts, p);
+    return {
+      ...pnl,
+      netProfit: adjustNetProfitForFinanceCosts(pnl.netProfit, financeCosts),
+    };
+  });
 
   // Compute balance sheet totals for the latest period from normalised_financials
   const latestPeriod = periods[0];

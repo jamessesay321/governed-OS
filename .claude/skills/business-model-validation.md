@@ -3,86 +3,107 @@
 ## Purpose
 Platform outputs must match business reality. Before displaying ANY financial number, ask: "Does this make sense for THIS specific business?" A luxury bridal business showing 590 clients when the actual number is 146 is a trust-destroying error, even if the code runs perfectly.
 
+This skill is NOT Alonuko-specific. It defines a FRAMEWORK that applies to any onboarded client. Client-specific parameters must be derived from onboarding interview + Xero data — never hardcoded.
+
 ## When to Apply
 - BEFORE showing any derived metric (client count, AOV, revenue, margin)
 - AFTER any change to data aggregation or KPI calculation
-- When building features specific to a client's industry
+- When building features for a client's industry
 - At session start — sanity check key metrics against known business data
 
-## Alonuko Business Model Rules
+## Generalised Framework (Any Client)
 
-### Client Metrics
-- Alonuko is luxury bridal: each bride has 3-5 invoices (consultation, deposit, balance, alterations)
-- Counting Xero invoice contacts OVERCOUNTS clients by 3-5x
-- Source of truth for client count: Monday.com confirmed clients
-- Expected: ~146 confirmed clients/year (2025), NOT 590+ invoice contacts
-- AOV: ~£8,634 per client (not £3K implied by overcounting)
+### Step 1: Derive Business Model from Onboarding
+Every client's `business_context_profiles` and `raw_interview_data` contain:
+- `revenue_model` (project-based, subscription, product sales, service retainer)
+- `revenue_streams` (distinct income sources)
+- `seasonality_description` (when are busy/quiet months?)
+- `business_stage` (startup, growth, mature, turnaround)
+- `team_size` and `team_structure`
+- `target_gross_margin`, `target_net_margin`
 
-### Revenue Recognition (FRS 102 Section 23)
-- Deposits received ≠ revenue recognised
-- Revenue for MTO goods: recognised on DELIVERY, not on deposit
-- Deposit is a LIABILITY (deferred income) until dress is delivered
-- If platform shows £1.8M from invoices, actual recognised revenue is ~£1.43M
-- Wedding dates span 2025-2027 — deposits in 2025 may be revenue in 2027
+These MUST inform every validation check. If interview hasn't been completed, the platform must flag: "Business context incomplete — financial outputs may not reflect reality."
 
-### Seasonality
-- Bridal is highly seasonal: trunk show months spike, quiet months near zero
-- January, September: typically high (new year brides, autumn brides)
-- April-May: trunk show season (US events)
-- Revenue swings of 200-500% month-over-month are NORMAL, not errors
-- Sense checks must account for seasonality (don't flag seasonal spikes as anomalies)
+### Step 2: Detect Invoice-to-Client Ratio
+- For project-based businesses (bridal, construction, consulting): each client generates multiple invoices
+- For SaaS/subscription: each client = 1 recurring invoice per period
+- For retail: "clients" may not be meaningful (transaction count instead)
+- RULE: Cross-reference Xero invoice contacts against operational CRM (Monday.com, HubSpot) or interview data to determine the real client count
+- RULE: If `revenue_model = 'project-based'`, warn that Xero contact count OVERCOUNTS clients
 
-### Debt Reality
-- 13+ active debt facilities, £511K outstanding
-- £55.7K/month in repayments (46.6% of monthly revenue)
-- £257K/year in interest (17.9% of revenue)
-- ANY P&L that shows Alonuko as profitable WITHOUT deducting finance costs is WRONG
-- The business is structurally loss-making after debt service
+### Step 3: Validate Revenue Recognition
+- Ask: "When does this business recognise revenue?" (delivery, invoice, payment, milestone)
+- For made-to-order goods (FRS 102 Section 23): revenue on DELIVERY, deposits are liabilities
+- For SaaS: revenue recognised monthly (even if billed annually)
+- For professional services: as work is performed
+- RULE: If invoiced amount > 130% of expected revenue, investigate deposit inclusion
 
-### Cost Structure
-- Materials/fabric: 30-40% of COGS
-- Labour (seamstresses): 9 staff + 2 directors
-- Trunk show costs: £8-15K per event (travel, hotel, freelancers, shipping)
-- Studio overhead: rent, utilities, insurance
-- MCA repayments: largest single cash outflow
+### Step 4: Validate Profit Direction
+- Ask: "Does this business have debt?" → Check `debt_facilities` table
+- If active debt exists AND P&L shows profit WITHOUT finance costs → STOP, this is wrong
+- Ask: "Is this business expected to be profitable?" → Check interview `business_stage`
+- Turnaround/startup businesses may be legitimately loss-making
+- RULE: If showing profit but debt service > operating profit → flag as misleading
 
-## Generalised Validation Rules (Any Client)
+### Step 5: Industry-Specific Sense Checks
+Pull from `industry-benchmarks.ts` for the client's sector:
+- Gross margin within expected range?
+- Net margin within expected range?
+- Expected cost categories present? (COGS for product businesses, no COGS for pure service)
 
-### Before Displaying Client Count
-- ASK: "How does this business count clients?" (invoices? contacts? orders?)
-- CROSS-REFERENCE with operational system (Monday.com, CRM, Shopify)
-- NEVER report Xero invoice contact count as "clients"
+## Client-Specific Rules (Auto-Derived)
 
-### Before Displaying Revenue
-- ASK: "When does this business recognise revenue?" (on delivery? on invoice? on payment?)
-- CHECK: Does the total match the business's own management accounts?
-- FLAG: If platform revenue > 130% of known revenue, likely double-counting or deposit inclusion
+### How to Build Rules for a New Client
+When a new org completes onboarding:
+1. Read `organisations.industry` + `business_context_profiles`
+2. Match to industry benchmark template
+3. Query `debt_facilities` → if any exist, profit MUST include finance costs
+4. Query interview `seasonality_description` → configure seasonal thresholds
+5. Query `revenue_model` → determine invoice-to-client mapping
+6. Store derived rules in `company_skills` cache (7-day TTL, refreshed on sync)
 
-### Before Displaying Profit/Loss
-- ASK: "Does this business have debt?" If yes, finance costs MUST be included
-- CHECK: Is the profit/loss direction correct? (profitable vs loss-making)
-- FLAG: If showing profit but known to be loss-making → STOP, find what's missing
+### Example: Luxury Bridal (Alonuko Pattern)
+- Revenue model: project-based, made-to-order
+- Each bride = 3-5 invoices (consultation, deposit, balance, alterations)
+- Source of truth for client count: operational CRM, NOT Xero contacts
+- Revenue recognition: on delivery (FRS 102 Section 23)
+- Seasonality: Jan/Sep high, trunk show months spike
+- Active debt: 13+ facilities → P&L MUST include finance costs
+- Expected gross margin: 30-65% (fashion-luxury benchmark)
 
-### Before Displaying Any Ratio
-- ASK: "Is the denominator correct?" (revenue per employee needs correct employee count, not payroll contacts)
-- CHECK: Does the ratio make sense for the industry? (40% gross margin for manufacturing, 80% for SaaS)
-- FLAG: If ratio is 2x or 0.5x industry norm, investigate before displaying
+### Example: SaaS Business
+- Revenue model: subscription
+- Each customer = 1 Xero contact (invoice count ≈ client count × months)
+- Revenue recognition: monthly (deferred if annual billing)
+- Seasonality: typically flat, Q4 enterprise push
+- Expected gross margin: 70-85%
+- Key metric: MRR, churn rate, LTV:CAC
+
+### Example: Professional Services
+- Revenue model: project/retainer
+- Each client = multiple invoices per engagement
+- Revenue recognition: as work performed or milestone
+- Seasonality: quiet in August/December
+- Expected gross margin: 50-70%
+- Key metric: utilisation rate, revenue per consultant
 
 ## Implementation
-Every page server component should include:
+Every page server component should:
 ```typescript
-// After computing financial data, validate against business model
+// After computing financial data, validate against business context
+const businessContext = await getCompanySkill(orgId);
 const validationFlags = validateBusinessModel({
   revenue, netProfit, clientCount, grossMargin,
   hasDebt: debtFacilities.length > 0,
   totalDebtInterest: monthlyInterest * 12,
+  revenueModel: businessContext?.revenue_model,
+  expectedMarginRange: businessContext?.industryBenchmark?.grossMarginRange,
 });
-// Pass flags to client for display
 ```
 
-## Known Alonuko-Specific Issues
-1. Invoice contacts overcounts clients by 4x (Lesson 18)
-2. Revenue overstated by deposits (FRS 102 Section 23)
-3. P&L missing finance costs → shows false profit (fixed in 0de5266)
-4. Seasonal revenue treated as anomaly by sense-check (too aggressive thresholds)
-5. Interest expense on bank transactions not in normalised_financials (Lesson 10 trade-off)
+## Known Anti-Patterns
+1. **Hardcoding client numbers** — Always derive from operational data, never assume
+2. **Treating all businesses as profitable** — Check debt first
+3. **Ignoring deposits** — For project businesses, invoiced ≠ earned
+4. **Flat seasonality assumptions** — Bridal swings 200-500% MoM, that's normal
+5. **One-size-fits-all thresholds** — SaaS margins ≠ manufacturing margins

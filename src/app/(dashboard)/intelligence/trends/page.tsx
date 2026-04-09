@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { formatCurrencyCompact } from '@/lib/formatting/currency';
 import { TrendsClient } from './trends-client';
@@ -58,9 +59,17 @@ export default async function TrendsPage() {
     return <TrendsClient trends={[]} hasData={true} />;
   }
 
+  const financeCosts = await fetchFinanceCosts(orgId);
+
   // Build P&L for each period (periods are sorted newest first, reverse for chronological)
   const chronologicalPeriods = [...periods].reverse();
-  const pnls = chronologicalPeriods.map((p) => buildPnL(fin, accts, p));
+  const pnls = chronologicalPeriods.map((p) => {
+    const pnl = buildPnL(fin, accts, p);
+    return {
+      ...pnl,
+      netProfit: adjustNetProfitForFinanceCosts(pnl.netProfit, financeCosts),
+    };
+  });
 
   const trends: TrendItem[] = [];
 

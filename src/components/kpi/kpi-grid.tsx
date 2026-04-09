@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { KPISparkline } from './kpi-sparkline';
 import { DollarSign, Percent, TrendingUp, Receipt, PiggyBank, BarChart3, Wallet, Target } from 'lucide-react';
 import type { CalculatedKPI } from '@/lib/kpi/format';
+import { formatPercent } from '@/lib/formatting/currency';
 import type { KPISnapshot } from '@/types';
 
 const KPI_ICON_CONFIG: Record<string, { icon: React.ElementType; bg: string; text: string }> = {
@@ -129,7 +130,7 @@ export function KPIGrid({ kpis, history, onSelect }: KPIGridProps) {
                   <div className={`flex items-center gap-1 text-xs ${trendColor}`}>
                     <span>{trend.icon}</span>
                     <span>
-                      {Math.abs(kpi.trend_percentage).toFixed(1)}%
+                      {formatPercent(Math.abs(kpi.trend_percentage))}
                     </span>
                   </div>
                 </div>

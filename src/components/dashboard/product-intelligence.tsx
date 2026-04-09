@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency, formatCurrencyCompact } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, formatPercent } from '@/lib/formatting/currency';
 import {
   Package, Users, Tag, TrendingUp, BarChart3,
   ShoppingBag, Sparkles, AlertCircle,
@@ -154,7 +154,7 @@ function CategoryBar({
           style={{ width: `${Math.min(barPct, 100)}%` }}
         />
         <span className="absolute inset-0 flex items-center px-2 text-xs font-medium">
-          {formatCurrencyCompact(revenue)} ({percentage.toFixed(1)}%)
+          {formatCurrencyCompact(revenue)} ({formatPercent(percentage)})
         </span>
       </div>
     </div>
@@ -223,7 +223,7 @@ function DonutChart({ breakdown }: { breakdown: CategoryBreakdown[] }) {
               {seg.category}
             </span>
             <span className="ml-auto font-medium shrink-0">
-              {seg.percentage.toFixed(0)}%
+              {formatPercent(seg.percentage)}
             </span>
           </div>
         ))}
@@ -418,7 +418,7 @@ export function ProductIntelligence({ orgId, period }: ProductIntelligenceProps)
               value={data.topCategory ?? 'None'}
               subtitle={
                 displayBreakdown.length > 0
-                  ? `${displayBreakdown[0].percentage.toFixed(0)}% of revenue`
+                  ? `${formatPercent(displayBreakdown[0].percentage)} of revenue`
                   : undefined
               }
               bgClass="bg-violet-50"

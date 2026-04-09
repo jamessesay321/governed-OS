@@ -1,6 +1,7 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { buildPnL, getAvailablePeriods } from '@/lib/financial/aggregate';
+import { fetchFinanceCosts, adjustNetProfitForFinanceCosts } from '@/lib/financial/finance-costs';
 import type { NormalisedFinancial, ChartOfAccount } from '@/types';
 import { RecommendationsClient } from './recommendations-client';
 
@@ -37,7 +38,14 @@ export default async function RecommendationsPage() {
   }
 
   const periods = getAvailablePeriods(fin);
-  const pnls = periods.map((p) => buildPnL(fin, accts, p));
+  const financeCosts = await fetchFinanceCosts(orgId);
+  const pnls = periods.map((p) => {
+    const pnl = buildPnL(fin, accts, p);
+    return {
+      ...pnl,
+      netProfit: adjustNetProfitForFinanceCosts(pnl.netProfit, financeCosts),
+    };
+  });
   const latestPnl = pnls[0];
   const latestPeriod = periods[0];
 

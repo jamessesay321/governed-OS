@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { formatPercent } from '@/lib/formatting/currency';
 
 interface BenchmarkRatio {
   name: string;
@@ -27,7 +28,7 @@ const PLACEHOLDER_RATIOS: BenchmarkRatio[] = [
 function formatValue(value: number, unit: string): string {
   if (unit === 'x') return `${value.toFixed(2)}x`;
   if (unit === 'days') return `${value.toFixed(0)} days`;
-  return `${value.toFixed(1)}%`;
+  return formatPercent(value);
 }
 
 function getStatus(

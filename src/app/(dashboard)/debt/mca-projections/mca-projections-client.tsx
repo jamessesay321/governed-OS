@@ -24,7 +24,7 @@ import {
   ReferenceLine,
   Legend,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import { ExportButton, type ExportColumn } from '@/components/shared/export-button';
 import Link from 'next/link';
 import type { MCAProjectionResult } from '@/lib/financial/mca-projection';
@@ -40,17 +40,7 @@ interface MCAProjectionsClientProps {
   historicalStripeRevenue: { period: string; amount: number }[];
 }
 
-// ─── Formatters ────────────────────────────────────────────────────
-
-function fmtPct(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `\u00A3${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `\u00A3${(value / 1_000).toFixed(0)}K`;
-  return `\u00A3${value}`;
-}
+// ─── Helpers ──────────────────────────────────────────────────────
 
 function sweepSourceLabel(source: string): string {
   switch (source) {
@@ -278,7 +268,7 @@ export function MCAProjectionsClient({
             <Percent className="h-4 w-4" />
             Weighted Avg Sweep Rate
           </div>
-          <p className="text-2xl font-bold">{fmtPct(summary.weightedSweepRate)}</p>
+          <p className="text-2xl font-bold">{formatPercent(summary.weightedSweepRate, true)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             Weighted by outstanding balance
           </p>
@@ -342,7 +332,7 @@ export function MCAProjectionsClient({
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    {f.lender} -- {fmtPct(f.sweepPercentage)} of {sweepSourceLabel(f.sweepSource)} revenue
+                    {f.lender} -- {formatPercent(f.sweepPercentage, true)} of {sweepSourceLabel(f.sweepSource)} revenue
                   </p>
                 </div>
                 <div className="text-right">
@@ -353,7 +343,7 @@ export function MCAProjectionsClient({
                     proj.effectiveAPR > 0.15 ? 'text-amber-600' :
                     'text-emerald-600',
                   )}>
-                    {proj.effectiveAPR > 0 ? fmtPct(proj.effectiveAPR) : 'N/A'}
+                    {proj.effectiveAPR > 0 ? formatPercent(proj.effectiveAPR, true) : 'N/A'}
                   </p>
                 </div>
               </div>
@@ -376,7 +366,7 @@ export function MCAProjectionsClient({
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {progressPct.toFixed(0)}% complete -- {formatCurrency(f.totalToRepay)} total to repay
+                  {formatPercent(progressPct)} complete -- {formatCurrency(f.totalToRepay)} total to repay
                 </p>
               </div>
 
@@ -489,7 +479,7 @@ export function MCAProjectionsClient({
                           Revenue ({sweepSourceLabel(f.sweepSource)})
                         </th>
                         <th className="py-2 px-2 text-right font-medium text-muted-foreground">
-                          Sweep ({fmtPct(f.sweepPercentage)})
+                          Sweep ({formatPercent(f.sweepPercentage, true)})
                         </th>
                         <th className="py-2 px-2 text-right font-medium text-muted-foreground">Opening Bal</th>
                         <th className="py-2 px-2 text-right font-medium text-muted-foreground">Closing Bal</th>
@@ -550,7 +540,7 @@ export function MCAProjectionsClient({
                   height={60}
                 />
                 <YAxis
-                  tickFormatter={fmtAxis}
+                  tickFormatter={chartAxisFormatter()}
                   tick={{ fontSize: 11, fill: '#6b7280' }}
                   width={80}
                 />
