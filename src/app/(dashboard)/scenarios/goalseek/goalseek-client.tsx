@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import { formatCurrencyCompact } from '@/lib/formatting/currency';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -215,7 +216,7 @@ const TEMPLATES: GoalseekTemplate[] = [
       { label: 'Active Clients', value: 240, unit: '' },
     ],
     resultFn: (target, variable) =>
-      `To hit £${(target / 1000000).toFixed(1)}M revenue, increase prices by ${variable}% (assuming no client churn)`,
+      `To hit ${formatCurrencyCompact(target)} revenue, increase prices by ${variable}% (assuming no client churn)`,
   },
   {
     id: 'gr-3',

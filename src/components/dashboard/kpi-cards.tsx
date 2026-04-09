@@ -60,10 +60,6 @@ const KPI_ICONS: Record<string, React.ElementType> = {
   cash_position: Wallet,
 };
 
-function formatPercentage(value: number): string {
-  return formatPercent(value);
-}
-
 function getVariance(current: number, previous: number | undefined): {
   direction: 'up' | 'down' | 'flat';
   percentage: number;
@@ -297,7 +293,7 @@ export function KPICards({
                 {variance.direction !== 'flat' && (
                   <span className={`inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${bg} ${color}`}>
                     <TrendIcon direction={variance.direction} />
-                    {Math.abs(variance.percentage).toFixed(1)}%
+                    {formatPercent(Math.abs(variance.percentage))}
                   </span>
                 )}
               </div>
@@ -307,7 +303,7 @@ export function KPICards({
                 <div className="flex items-baseline gap-2 min-w-0">
                   <span className="text-2xl font-bold text-foreground">
                     {card.format === 'percentage'
-                      ? formatPercentage(card.value)
+                      ? formatPercent(card.value)
                       : formatCurrency(card.value)}
                   </span>
                   <SourceBadge source="actual" size="sm" />
@@ -324,7 +320,7 @@ export function KPICards({
                 {card.previousValue !== undefined && (
                   <p className="text-xs text-muted-foreground">
                     PP: {card.format === 'percentage'
-                      ? formatPercentage(card.previousValue)
+                      ? formatPercent(card.previousValue)
                       : formatCurrency(card.previousValue)}
                     {(() => {
                       const v = getVariance(card.value, card.previousValue);
@@ -332,7 +328,7 @@ export function KPICards({
                       const c = getVarianceColor(v.direction, card.higherIsBetter);
                       return (
                         <span className={`ml-1 ${c}`}>
-                          ({v.direction === 'up' ? '+' : ''}{v.percentage.toFixed(1)}%)
+                          ({v.direction === 'up' ? '+' : ''}{formatPercent(v.percentage)})
                         </span>
                       );
                     })()}
@@ -341,7 +337,7 @@ export function KPICards({
                 {card.priorYearValue !== undefined && (
                   <p className="text-xs text-muted-foreground">
                     PY: {card.format === 'percentage'
-                      ? formatPercentage(card.priorYearValue)
+                      ? formatPercent(card.priorYearValue)
                       : formatCurrency(card.priorYearValue)}
                     {(() => {
                       const v = getVariance(card.value, card.priorYearValue);
@@ -349,7 +345,7 @@ export function KPICards({
                       const c = getVarianceColor(v.direction, card.higherIsBetter);
                       return (
                         <span className={`ml-1 ${c}`}>
-                          ({v.direction === 'up' ? '+' : ''}{v.percentage.toFixed(1)}%)
+                          ({v.direction === 'up' ? '+' : ''}{formatPercent(v.percentage)})
                         </span>
                       );
                     })()}

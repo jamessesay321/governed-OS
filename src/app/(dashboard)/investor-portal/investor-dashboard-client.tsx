@@ -50,7 +50,7 @@ function TrendBadge({ direction, percentage }: { direction: string; percentage: 
         isUp ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
       }`}
     >
-      {isUp ? '+' : ''}{percentage.toFixed(1)}%
+      {isUp ? '+' : ''}{formatPercent(percentage)}
     </Badge>
   );
 }

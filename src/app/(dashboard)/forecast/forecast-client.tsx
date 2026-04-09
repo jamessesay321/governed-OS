@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { formatCurrencyCompact, chartTooltipFormatter } from '@/lib/formatting/currency';
+import { formatCurrencyCompact, chartTooltipFormatter, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import {
   ResponsiveContainer,
   LineChart,
@@ -64,7 +64,9 @@ function tooltipFormatter(value: unknown): string {
   return chartTooltipFormatter()(Number(value ?? 0));
 }
 
-function formatCurrency(value: number): string {
+const fmtAxisTick = chartAxisFormatter();
+
+function formatCurrencyShort(value: number): string {
   return formatCurrencyCompact(value);
 }
 
@@ -224,7 +226,7 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
         <div className="flex items-center gap-3">
           {forecast && (
             <div className="text-sm text-muted-foreground">
-              Confidence: {Math.round((forecast.confidence || 0) * 100)}%
+              Confidence: {formatPercent(forecast.confidence || 0, true)}
               {' | '}
               Generated: {new Date(forecast.generatedAt).toLocaleDateString()}
             </div>
@@ -280,7 +282,7 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
                         <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                          <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={fmtAxisTick} tick={{ fontSize: 10 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Line
                             type="monotone"
@@ -316,7 +318,7 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
                         <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                          <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={fmtAxisTick} tick={{ fontSize: 10 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Line
                             type="monotone"
@@ -352,7 +354,7 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
                         <LineChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                          <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={fmtAxisTick} tick={{ fontSize: 10 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Line
                             type="monotone"
@@ -409,7 +411,7 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
                                 key={i}
                                 className={`text-right py-2 px-2 tabular-nums ${val < 0 ? 'text-destructive' : ''}`}
                               >
-                                {formatCurrency(val)}
+                                {formatCurrencyShort(val)}
                               </td>
                             ))}
                           </tr>
@@ -589,7 +591,7 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
                         <LineChart data={buildChartData(forecast, scenario)}>
                           <CartesianGrid strokeDasharray="3 3" />
                           <XAxis dataKey="period" tick={{ fontSize: 10 }} />
-                          <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
+                          <YAxis tickFormatter={fmtAxisTick} tick={{ fontSize: 10 }} />
                           <Tooltip formatter={tooltipFormatter} />
                           <Legend />
                           <Line

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Scenario, ModelSnapshot, AssumptionValue, UnitEconomicsSnapshot, AICommentary, Role, AssumptionSet } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
+import { formatCurrency } from '@/lib/formatting/currency';
 import { ForecastChart } from '@/components/scenarios/forecast-chart';
 import { CashFlowChart } from '@/components/scenarios/cash-flow-chart';
 import { MarginTrendChart } from '@/components/scenarios/margin-trend-chart';
@@ -172,17 +173,17 @@ export function ScenarioDetailClient({
               <>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Revenue (Latest)</p>
-                  <p className="text-2xl font-bold">£{last.revenue.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(last.revenue)}</p>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Net Profit</p>
                   <p className={`text-2xl font-bold ${last.net_profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    £{last.net_profit.toLocaleString()}
+                    {formatCurrency(last.net_profit)}
                   </p>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">Closing Cash</p>
-                  <p className="text-2xl font-bold">£{last.closing_cash.toLocaleString()}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(last.closing_cash)}</p>
                 </div>
                 <div className="rounded-lg border p-4">
                   <p className="text-sm text-muted-foreground">

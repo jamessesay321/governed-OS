@@ -34,7 +34,7 @@ import {
   ComposedChart,
   ReferenceLine,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter, formatPercent } from '@/lib/formatting/currency';
 import type {
   ProductionLineCost,
   MaterialBreakdown,
@@ -89,18 +89,6 @@ const MATERIAL_COLORS = ['#7c3aed', '#f59e0b', '#06b6d4'];
 /*  Formatters                                                         */
 /* ================================================================== */
 
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
-}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -279,13 +267,13 @@ export function ProductionClient({
             <Factory className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             WIP Balance
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(Math.abs(wipBalance))}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(Math.abs(wipBalance))}</p>
           <p className={cn(
             'text-xs mt-1 font-medium flex items-center gap-1',
             wipMovement >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
           )}>
             {wipMovement >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {fmtCompact(Math.abs(wipMovement))} movement
+            {formatCurrencyCompact(Math.abs(wipMovement))} movement
           </p>
         </div>
 
@@ -298,13 +286,13 @@ export function ProductionClient({
             <Scissors className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Raw Materials
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(Math.abs(rawMaterialsBalance))}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(Math.abs(rawMaterialsBalance))}</p>
           <p className={cn(
             'text-xs mt-1 font-medium flex items-center gap-1',
             rawMaterialsMovement >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
           )}>
             {rawMaterialsMovement >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {fmtCompact(Math.abs(rawMaterialsMovement))} movement
+            {formatCurrencyCompact(Math.abs(rawMaterialsMovement))} movement
           </p>
         </div>
 
@@ -317,13 +305,13 @@ export function ProductionClient({
             <Package className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
             Finished Goods
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(Math.abs(finishedGoodsBalance))}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(Math.abs(finishedGoodsBalance))}</p>
           <p className={cn(
             'text-xs mt-1 font-medium flex items-center gap-1',
             finishedGoodsMovement >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400',
           )}>
             {finishedGoodsMovement >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {fmtCompact(Math.abs(finishedGoodsMovement))} movement
+            {formatCurrencyCompact(Math.abs(finishedGoodsMovement))} movement
           </p>
         </div>
 
@@ -336,9 +324,9 @@ export function ProductionClient({
             <Truck className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Total Production Cost
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalProductionCost)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalProductionCost)}</p>
           <p className="text-xs mt-1 text-muted-foreground">
-            CoGS {fmtCompact(totalCogsProductionCost)} + Materials {fmtCompact(totalMaterials)} + Shipping {fmtCompact(shippingTotal)}
+            CoGS {formatCurrencyCompact(totalCogsProductionCost)} + Materials {formatCurrencyCompact(totalMaterials)} + Shipping {formatCurrencyCompact(shippingTotal)}
           </p>
         </div>
       </div>
@@ -362,7 +350,7 @@ export function ProductionClient({
                     height={50}
                   />
                   <YAxis
-                    tickFormatter={fmtAxis}
+                    tickFormatter={chartAxisFormatter()}
                     tick={{ fontSize: 10 }}
                     className="fill-gray-500 dark:fill-gray-400"
                   />
@@ -398,7 +386,7 @@ export function ProductionClient({
                     paddingAngle={3}
                     dataKey="value"
                     label={({ name, percent }) =>
-                      `${(name ?? '')} ${((percent ?? 0) * 100).toFixed(0)}%`
+                      `${(name ?? '')} ${formatPercent(percent ?? 0, true)}`
                     }
                     labelLine={{ strokeWidth: 1 }}
                   >
@@ -440,7 +428,7 @@ export function ProductionClient({
                   height={50}
                 />
                 <YAxis
-                  tickFormatter={fmtAxis}
+                  tickFormatter={chartAxisFormatter()}
                   tick={{ fontSize: 10 }}
                   className="fill-gray-500 dark:fill-gray-400"
                 />
@@ -496,11 +484,11 @@ export function ProductionClient({
                 openDrill({
                   type: 'custom',
                   title: line.name,
-                  subtitle: `${formatCurrency(line.total)} — ${line.pctOfTotal.toFixed(1)}% of total CoGS`,
+                  subtitle: `${formatCurrency(line.total)} — ${formatPercent(line.pctOfTotal)} of total CoGS`,
                   rows: [
                     { label: 'Product Line Code', value: line.code },
                     { label: 'Total Cost', value: formatCurrency(line.total) },
-                    { label: '% of Total CoGS', value: `${line.pctOfTotal.toFixed(1)}%` },
+                    { label: '% of Total CoGS', value: formatPercent(line.pctOfTotal) },
                     { label: 'Total CoGS', value: formatCurrency(totalCogsProductionCost) },
                   ],
                 });
@@ -519,10 +507,10 @@ export function ProductionClient({
                 </div>
               </div>
               <div className="w-20 text-right text-sm font-medium">
-                {line.pctOfTotal.toFixed(1)}%
+                {formatPercent(line.pctOfTotal)}
               </div>
               <div className="w-24 text-right text-sm text-muted-foreground">
-                {fmtCompact(line.total)}
+                {formatCurrencyCompact(line.total)}
               </div>
             </div>
           ))}
@@ -559,7 +547,7 @@ export function ProductionClient({
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total COGS</p>
-                <p className="text-xl font-semibold">{fmtCompact(totalCogsProductionCost)}</p>
+                <p className="text-xl font-semibold">{formatCurrencyCompact(totalCogsProductionCost)}</p>
               </div>
             </div>
             {activeCustomerCount === 0 && (
@@ -590,9 +578,9 @@ export function ProductionClient({
                 <div>
                   <p className="text-xs text-muted-foreground">Total Cost</p>
                   <p className="text-lg font-semibold">
-                    {fmtCompact(biggestCOGSLine.total)}
+                    {formatCurrencyCompact(biggestCOGSLine.total)}
                     <span className="text-sm font-normal text-muted-foreground ml-1">
-                      ({biggestCOGSLine.percentOfRevenue.toFixed(1)}% of revenue)
+                      ({formatPercent(biggestCOGSLine.percentOfRevenue)} of revenue)
                     </span>
                   </p>
                 </div>
@@ -605,8 +593,8 @@ export function ProductionClient({
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
                   <ArrowDown className="h-3 w-3" />
                   If <span className="font-medium text-foreground">{biggestCOGSLine.name}</span> were reduced by 10%, gross margin would improve from{' '}
-                  <span className="font-semibold text-foreground">{grossMarginImpact.grossMargin.toFixed(1)}%</span> to{' '}
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{reducedMargin.toFixed(1)}%</span>
+                  <span className="font-semibold text-foreground">{formatPercent(grossMarginImpact.grossMargin)}</span> to{' '}
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{formatPercent(reducedMargin)}</span>
                 </p>
               </div>
             </div>
@@ -629,7 +617,7 @@ export function ProductionClient({
                 grossMarginImpact.grossMargin >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-red-600 dark:text-red-400'
-              )}>{grossMarginImpact.grossMargin.toFixed(1)}%</span>
+              )}>{formatPercent(grossMarginImpact.grossMargin)}</span>
             </span>
           )}
         </p>
@@ -647,7 +635,7 @@ export function ProductionClient({
                   height={70}
                 />
                 <YAxis
-                  tickFormatter={fmtAxis}
+                  tickFormatter={chartAxisFormatter()}
                   tick={{ fontSize: 10 }}
                   className="fill-gray-500 dark:fill-gray-400"
                 />

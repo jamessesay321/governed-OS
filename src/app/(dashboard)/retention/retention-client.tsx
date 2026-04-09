@@ -14,6 +14,7 @@ import {
   TrendingUp,
   BarChart3,
 } from 'lucide-react';
+import { formatCurrency, formatPercent } from '@/lib/formatting/currency';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -73,18 +74,6 @@ type Props = {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function pct(value: number): string {
-  return `${(value * 100).toFixed(1)}%`;
-}
-
-function currency(value: number): string {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return '--';
@@ -283,21 +272,21 @@ export function RetentionClient({ orgId, klaviyoConfigured }: Props) {
           icon={<Mail className="h-5 w-5 text-blue-600" />}
           iconBg="bg-blue-50"
           label="Avg Open Rate"
-          value={pct(summary?.avgOpenRate ?? 0)}
+          value={formatPercent(summary?.avgOpenRate ?? 0, true)}
           subtext={`${summary?.totalSent?.toLocaleString() ?? 0} emails sent`}
         />
         <SummaryCard
           icon={<MousePointerClick className="h-5 w-5 text-purple-600" />}
           iconBg="bg-purple-50"
           label="Avg Click Rate"
-          value={pct(summary?.avgClickRate ?? 0)}
+          value={formatPercent(summary?.avgClickRate ?? 0, true)}
           subtext={`Across ${summary?.totalCampaigns ?? 0} campaigns`}
         />
         <SummaryCard
           icon={<DollarSign className="h-5 w-5 text-emerald-600" />}
           iconBg="bg-emerald-50"
           label="Revenue Attributed"
-          value={currency(summary?.totalRevenue ?? 0)}
+          value={formatCurrency(summary?.totalRevenue ?? 0)}
           subtext="From email campaigns"
         />
         <SummaryCard
@@ -354,14 +343,14 @@ export function RetentionClient({ orgId, klaviyoConfigured }: Props) {
                       {campaign.metrics?.recipientCount?.toLocaleString() ?? '--'}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-700 tabular-nums">
-                      {campaign.metrics ? pct(campaign.metrics.openRate) : '--'}
+                      {campaign.metrics ? formatPercent(campaign.metrics.openRate, true) : '--'}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-700 tabular-nums">
-                      {campaign.metrics ? pct(campaign.metrics.clickRate) : '--'}
+                      {campaign.metrics ? formatPercent(campaign.metrics.clickRate, true) : '--'}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-700 tabular-nums">
                       {campaign.metrics
-                        ? currency(campaign.metrics.revenueAttributed)
+                        ? formatCurrency(campaign.metrics.revenueAttributed)
                         : '--'}
                     </td>
                     <td className="px-4 py-3 text-right text-gray-500">

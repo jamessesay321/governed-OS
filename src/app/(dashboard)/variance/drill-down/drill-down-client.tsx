@@ -23,7 +23,7 @@ import {
   Tooltip,
   Cell,
 } from 'recharts';
-import { formatCurrency, chartAxisFormatter } from '@/lib/formatting/currency';
+import { formatCurrency, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { CrossRef } from '@/components/shared/in-page-link';
 
@@ -66,12 +66,6 @@ const REVENUE_CATEGORIES = new Set([
 function formatPeriodLabel(period: string): string {
   const d = new Date(period);
   return d.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
-}
-
-function formatPercent(value: number): string {
-  if (!Number.isFinite(value)) return 'N/A';
-  const formatted = value.toFixed(1);
-  return `${formatted.replace(/\.0$/, '')}%`;
 }
 
 // ---------------------------------------------------------------------------

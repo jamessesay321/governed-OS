@@ -26,7 +26,7 @@ import {
   ComposedChart,
   Area,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import type {
   TrunkShowPeriodSummary,
   TrunkShowCategorySummary,
@@ -68,23 +68,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 const PIE_COLORS = ['#7c3aed', '#f59e0b', '#06b6d4', '#10b981', '#ef4444'];
-
-/* ================================================================== */
-/*  Formatters                                                         */
-/* ================================================================== */
-
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
-}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -198,7 +181,7 @@ export function TrunkShowsClient({
             <Plane className="h-4 w-4 text-purple-600 dark:text-purple-400" />
             Total Trunk Show Spend
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalTrunkShowSpend)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalTrunkShowSpend)}</p>
           <p className="text-xs mt-1 text-muted-foreground">
             Across {periodSummaries.filter((p) => p.total > 0).length} active months
           </p>
@@ -213,7 +196,7 @@ export function TrunkShowsClient({
             <CalendarDays className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             Average Per Event Month
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(averagePerEvent)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(averagePerEvent)}</p>
           <p className="text-xs mt-1 text-muted-foreground">
             Based on months with activity
           </p>
@@ -228,7 +211,7 @@ export function TrunkShowsClient({
             <BarChart3 className="h-4 w-4 text-blue-600 dark:text-blue-400" />
             Largest Month
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(largestMonthTotal)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(largestMonthTotal)}</p>
           <p className="text-xs mt-1 text-muted-foreground">
             {largestMonthLabel}
           </p>
@@ -255,10 +238,10 @@ export function TrunkShowsClient({
                 ? 'text-amber-600 dark:text-amber-400'
                 : 'text-emerald-600 dark:text-emerald-400',
           )}>
-            {spendAsPctOfRevenue.toFixed(1)}%
+            {formatPercent(spendAsPctOfRevenue)}
           </p>
           <p className="text-xs mt-1 text-muted-foreground">
-            of {fmtCompact(totalRevenue)} total revenue
+            of {formatCurrencyCompact(totalRevenue)} total revenue
           </p>
         </div>
       </div>
@@ -281,7 +264,7 @@ export function TrunkShowsClient({
                   height={50}
                 />
                 <YAxis
-                  tickFormatter={fmtAxis}
+                  tickFormatter={chartAxisFormatter()}
                   tick={{ fontSize: 10 }}
                   className="fill-gray-500 dark:fill-gray-400"
                 />
@@ -310,7 +293,7 @@ export function TrunkShowsClient({
                   paddingAngle={3}
                   dataKey="value"
                   label={({ name, percent }) =>
-                    `${(name ?? '')} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    `${(name ?? '')} ${formatPercent(percent ?? 0, true)}`
                   }
                   labelLine={{ strokeWidth: 1 }}
                 >
@@ -348,7 +331,7 @@ export function TrunkShowsClient({
                 height={50}
               />
               <YAxis
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 10 }}
                 className="fill-gray-500 dark:fill-gray-400"
               />
@@ -402,14 +385,14 @@ export function TrunkShowsClient({
               />
               <YAxis
                 yAxisId="revenue"
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 10 }}
                 className="fill-gray-500 dark:fill-gray-400"
                 orientation="left"
               />
               <YAxis
                 yAxisId="spend"
-                tickFormatter={fmtAxis}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 10 }}
                 className="fill-gray-500 dark:fill-gray-400"
                 orientation="right"
@@ -468,10 +451,10 @@ export function TrunkShowsClient({
                 </div>
               </div>
               <div className="w-16 text-right text-sm font-medium">
-                {cat.pct.toFixed(1)}%
+                {formatPercent(cat.pct)}
               </div>
               <div className="w-24 text-right text-sm text-muted-foreground">
-                {fmtCompact(cat.total)}
+                {formatCurrencyCompact(cat.total)}
               </div>
             </div>
           ))}

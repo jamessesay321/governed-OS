@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import type { PnLSummary } from '@/lib/financial/aggregate';
 
 interface WaterfallChartProps {
@@ -58,10 +58,10 @@ function buildWaterfallData(pnl: PnLSummary): WaterfallBar[] {
   });
 
   // Gross Profit (subtotal)
-  const gpMargin = pnl.revenue > 0 ? ((pnl.grossProfit / pnl.revenue) * 100).toFixed(0) : '0';
+  const gpMargin = pnl.revenue > 0 ? formatPercent((pnl.grossProfit / pnl.revenue) * 100) : '0%';
   data.push({
     name: 'Gross Profit',
-    semanticLabel: `${gpMargin}% margin`,
+    semanticLabel: `${gpMargin} margin`,
     value: pnl.grossProfit,
     displayValue: pnl.grossProfit,
     start: 0,
@@ -80,10 +80,10 @@ function buildWaterfallData(pnl: PnLSummary): WaterfallBar[] {
   });
 
   // Net Profit (final total)
-  const npMargin = pnl.revenue > 0 ? ((pnl.netProfit / pnl.revenue) * 100).toFixed(0) : '0';
+  const npMargin = pnl.revenue > 0 ? formatPercent((pnl.netProfit / pnl.revenue) * 100) : '0%';
   data.push({
     name: 'Net Profit',
-    semanticLabel: `${npMargin}% kept`,
+    semanticLabel: `${npMargin} kept`,
     value: pnl.netProfit,
     displayValue: pnl.netProfit,
     start: 0,
@@ -196,7 +196,7 @@ export function WaterfallChart({ pnl }: WaterfallChartProps) {
                 tickLine={false}
               />
               <YAxis
-                tickFormatter={(v: number) => formatCurrency(v)}
+                tickFormatter={chartAxisFormatter()}
                 tick={{ fontSize: 11 }}
                 tickLine={false}
                 axisLine={false}

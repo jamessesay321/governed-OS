@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useCurrency } from '@/components/providers/currency-context';
+import { formatPercent } from '@/lib/formatting/currency';
 import { ReportControls, getDefaultReportState } from '@/components/financial/report-controls';
 import type { ReportControlsState } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
@@ -225,13 +226,13 @@ export function BudgetClient({
       .filter((r) => !r.header)
       .map((r) => {
         const v = r.actual - r.budget;
-        const pct = r.budget !== 0 ? ((v / Math.abs(r.budget)) * 100).toFixed(1) : '0.0';
+        const pct = r.budget !== 0 ? (v / Math.abs(r.budget)) * 100 : 0;
         return {
           Category: r.category,
           Budget: r.budget,
           Actual: r.actual,
           Variance: v,
-          'Variance %': `${pct}%`,
+          'Variance %': formatPercent(pct),
         };
       });
   }, [rows]);
@@ -285,7 +286,7 @@ export function BudgetClient({
           {/* Budget line marker at 100% */}
           <div className="absolute top-0 h-full w-0.5 bg-foreground/30" style={{ left: '100%', transform: 'translateX(-1px)' }} />
         </div>
-        <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{pct.toFixed(0)}%</span>
+        <span className="text-[10px] font-mono text-muted-foreground w-10 text-right">{formatPercent(Math.round(pct))}</span>
       </div>
     );
   }
@@ -378,7 +379,7 @@ export function BudgetClient({
                   <div className="flex items-center justify-between text-[10px]">
                     <span className="text-muted-foreground">Budget: {formatCurrency(budget)}</span>
                     <span className={`font-medium ${favorable ? 'text-emerald-600' : variance === 0 ? 'text-muted-foreground' : 'text-red-600'}`}>
-                      {variance === 0 ? 'On target' : `${variancePct > 0 ? '+' : ''}${variancePct.toFixed(1)}%`}
+                      {variance === 0 ? 'On target' : `${variancePct > 0 ? '+' : ''}${formatPercent(variancePct)}`}
                     </span>
                   </div>
                   <VarianceBar budget={budget} actual={actual} favorableWhenUnder={card.favorableWhenUnder} />
@@ -499,11 +500,11 @@ export function BudgetClient({
                 const varianceText = (() => {
                   if (!hasBudget || line.budget === 0) return '\u2014';
                   if (variance === 0) return 'On target';
-                  const absPct = Math.abs(variancePct).toFixed(1);
+                  const absPct = formatPercent(Math.abs(variancePct));
                   const direction = line.favorableWhenUnder
                     ? (variance > 0 ? 'over' : 'under')
                     : (variance > 0 ? 'above' : 'below');
-                  return `${absPct}% ${direction}`;
+                  return `${absPct} ${direction}`;
                 })();
 
                 return (
@@ -573,14 +574,14 @@ export function BudgetClient({
       {rows.length > 0 && (
         <div className="flex items-center gap-6 px-1">
           {[
-            { label: 'Gross Margin', value: (revenueRow?.actual ?? 0) > 0 ? (((gpRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100).toFixed(1) : '0.0' },
-            { label: 'Net Margin', value: (revenueRow?.actual ?? 0) > 0 ? (((netProfitRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100).toFixed(1) : '0.0' },
-            { label: 'Cost Ratio', value: (revenueRow?.actual ?? 0) > 0 ? (((cosRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100).toFixed(1) : '0.0' },
-            { label: 'OpEx Ratio', value: (revenueRow?.actual ?? 0) > 0 ? (((expenseRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100).toFixed(1) : '0.0' },
+            { label: 'Gross Margin', value: (revenueRow?.actual ?? 0) > 0 ? ((gpRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100 : 0 },
+            { label: 'Net Margin', value: (revenueRow?.actual ?? 0) > 0 ? ((netProfitRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100 : 0 },
+            { label: 'Cost Ratio', value: (revenueRow?.actual ?? 0) > 0 ? ((cosRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100 : 0 },
+            { label: 'OpEx Ratio', value: (revenueRow?.actual ?? 0) > 0 ? ((expenseRow?.actual ?? 0) / (revenueRow?.actual ?? 1)) * 100 : 0 },
           ].map((metric, i) => (
             <div key={i} className="text-xs">
               <span className="text-muted-foreground">{metric.label}: </span>
-              <span className="font-medium">{metric.value}%</span>
+              <span className="font-medium">{formatPercent(metric.value)}</span>
             </div>
           ))}
         </div>

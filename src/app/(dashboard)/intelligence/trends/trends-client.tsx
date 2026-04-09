@@ -14,6 +14,7 @@ import {
   ArrowDownRight,
   Minus,
 } from 'lucide-react';
+import { formatPercent } from '@/lib/formatting/currency';
 import type { TrendItem } from './page';
 
 interface TrendsClientProps {
@@ -186,7 +187,7 @@ export function TrendsClient({ trends, hasData }: TrendsClientProps) {
                     className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-semibold ${changePillClasses(t.direction)}`}
                   >
                     <ChangeArrow direction={t.direction} />
-                    {t.direction === 'flat' ? '0' : Math.abs(Number(t.percentChange)).toFixed(1)}%
+                    {t.direction === 'flat' ? '0%' : formatPercent(Math.abs(Number(t.percentChange)))}
                   </span>
 
                   {/* Value comparison */}

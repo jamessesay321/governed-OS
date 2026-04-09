@@ -1,7 +1,7 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatPercent } from '@/lib/formatting/currency';
 
 interface BudgetItem {
   name: string;
@@ -52,7 +52,7 @@ export function BudgetVarianceWidget({ items }: BudgetVarianceWidgetProps) {
                     <span className={`font-semibold ${isGood ? 'text-emerald-600' : 'text-red-600'}`}>
                       {variance >= 0 ? '+' : ''}{formatCurrency(variance)}
                       <span className="text-muted-foreground font-normal ml-1">
-                        ({variancePct >= 0 ? '+' : ''}{variancePct.toFixed(1)}%)
+                        ({variancePct >= 0 ? '+' : ''}{formatPercent(variancePct)})
                       </span>
                     </span>
                   </div>

@@ -59,6 +59,7 @@ import {
   formatCurrency,
   formatCurrencyCompact,
   chartAxisFormatter,
+  formatPercent,
 } from '@/lib/formatting/currency';
 import type {
   DriverTemplate,
@@ -1006,7 +1007,7 @@ export function DriversClient({ orgId: _orgId, role }: DriversClientProps) {
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">ROI</span>
                     <span className="font-medium tabular-nums">
-                      {scenarioData.plusSeamstress.roi.toFixed(0)}%
+                      {formatPercent(Math.round(scenarioData.plusSeamstress.roi))}
                     </span>
                   </div>
                 </div>
@@ -1070,7 +1071,7 @@ export function DriversClient({ orgId: _orgId, role }: DriversClientProps) {
                   <div className="flex justify-between text-xs">
                     <span className="text-muted-foreground">ROI</span>
                     <span className="font-medium tabular-nums">
-                      {scenarioData.plusTrunkShows.roi.toFixed(0)}%
+                      {formatPercent(Math.round(scenarioData.plusTrunkShows.roi))}
                     </span>
                   </div>
                 </div>
@@ -1089,7 +1090,7 @@ export function DriversClient({ orgId: _orgId, role }: DriversClientProps) {
                     {scenarioData.bestROI === 'Seamstress' ? (
                       <>
                         Adding a <strong>Seamstress</strong> delivers the highest ROI at{' '}
-                        <strong>{scenarioData.plusSeamstress.roi.toFixed(0)}%</strong> over 12 months,
+                        <strong>{formatPercent(Math.round(scenarioData.plusSeamstress.roi))}</strong> over 12 months,
                         generating {formatCurrency(scenarioData.plusSeamstress.addedNet)} in additional
                         net profit. Each seamstress produces ~40 dresses/year at {formatCurrency(6400)} average price,
                         far exceeding their fully loaded cost of ~{formatCurrency(33904)}/year.
@@ -1097,7 +1098,7 @@ export function DriversClient({ orgId: _orgId, role }: DriversClientProps) {
                     ) : (
                       <>
                         Adding <strong>2 Trunk Shows</strong> delivers the highest ROI at{' '}
-                        <strong>{scenarioData.plusTrunkShows.roi.toFixed(0)}%</strong> over 12 months,
+                        <strong>{formatPercent(Math.round(scenarioData.plusTrunkShows.roi))}</strong> over 12 months,
                         generating {formatCurrency(scenarioData.plusTrunkShows.addedNet)} in additional
                         net profit. At ~{formatCurrency(11000)} cost per show, each generates approximately{' '}
                         {formatCurrency(61440)} in orders.

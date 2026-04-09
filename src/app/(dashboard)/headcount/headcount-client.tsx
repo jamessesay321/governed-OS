@@ -33,7 +33,7 @@ import {
   Cell,
   Legend,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter, formatPercent } from '@/lib/formatting/currency';
 import { ExportButton } from '@/components/shared/export-button';
 import type {
   HeadcountDepartment,
@@ -95,18 +95,6 @@ const FALLBACK_COLORS = [
 /*  Formatters                                                         */
 /* ================================================================== */
 
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `\u00A3${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `\u00A3${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `\u00A3${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `\u00A3${(value / 1_000).toFixed(0)}k`;
-  return `\u00A3${value}`;
-}
 
 /* ================================================================== */
 /*  Sub-components                                                     */
@@ -416,9 +404,9 @@ export function HeadcountClient({
             <Wallet className="h-4 w-4" />
             Total Staff Cost
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalStaffCost)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalStaffCost)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {fmtCompact(totalStaffCost / periodCount)}/month avg ({periodCount}mo)
+            {formatCurrencyCompact(totalStaffCost / periodCount)}/month avg ({periodCount}mo)
           </p>
         </div>
 
@@ -438,9 +426,9 @@ export function HeadcountClient({
             <PoundSterling className="h-4 w-4" />
             Avg Cost Per Role
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(avgCostPerRole)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(avgCostPerRole)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            {fmtCompact(avgCostPerRole / periodCount)}/month
+            {formatCurrencyCompact(avgCostPerRole / periodCount)}/month
           </p>
         </div>
 
@@ -454,9 +442,9 @@ export function HeadcountClient({
             <Percent className="h-4 w-4" />
             Employer On-Cost %
           </div>
-          <p className="text-2xl font-bold">{employerOnCostPct.toFixed(1)}%</p>
+          <p className="text-2xl font-bold">{formatPercent(employerOnCostPct)}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            NIC {fmtCompact(totalNIC)} + Pension {fmtCompact(totalPension)}
+            NIC {formatCurrencyCompact(totalNIC)} + Pension {formatCurrencyCompact(totalPension)}
           </p>
         </div>
       </div>
@@ -548,8 +536,8 @@ export function HeadcountClient({
                     </span>
                   </div>
                   <div className="flex items-center gap-6 text-sm">
-                    <span className="text-muted-foreground">{dept.pctOfTotal.toFixed(1)}%</span>
-                    <span className="font-semibold w-24 text-right">{fmtCompact(dept.totalCost)}</span>
+                    <span className="text-muted-foreground">{formatPercent(dept.pctOfTotal)}</span>
+                    <span className="font-semibold w-24 text-right">{formatCurrencyCompact(dept.totalCost)}</span>
                   </div>
                 </button>
 
@@ -571,8 +559,8 @@ export function HeadcountClient({
                           .sort((a, b) => b.annualCost - a.annualCost)
                           .map((role) => {
                             const pctOfTotal = totalStaffCost > 0
-                              ? ((role.annualCost / totalStaffCost) * 100).toFixed(1)
-                              : '0.0';
+                              ? formatPercent((role.annualCost / totalStaffCost) * 100)
+                              : '0%';
                             return (
                               <tr key={role.roleId} className="border-b last:border-0 hover:bg-muted/20 transition-colors">
                                 <td className="py-3 px-5">
@@ -589,11 +577,11 @@ export function HeadcountClient({
                                 <td className="py-3 px-4 text-right">
                                   <span className={cn(
                                     'text-xs font-medium px-2 py-0.5 rounded-full',
-                                    Number(pctOfTotal) >= 10
+                                    (totalStaffCost > 0 ? (role.annualCost / totalStaffCost) * 100 : 0) >= 10
                                       ? 'bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
                                       : 'bg-muted text-muted-foreground'
                                   )}>
-                                    {pctOfTotal}%
+                                    {pctOfTotal}
                                   </span>
                                 </td>
                               </tr>
@@ -607,7 +595,7 @@ export function HeadcountClient({
                             {formatCurrency(dept.totalCost / periodCount)}
                           </td>
                           <td className="py-2.5 px-4" />
-                          <td className="py-2.5 px-4 text-right text-xs">{dept.pctOfTotal.toFixed(1)}%</td>
+                          <td className="py-2.5 px-4 text-right text-xs">{formatPercent(dept.pctOfTotal)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -635,7 +623,7 @@ export function HeadcountClient({
             <OrgChartNode
               label="Alonuko"
               subtitle={`${roles.length} roles`}
-              cost={fmtCompact(totalStaffCost)}
+              cost={formatCurrencyCompact(totalStaffCost)}
               color="#7c3aed"
             >
               <div className="flex gap-4 flex-wrap justify-center">
@@ -644,7 +632,7 @@ export function HeadcountClient({
                     key={dept.id}
                     label={dept.name}
                     subtitle={`${dept.roles.length} role${dept.roles.length !== 1 ? 's' : ''}`}
-                    cost={fmtCompact(dept.totalCost)}
+                    cost={formatCurrencyCompact(dept.totalCost)}
                     color={DEPT_CHART_COLORS[dept.name]}
                   >
                     <div className="flex gap-2 flex-wrap justify-center mt-1">
@@ -656,7 +644,7 @@ export function HeadcountClient({
                             className="rounded-md border bg-muted/50 px-3 py-1.5 text-center min-w-[110px]"
                           >
                             <p className="text-xs font-medium">{role.roleName}</p>
-                            <p className="text-[10px] text-muted-foreground">{fmtCompact(role.annualCost)}</p>
+                            <p className="text-[10px] text-muted-foreground">{formatCurrencyCompact(role.annualCost)}</p>
                           </div>
                         ))}
                     </div>
@@ -687,7 +675,7 @@ export function HeadcountClient({
                   textAnchor="end"
                   height={50}
                 />
-                <YAxis tickFormatter={fmtAxis} tick={{ fontSize: 10, fill: '#6b7280' }} />
+                <YAxis tickFormatter={chartAxisFormatter()} tick={{ fontSize: 10, fill: '#6b7280' }} />
                 <RechartsTooltip
                   formatter={(value, name) => [formatCurrency(Number(value ?? 0)), String(name ?? '')]}
                   contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
@@ -721,7 +709,7 @@ export function HeadcountClient({
                   paddingAngle={2}
                   dataKey="value"
                   label={({ name, percent }) =>
-                    `${(name ?? '').length > 16 ? (name ?? '').substring(0, 16) + '\u2026' : (name ?? '')} ${((percent ?? 0) * 100).toFixed(0)}%`
+                    `${(name ?? '').length > 16 ? (name ?? '').substring(0, 16) + '\u2026' : (name ?? '')} ${formatPercent(percent ?? 0, true)}`
                   }
                   labelLine={{ strokeWidth: 1 }}
                 >
@@ -869,7 +857,7 @@ function EmployeeRegisterSection({
             <Wallet className="h-4 w-4" />
             Monthly Payroll
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalMonthlyPayroll)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalMonthlyPayroll)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             fully loaded monthly cost
           </p>
@@ -880,7 +868,7 @@ function EmployeeRegisterSection({
             <PoundSterling className="h-4 w-4" />
             Annual Cost
           </div>
-          <p className="text-2xl font-bold">{fmtCompact(totalAnnualCost)}</p>
+          <p className="text-2xl font-bold">{formatCurrencyCompact(totalAnnualCost)}</p>
           <p className="text-xs text-muted-foreground mt-1">
             salary + NIC + pension
           </p>
@@ -892,7 +880,7 @@ function EmployeeRegisterSection({
             Avg Cost Per Head
           </div>
           <p className="text-2xl font-bold">
-            {totalHeadcount > 0 ? fmtCompact(totalAnnualCost / totalHeadcount) : '\u00A30'}
+            {totalHeadcount > 0 ? formatCurrencyCompact(totalAnnualCost / totalHeadcount) : '\u00A30'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             fully loaded annual cost

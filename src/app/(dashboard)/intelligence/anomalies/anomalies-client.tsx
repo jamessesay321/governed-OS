@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useCurrency } from '@/components/providers/currency-context';
+import { formatPercent } from '@/lib/formatting/currency';
 import type { Anomaly, AnomalyCategory } from './page';
 
 interface AnomaliesClientProps {
@@ -69,7 +70,7 @@ const severityConfig = {
 };
 
 function ChangePercentBadge({ changePercent, direction }: { changePercent: number; direction: 'up' | 'down' | 'new' }) {
-  const absChange = Math.abs(changePercent).toFixed(0);
+  const absChange = formatPercent(Math.abs(changePercent));
 
   if (direction === 'new') {
     return (
@@ -89,7 +90,7 @@ function ChangePercentBadge({ changePercent, direction }: { changePercent: numbe
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${bgClass}`}>
       {isUp ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-      {isUp ? '\u2191' : '\u2193'} {absChange}%
+      {isUp ? '\u2191' : '\u2193'} {absChange}
     </span>
   );
 }

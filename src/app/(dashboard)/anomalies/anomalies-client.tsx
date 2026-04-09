@@ -26,7 +26,7 @@ import {
   ReferenceArea,
   ZAxis,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatCurrencyCompact, chartAxisFormatter } from '@/lib/formatting/currency';
 import type { Anomaly } from './page';
 
 /* ================================================================== */
@@ -65,18 +65,6 @@ type FilterMode = 'all' | 'critical' | 'revenue' | 'expenses';
 /*  Formatters                                                         */
 /* ================================================================== */
 
-function fmtCompact(amount: number): string {
-  const abs = Math.abs(amount);
-  if (abs >= 1_000_000) return `£${(amount / 1_000_000).toFixed(1)}m`;
-  if (abs >= 1_000) return `£${(amount / 1_000).toFixed(0)}k`;
-  return formatCurrency(amount);
-}
-
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `£${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `£${(value / 1_000).toFixed(0)}k`;
-  return `£${value}`;
-}
 
 /* ================================================================== */
 /*  Component                                                          */
@@ -400,7 +388,7 @@ export function AnomaliesClient({
                         Expected range
                       </span>
                       <span className="text-xs">
-                        {fmtCompact(rangeLower)} — {fmtCompact(rangeUpper)}
+                        {formatCurrencyCompact(rangeLower)} — {formatCurrencyCompact(rangeUpper)}
                       </span>
                     </div>
                   )}
@@ -445,7 +433,7 @@ export function AnomaliesClient({
                   <YAxis
                     dataKey="y"
                     type="number"
-                    tickFormatter={fmtAxis}
+                    tickFormatter={chartAxisFormatter()}
                     tick={{ fontSize: 10, fill: '#6b7280' }}
                   />
                   <ZAxis range={[20, 20]} />

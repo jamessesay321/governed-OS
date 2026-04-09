@@ -26,7 +26,7 @@ import {
   BarChart,
   LineChart,
 } from 'recharts';
-import { formatCurrency } from '@/lib/formatting/currency';
+import { formatCurrency, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import type { MonthComparison, AccuracyMetrics } from './page';
 
 /* ================================================================== */
@@ -42,15 +42,7 @@ interface ForecastAccuracyClientProps {
 /*  Formatters                                                         */
 /* ================================================================== */
 
-function fmtAxis(value: number): string {
-  if (Math.abs(value) >= 1_000_000) return `\u00A3${(value / 1_000_000).toFixed(1)}m`;
-  if (Math.abs(value) >= 1_000) return `\u00A3${(value / 1_000).toFixed(0)}k`;
-  return `\u00A3${value}`;
-}
-
-function fmtPct(value: number): string {
-  return `${value.toFixed(1)}%`;
-}
+const fmtAxis = chartAxisFormatter();
 
 function accuracyColor(accuracy: number): string {
   if (accuracy >= 90) return 'text-emerald-600 dark:text-emerald-400';
@@ -111,7 +103,7 @@ function AccuracyGauge({ value, size = 160 }: { value: number; size?: number }) 
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className={cn('text-3xl font-bold', accuracyColor(value))}>
-          {value.toFixed(1)}%
+          {formatPercent(value)}
         </span>
         <span className="text-xs text-muted-foreground mt-0.5">Overall</span>
       </div>
@@ -229,10 +221,10 @@ export function ForecastAccuracyClient({
               Revenue Accuracy
             </div>
             <p className={cn('text-2xl font-bold', accuracyColor(metrics.revenueAccuracy))}>
-              {fmtPct(metrics.revenueAccuracy)}
+              {formatPercent(metrics.revenueAccuracy)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              MAPE: {fmtPct(metrics.revenueMAPE)}
+              MAPE: {formatPercent(metrics.revenueMAPE)}
             </p>
           </div>
 
@@ -243,10 +235,10 @@ export function ForecastAccuracyClient({
               Cost Accuracy
             </div>
             <p className={cn('text-2xl font-bold', accuracyColor(metrics.costAccuracy))}>
-              {fmtPct(metrics.costAccuracy)}
+              {formatPercent(metrics.costAccuracy)}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              MAPE: {fmtPct(metrics.costMAPE)}
+              MAPE: {formatPercent(metrics.costMAPE)}
             </p>
           </div>
 
@@ -260,7 +252,7 @@ export function ForecastAccuracyClient({
               {metrics.bestMonth?.label ?? 'N/A'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {metrics.bestMonth ? `${fmtPct(metrics.bestMonth.accuracy)} accuracy` : 'No data'}
+              {metrics.bestMonth ? `${formatPercent(metrics.bestMonth.accuracy)} accuracy` : 'No data'}
             </p>
           </div>
 
@@ -274,7 +266,7 @@ export function ForecastAccuracyClient({
               {metrics.worstMonth?.label ?? 'N/A'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {metrics.worstMonth ? `${fmtPct(metrics.worstMonth.accuracy)} accuracy` : 'No data'}
+              {metrics.worstMonth ? `${formatPercent(metrics.worstMonth.accuracy)} accuracy` : 'No data'}
             </p>
           </div>
         </div>
@@ -489,7 +481,7 @@ export function ForecastAccuracyClient({
                 height={60}
               />
               <YAxis
-                tickFormatter={(v: number) => `${v}%`}
+                tickFormatter={(v: number) => formatPercent(v)}
                 tick={{ fontSize: 11 }}
                 className="fill-muted-foreground"
                 width={50}
@@ -502,7 +494,7 @@ export function ForecastAccuracyClient({
                       : (name ?? '') === 'costMAPE'
                         ? 'Cost MAPE'
                         : 'Combined MAPE';
-                  return [`${Number(value ?? 0).toFixed(1)}%`, label];
+                  return [formatPercent(Number(value ?? 0)), label];
                 }}
                 labelStyle={{ fontWeight: 600 }}
                 contentStyle={{
@@ -651,10 +643,10 @@ export function ForecastAccuracyClient({
                       </span>
                     </td>
                     <td className={cn('py-2.5 px-3 text-right', accuracyColor(100 - c.revenueMAPE))}>
-                      {fmtPct(c.revenueMAPE)}
+                      {formatPercent(c.revenueMAPE)}
                     </td>
                     <td className={cn('py-2.5 px-3 text-right', accuracyColor(100 - c.costMAPE))}>
-                      {fmtPct(c.costMAPE)}
+                      {formatPercent(c.costMAPE)}
                     </td>
                     <td className="py-2.5 px-3 text-right">
                       <span
@@ -667,7 +659,7 @@ export function ForecastAccuracyClient({
                               : 'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300',
                         )}
                       >
-                        {fmtPct(accuracy)}
+                        {formatPercent(accuracy)}
                       </span>
                     </td>
                   </tr>
