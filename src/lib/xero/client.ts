@@ -33,22 +33,39 @@ const XERO_SCOPES = [
  *
  * This eliminates the http/https mismatch that breaks OAuth in dev.
  */
+/**
+ * Localhost can never use https — Next.js dev server runs HTTP only.
+ * This guard prevents the recurring SSL mismatch that breaks OAuth.
+ */
+function sanitiseUri(uri: string): string {
+  try {
+    const url = new URL(uri);
+    if (url.hostname === 'localhost' && url.protocol === 'https:') {
+      url.protocol = 'http:';
+      return url.toString().replace(/\/$/, ''); // remove trailing slash
+    }
+  } catch {
+    // not a valid URL, return as-is
+  }
+  return uri;
+}
+
 export function getRedirectUri(requestUrl?: string): string {
   // 1. Explicit env var override (if someone set it, respect it)
   if (process.env.XERO_REDIRECT_URI) {
-    return process.env.XERO_REDIRECT_URI;
+    return sanitiseUri(process.env.XERO_REDIRECT_URI);
   }
 
   // 2. NEXT_PUBLIC_APP_URL (Vercel sets this, or user can set for production)
   if (process.env.NEXT_PUBLIC_APP_URL) {
-    return `${process.env.NEXT_PUBLIC_APP_URL}/api/xero/callback`;
+    return sanitiseUri(`${process.env.NEXT_PUBLIC_APP_URL}/api/xero/callback`);
   }
 
   // 3. Auto-detect from incoming request URL
   if (requestUrl) {
     try {
       const url = new URL(requestUrl);
-      return `${url.protocol}//${url.host}/api/xero/callback`;
+      return sanitiseUri(`${url.protocol}//${url.host}/api/xero/callback`);
     } catch {
       // Fall through
     }
@@ -59,7 +76,7 @@ export function getRedirectUri(requestUrl?: string): string {
     const headerStore = headers();
     const host = (headerStore as any).get?.('host') || 'localhost:3000';
     const proto = (headerStore as any).get?.('x-forwarded-proto') || 'http';
-    return `${proto}://${host}/api/xero/callback`;
+    return sanitiseUri(`${proto}://${host}/api/xero/callback`);
   } catch {
     // headers() not available outside request context
   }
