@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { AIHoverTooltip } from './ai-hover-tooltip';
+import { formatCurrency as unifiedFormatCurrency, formatCurrencyCompact } from '@/lib/formatting/currency';
 
 export interface DrillableValue {
   value: number;
@@ -36,6 +37,8 @@ interface DrillableNumberProps {
   variance?: number;
   /** Percentage of total as decimal (e.g. 0.35 = 35%) */
   percentOfTotal?: number;
+  /** ISO 4217 currency code for formatting (default 'GBP') */
+  currencyCode?: string;
 }
 
 const TYPE_STYLES: Record<DrillableValue['type'], { color: string; bg: string; label: string }> = {
@@ -53,17 +56,9 @@ const SIZE_CLASSES = {
   lg: 'text-xl font-semibold',
 };
 
-function formatCompact(n: number): string {
-  const abs = Math.abs(n);
-  if (abs >= 1_000_000_000) return (n / 1_000_000_000).toFixed(1) + 'B';
-  if (abs >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (abs >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-  return n.toFixed(0);
-}
-
-function formatNumber(n: number, compact?: boolean): string {
-  if (compact) return formatCompact(n);
-  return n.toLocaleString('en-GB', { maximumFractionDigits: 2 });
+function formatNumber(n: number, compact?: boolean, currencyCode: string = 'GBP'): string {
+  if (compact) return formatCurrencyCompact(n, currencyCode);
+  return unifiedFormatCurrency(n, currencyCode);
 }
 
 export function DrillableNumber({
@@ -78,6 +73,7 @@ export function DrillableNumber({
   period,
   variance,
   percentOfTotal,
+  currencyCode = 'GBP',
 }: DrillableNumberProps) {
   const [tooltipVisible, setTooltipVisible] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -106,7 +102,7 @@ export function DrillableNumber({
     setEditing(false);
   };
 
-  const formatted = `${data.prefix || ''}${formatNumber(data.value, data.compact)}${data.suffix || ''}`;
+  const formatted = `${data.prefix || ''}${formatNumber(data.value, data.compact, currencyCode)}${data.suffix || ''}`;
 
   if (editing) {
     return (

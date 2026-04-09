@@ -281,55 +281,67 @@ export function FinancialsClient({ periods, accounts, financials, rawTransaction
         )}
       </div>
 
-      {/* Sense-check flags */}
-      {senseCheckFlags.length > 0 && (
-        <div className="space-y-2">
-          {senseCheckFlags.filter((f) => f.severity === 'error').length > 0 && (
-            <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/20 px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
-                </svg>
-                <span className="text-sm font-semibold text-red-800 dark:text-red-200">
-                  Data Errors Detected
-                </span>
-              </div>
-              <ul className="space-y-1">
-                {senseCheckFlags
-                  .filter((f) => f.severity === 'error')
-                  .map((flag, i) => (
+      {/* Sense-check flags — prioritised, collapsed */}
+      {senseCheckFlags.length > 0 && (() => {
+        const errors = senseCheckFlags.filter((f) => f.severity === 'error');
+        const warnings = senseCheckFlags.filter((f) => f.severity === 'warning');
+        const topErrors = errors.slice(0, 3);
+        const topWarnings = warnings.slice(0, 3);
+        const hiddenCount = Math.max(0, errors.length - 3) + Math.max(0, warnings.length - 3);
+        return (
+          <div className="space-y-2">
+            {topErrors.length > 0 && (
+              <div className="rounded-lg border border-red-300 bg-red-50 dark:bg-red-950/20 px-4 py-3">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="h-4 w-4 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-red-800 dark:text-red-200">
+                    {errors.length} Data {errors.length === 1 ? 'Error' : 'Errors'} Detected
+                  </span>
+                </div>
+                <ul className="space-y-1">
+                  {topErrors.map((flag, i) => (
                     <li key={i} className="text-xs text-red-700 dark:text-red-300 flex items-start gap-1.5">
                       <span className="mt-0.5 shrink-0">•</span>
                       <span>{flag.message}</span>
                     </li>
                   ))}
-              </ul>
-            </div>
-          )}
-          {senseCheckFlags.filter((f) => f.severity === 'warning').length > 0 && (
-            <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20 px-4 py-3">
-              <div className="flex items-center gap-2 mb-2">
-                <svg className="h-4 w-4 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-                </svg>
-                <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-                  Review Recommended
-                </span>
+                </ul>
               </div>
-              <ul className="space-y-1">
-                {senseCheckFlags
-                  .filter((f) => f.severity === 'warning')
-                  .map((flag, i) => (
-                    <li key={i} className="text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
-                      <span className="mt-0.5 shrink-0">•</span>
-                      <span>{flag.message}</span>
-                    </li>
-                  ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
+            )}
+            {topWarnings.length > 0 && (
+              <details className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+                <summary className="px-4 py-3 cursor-pointer flex items-center gap-2">
+                  <svg className="h-4 w-4 text-amber-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+                  </svg>
+                  <span className="text-sm font-semibold text-amber-800 dark:text-amber-200">
+                    {warnings.length} {warnings.length === 1 ? 'Item' : 'Items'} to Review
+                  </span>
+                  <span className="text-xs text-amber-600 dark:text-amber-400 ml-auto">
+                    Click to expand
+                  </span>
+                </summary>
+                <div className="px-4 pb-3">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mb-2">
+                    Note: Large month-over-month swings are common for seasonal businesses (e.g. bridal, events, retail).
+                  </p>
+                  <ul className="space-y-1">
+                    {warnings.map((flag, i) => (
+                      <li key={i} className="text-xs text-amber-700 dark:text-amber-300 flex items-start gap-1.5">
+                        <span className="mt-0.5 shrink-0">•</span>
+                        <span>{flag.message}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </details>
+            )}
+            {hiddenCount > 0 && topErrors.length === 0 && topWarnings.length === 0 && null}
+          </div>
+        );
+      })()}
 
       {/* AI Narrative Summary */}
       {periods.length > 0 && (

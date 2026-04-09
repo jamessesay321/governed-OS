@@ -231,6 +231,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
         separator: true,
         profitRow: true,
         marginPcts: gpMargins,
+        drillSectionClass: 'REVENUE',
       });
     }
   }
@@ -247,6 +248,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
     separator: true,
     profitRow: true,
     marginPcts: netMargins,
+    drillSectionClass: 'EXPENSE',
   });
 
   // Build flat export data: all account rows plus section totals and profit rows
