@@ -5,6 +5,7 @@ import { logAudit } from '@/lib/audit/log';
 import { xeroCallbackQuerySchema } from '@/lib/schemas';
 import { pullOrgAccountingConfig } from '@/lib/xero/org-config';
 import { createServiceClient } from '@/lib/supabase/server';
+import { getRedirectUri } from '@/lib/xero/client';
 
 /**
  * GET /api/xero/callback
@@ -48,7 +49,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Exchange code for tokens
+    // Exchange code for tokens — use the same redirect URI derivation
+    // that was used for the consent URL (must match exactly or Xero rejects)
+    const redirectUri = getRedirectUri(request.url);
+
     const tokenResponse = await fetch(
       'https://identity.xero.com/connect/token',
       {
@@ -62,7 +66,7 @@ export async function GET(request: NextRequest) {
         body: new URLSearchParams({
           grant_type: 'authorization_code',
           code,
-          redirect_uri: process.env.XERO_REDIRECT_URI!,
+          redirect_uri: redirectUri,
         }),
       }
     );

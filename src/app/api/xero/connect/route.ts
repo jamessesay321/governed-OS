@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       })
     ).toString('base64url');
 
-    const consentUrl = buildConsentUrl(state);
+    const consentUrl = buildConsentUrl(state, request.url);
 
     return NextResponse.redirect(consentUrl);
   } catch (err) {
