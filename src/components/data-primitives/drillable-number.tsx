@@ -19,6 +19,8 @@ export interface DrillableValue {
   prefix?: string;
   suffix?: string;
   compact?: boolean;
+  /** Force 0 decimal places (round to whole numbers) */
+  wholeNumbers?: boolean;
 }
 
 interface DrillableNumberProps {
@@ -56,8 +58,17 @@ const SIZE_CLASSES = {
   lg: 'text-xl font-semibold',
 };
 
-function formatNumber(n: number, compact?: boolean, currencyCode: string = 'GBP'): string {
+function formatNumber(n: number, compact?: boolean, currencyCode: string = 'GBP', wholeNumbers?: boolean): string {
   if (compact) return formatCurrencyCompact(n, currencyCode);
+  if (wholeNumbers) {
+    const config = { locale: currencyCode === 'GBP' ? 'en-GB' : 'en-US', code: currencyCode };
+    return new Intl.NumberFormat(config.locale, {
+      style: 'currency',
+      currency: config.code,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(Math.round(n));
+  }
   return unifiedFormatCurrency(n, currencyCode);
 }
 
@@ -102,7 +113,7 @@ export function DrillableNumber({
     setEditing(false);
   };
 
-  const formatted = `${data.prefix || ''}${formatNumber(data.value, data.compact, currencyCode)}${data.suffix || ''}`;
+  const formatted = `${data.prefix || ''}${formatNumber(data.value, data.compact, currencyCode, data.wholeNumbers)}${data.suffix || ''}`;
 
   if (editing) {
     return (

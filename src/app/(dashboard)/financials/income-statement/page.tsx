@@ -32,6 +32,27 @@ export default async function IncomeStatementPage() {
       .eq('org_id', orgId),
   ]);
 
+  // Fetch debt facilities for finance costs line
+  const debtResult = await untypedDb
+    .from('debt_facilities')
+    .select('name, annual_interest_amount, monthly_repayment, outstanding_balance, status')
+    .eq('org_id', orgId)
+    .eq('status', 'active');
+
+  const debtFacilities = (debtResult.data ?? []) as Array<{
+    name: string;
+    annual_interest_amount: number | null;
+    monthly_repayment: number | null;
+    outstanding_balance: number | null;
+    status: string;
+  }>;
+
+  // Compute monthly finance costs from active debt
+  const totalMonthlyInterest = debtFacilities.reduce((sum, d) => {
+    if (d.annual_interest_amount) return sum + (d.annual_interest_amount / 12);
+    return sum;
+  }, 0);
+
   // Fetch last sync timestamp for DataFreshness
   const syncResult = await supabase
     .from('sync_log')
@@ -81,6 +102,7 @@ export default async function IncomeStatementPage() {
               class: s.section.toUpperCase(),
               total: isCostSection ? Math.abs(s.total) : s.total,
               rows: s.rows.map((r) => ({
+                id: r.accountId,
                 name: r.accountName,
                 code: r.accountCode,
                 amount: isCostSection ? Math.abs(r.amount) : r.amount,
@@ -108,6 +130,7 @@ export default async function IncomeStatementPage() {
           class: s.class,
           total: isCostSection ? Math.abs(s.total) : s.total,
           rows: s.rows.map((r) => ({
+            id: r.accountId,
             name: r.accountName,
             code: r.accountCode,
             amount: isCostSection ? Math.abs(r.amount) : r.amount,
@@ -122,10 +145,39 @@ export default async function IncomeStatementPage() {
     };
   });
 
+  // Inject Finance Costs section from debt facilities into each period
+  // Interest costs are NOT in normalised_financials (they appear only on bank
+  // transactions which are excluded to prevent double-counting — see Lesson 10).
+  // Instead we derive monthly interest from debt_facilities.annual_interest_amount.
+  const pnlWithFinanceCosts = pnlByPeriod.map((period) => {
+    if (totalMonthlyInterest <= 0) return period;
+
+    const financeCostsSection = {
+      label: 'Finance Costs',
+      class: 'FINANCE_COSTS',
+      total: totalMonthlyInterest,
+      rows: debtFacilities
+        .filter((d) => d.annual_interest_amount && d.annual_interest_amount > 0)
+        .map((d) => ({
+          id: undefined as string | undefined,
+          name: `${d.name} - Interest`,
+          code: 'DEBT',
+          amount: (d.annual_interest_amount ?? 0) / 12,
+        })),
+    };
+
+    return {
+      ...period,
+      sections: [...period.sections, financeCostsSection],
+      financeCosts: totalMonthlyInterest,
+      netProfit: period.netProfit - totalMonthlyInterest,
+    };
+  });
+
   return (
     <IncomeStatementClient
       connected={connected}
-      periods={pnlByPeriod}
+      periods={pnlWithFinanceCosts}
       orgId={orgId}
       lastSyncAt={lastSyncAt}
     />

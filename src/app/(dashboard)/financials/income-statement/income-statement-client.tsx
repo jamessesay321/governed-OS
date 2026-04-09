@@ -21,7 +21,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 
-type AccountRow = { name: string; code: string; amount: number };
+type AccountRow = { id?: string; name: string; code: string; amount: number };
 type Section = { label: string; class: string; total: number; rows: AccountRow[] };
 type PeriodPnL = {
   period: string;
@@ -116,12 +116,19 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
 
   // Build a cross-period table: rows are account names, columns are months
   // Get unique account names per section across all periods
-  const sectionOrder = ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'];
+  // Include Finance Costs if present in any period
+  const hasFinanceCosts = filteredPeriods.some((p) =>
+    p.sections.some((s) => s.class === 'FINANCE_COSTS')
+  );
+  const sectionOrder = hasFinanceCosts
+    ? ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS', 'FINANCE_COSTS']
+    : ['REVENUE', 'DIRECTCOSTS', 'EXPENSE', 'OVERHEADS'];
   const sectionLabels: Record<string, string> = {
     REVENUE: 'Revenue',
     DIRECTCOSTS: 'Cost of Goods Sold',
     EXPENSE: 'Operating Expenses',
     OVERHEADS: 'Overheads',
+    FINANCE_COSTS: 'Finance Costs',
   };
 
   // Plain-English descriptions for each P&L section
@@ -130,6 +137,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
     DIRECTCOSTS: 'Costs directly tied to delivering your products or services',
     EXPENSE: 'Day-to-day costs of running the business',
     OVERHEADS: 'Fixed costs like rent, utilities, and insurance',
+    FINANCE_COSTS: 'Interest and fees on loans, MCAs, and other debt facilities',
   };
 
   const isDetailedView = controls.viewMode === 'detailed';
@@ -137,6 +145,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
   // Collect all account names per section + name-to-code mapping
   const sectionAccounts = new Map<string, string[]>();
   const accountCodeMap = new Map<string, string>(); // accountName -> accountCode
+  const accountIdMap = new Map<string, string>(); // accountName -> accountId (UUID)
   for (const cls of sectionOrder) {
     const names = new Set<string>();
     for (const p of filteredPeriods) {
@@ -146,6 +155,9 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
           names.add(r.name);
           if (r.code && !accountCodeMap.has(r.name)) {
             accountCodeMap.set(r.name, r.code);
+          }
+          if (r.id && !accountIdMap.has(r.name)) {
+            accountIdMap.set(r.name, r.id);
           }
         }
       }
@@ -184,6 +196,8 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
     drillSectionClass?: string;
     /** Account code for individual account rows */
     accountCode?: string;
+    /** Account UUID for drill-down (from chart_of_accounts.id) */
+    accountId?: string;
     /** Parent section class for individual account rows */
     sectionClass?: string;
   };
@@ -214,7 +228,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
           const accMap = sectionMap?.get(cls);
           return accMap?.get(name) ?? 0;
         });
-        rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), sectionClass: cls });
+        rows.push({ label: name, values, indent: true, accountCode: accountCodeMap.get(name), accountId: accountIdMap.get(name), sectionClass: cls });
       }
     }
 
@@ -436,7 +450,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                   </td>
                   {row.values.map((v, i) => {
                     const period = sortedPeriods[i]?.period;
-                    const isDrillable = !!(row.drillSectionClass || row.accountCode);
+                    const isDrillable = !!(row.drillSectionClass || row.accountId || row.accountCode);
                     const drillValue: DrillableValue = {
                       value: v,
                       type: 'actual',
@@ -444,15 +458,16 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                       drillable: isDrillable,
                       prefix: '',
                       compact: false,
+                      wholeNumbers: true,
                     };
                     const handleDrillClick = () => {
                       if (!period) return;
-                      if (row.accountCode && row.sectionClass) {
+                      if (row.accountId && row.sectionClass) {
                         openDrill({
                           type: 'account',
-                          accountId: row.accountCode,
+                          accountId: row.accountId,
                           accountName: row.label,
-                          accountCode: row.accountCode,
+                          accountCode: row.accountCode || '',
                           amount: v,
                           period,
                         });
@@ -467,7 +482,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                               class: section.class,
                               total: section.total,
                               rows: section.rows.map((r) => ({
-                                accountId: r.code,
+                                accountId: r.id || r.code,
                                 accountCode: r.code,
                                 accountName: r.name,
                                 accountType: '',
