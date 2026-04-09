@@ -2,6 +2,7 @@ import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { createClient } from '@/lib/supabase/server';
 import { runAllPnLChecks } from '@/lib/financial/sense-check';
 import { fetchFinanceCosts } from '@/lib/financial/finance-costs';
+import { detectSeasonalProfile } from '@/lib/financial/seasonal-profile';
 import { FinancialsClient } from './financials-client';
 
 export default async function FinancialsPage() {
@@ -57,8 +58,11 @@ export default async function FinancialsPage() {
 
   const lastSyncAt = lastCompletedSync?.completed_at ?? null;
 
-  // Fetch finance costs for accurate profit figures
-  const financeCosts = await fetchFinanceCosts(orgId);
+  // Fetch finance costs and seasonal profile in parallel
+  const [financeCosts, seasonalProfile] = await Promise.all([
+    fetchFinanceCosts(orgId),
+    detectSeasonalProfile(orgId),
+  ]);
   const monthlyInterest = financeCosts.totalMonthlyInterest;
 
   // Build period summary
@@ -93,7 +97,7 @@ export default async function FinancialsPage() {
       accountLines: data.accounts,
     }));
 
-  // Run sense-checks on P&L data
+  // Run sense-checks on P&L data (with seasonal awareness)
   const senseCheckFlags = runAllPnLChecks(
     periods.map((p) => ({
       period: p.period,
@@ -102,7 +106,8 @@ export default async function FinancialsPage() {
       grossProfit: p.revenue - p.costs,
       expenses: p.expenses,
       netProfit: p.netProfit,
-    }))
+    })),
+    seasonalProfile
   );
 
   return (

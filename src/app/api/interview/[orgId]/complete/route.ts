@@ -113,6 +113,13 @@ export async function POST(request: Request, { params }: Params) {
       sourceEntityId: storedProfile.id,
     });
 
+    // Derive business intelligence (seasonal, revenue model, cost structure, DSCR)
+    // Fire-and-forget — enriches company_skills for platform-wide intelligence
+    import('@/lib/skills/derive-business-intelligence')
+      .then(({ deriveBusinessIntelligence }) => deriveBusinessIntelligence(orgId))
+      .then((bi) => console.log(`[interview/complete] Business intelligence derived: ${bi.revenueModel.modelType} model`))
+      .catch((e) => console.warn('[interview/complete] Business intelligence derivation failed:', e instanceof Error ? e.message : String(e)));
+
     return NextResponse.json({
       profile: storedProfile,
       recommendations,

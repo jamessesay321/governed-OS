@@ -563,6 +563,12 @@ export async function runFullSync(
           }).catch(() => {});
         }
       })().catch((e) => console.warn('[XERO SYNC] Reconciliation failed:', e instanceof Error ? e.message : String(e))),
+
+      // Business intelligence derivation (seasonal, revenue model, cost structure, DSCR)
+      import('@/lib/skills/derive-business-intelligence')
+        .then(({ deriveBusinessIntelligence }) => deriveBusinessIntelligence(orgId))
+        .then((bi) => console.log(`[XERO SYNC] Business intelligence derived: ${bi.revenueModel.modelType} model, seasonal=${bi.seasonalProfile.isSeasonal}, DSCR=${bi.debtMetrics?.dscr ?? 'N/A'}`))
+        .catch((e) => console.warn('[XERO SYNC] Business intelligence derivation failed:', e instanceof Error ? e.message : String(e))),
     ]);
 
     console.log(`[XERO SYNC] === Complete: ${totalSynced} total records, ${normalised} normalised ===`);
