@@ -10,6 +10,7 @@ import { z } from 'zod';
 import {
   STANDARD_CATEGORIES,
   classToDefaultCategory,
+  classAndTypeToDefaultCategory,
   getTaxonomyPromptContext,
 } from '@/lib/financial/taxonomy';
 
@@ -404,13 +405,13 @@ Output JSON schema:
       reasoning: item.reasoning || 'No reasoning provided',
     }));
   } catch {
-    // Fallback: map by class heuristic using unified taxonomy
+    // Fallback: map by class+type heuristic using unified taxonomy
     return accounts.map((a) => ({
       code: a.code,
       name: a.name,
-      category: classToDefaultCategory(a.class),
+      category: classAndTypeToDefaultCategory(a.class, a.type),
       confidence: 0.3,
-      reasoning: 'AI mapping failed, using class-based heuristic',
+      reasoning: 'AI mapping failed, using class+type heuristic',
     }));
   }
 }

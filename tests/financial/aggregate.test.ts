@@ -141,6 +141,52 @@ describe('buildPnL', () => {
     expect(pnl.sections[1].label).toBe('Cost of Sales');
     expect(pnl.sections[1].rows).toHaveLength(1);
   });
+
+  it('classifies EXPENSE-class accounts with DIRECTCOSTS type as Cost of Sales', () => {
+    // Xero can set class=EXPENSE for accounts whose type=DIRECTCOSTS.
+    // The P&L must route these into the Cost of Sales section.
+    const accountsWithMisclass: ChartOfAccount[] = [
+      ...mockAccounts,
+      {
+        id: 'acc-5',
+        org_id: 'org-1',
+        xero_account_id: 'x5',
+        code: '305',
+        name: 'Fabric Materials',
+        type: 'DIRECTCOSTS',
+        class: 'EXPENSE',
+        status: 'ACTIVE',
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+
+    const financialsWithMisclass: NormalisedFinancial[] = [
+      ...mockFinancials,
+      {
+        id: 'f6',
+        org_id: 'org-1',
+        period: '2024-01-01',
+        account_id: 'acc-5',
+        amount: -8000,
+        transaction_count: 4,
+        source: 'xero',
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+
+    const pnl = buildPnL(financialsWithMisclass, accountsWithMisclass, '2024-01-01');
+
+    // DIRECTCOSTS section should have 2 rows: original COGS + Fabric Materials
+    const cogsSection = pnl.sections.find((s) => s.class === 'DIRECTCOSTS');
+    expect(cogsSection).toBeDefined();
+    expect(cogsSection!.rows).toHaveLength(2);
+    expect(cogsSection!.rows.find((r) => r.accountName === 'Fabric Materials')).toBeDefined();
+
+    // costOfSales should include both accounts
+    expect(pnl.costOfSales).toBe(28000); // |20000| + |-8000|
+  });
 });
 
 describe('sumAmounts', () => {

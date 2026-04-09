@@ -79,6 +79,17 @@ interface Transaction {
   type: string;
 }
 
+/** Invoice-level line item returned by /api/financials/account-detail */
+interface InvoiceLineItem {
+  id: string;
+  date: string;
+  contactName: string;
+  description: string;
+  reference: string;
+  amount: number;
+  type: string;
+}
+
 /** Breadcrumb level for multi-level navigation */
 interface BreadcrumbLevel {
   label: string;
@@ -120,23 +131,36 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
   const [loadingTx, setLoadingTx] = useState(false);
   const [txAccount, setTxAccount] = useState<{ name: string; code: string; amount: number } | null>(null);
 
+  // Invoice-level drill-down state
+  const [invoiceLines, setInvoiceLines] = useState<InvoiceLineItem[]>([]);
+  const [loadingInvoices, setLoadingInvoices] = useState(false);
+  const [invoiceAccount, setInvoiceAccount] = useState<{ name: string; code: string; amount: number } | null>(null);
+
   const openDrill = useCallback((ctx: DrillContext) => {
     setContext(ctx);
     setBreadcrumbs([]);
     setTransactions([]);
     setTxAccount(null);
+    setInvoiceLines([]);
+    setInvoiceAccount(null);
     setIsOpen(true);
 
-    // Auto-fetch transactions for account drill-down
+    // Auto-fetch invoice-level detail for account drill-down
     if (ctx.type === 'account') {
-      const periodFormatted = ctx.period.length === 7 ? ctx.period : ctx.period.slice(0, 7);
-      setLoadingTx(true);
-      setTxAccount({ name: ctx.accountName, code: ctx.accountCode, amount: ctx.amount });
-      fetch(`/api/transactions/${orgId}?accountId=${ctx.accountId}&period=${periodFormatted}`)
-        .then((res) => (res.ok ? res.json() : { transactions: [] }))
-        .then((data) => setTransactions(data.transactions ?? []))
-        .catch(() => setTransactions([]))
-        .finally(() => setLoadingTx(false));
+      const periodMonth = ctx.period.length === 7 ? ctx.period : ctx.period.slice(0, 7);
+      const [yr, mo] = periodMonth.split('-').map(Number);
+      const periodStart = `${periodMonth}-01`;
+      const lastDay = new Date(yr, mo, 0).getDate();
+      const periodEnd = `${periodMonth}-${String(lastDay).padStart(2, '0')}`;
+
+      setLoadingInvoices(true);
+      setInvoiceAccount({ name: ctx.accountName, code: ctx.accountCode, amount: ctx.amount });
+      const params = new URLSearchParams({ orgId, accountId: ctx.accountId, periodStart, periodEnd });
+      fetch(`/api/financials/account-detail?${params}`)
+        .then((res) => (res.ok ? res.json() : { lineItems: [] }))
+        .then((data) => setInvoiceLines(data.lineItems ?? []))
+        .catch(() => setInvoiceLines([]))
+        .finally(() => setLoadingInvoices(false));
     }
   }, [orgId]);
 
@@ -146,6 +170,8 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
     setBreadcrumbs([]);
     setTransactions([]);
     setTxAccount(null);
+    setInvoiceLines([]);
+    setInvoiceAccount(null);
   }, []);
 
   const pushLevel = useCallback((label: string, newContext: DrillContext) => {
@@ -155,6 +181,8 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
     setContext(newContext);
     setTransactions([]);
     setTxAccount(null);
+    setInvoiceLines([]);
+    setInvoiceAccount(null);
   }, [context]);
 
   const popLevel = useCallback(() => {
@@ -164,6 +192,8 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
       setContext(prev.context);
       setTransactions([]);
       setTxAccount(null);
+      setInvoiceLines([]);
+      setInvoiceAccount(null);
     }
   }, [breadcrumbs]);
 
@@ -184,6 +214,40 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
     }
   }, [orgId]);
 
+  /** Fetch invoice-level line items for an account within a period (uses /api/financials/account-detail) */
+  const fetchInvoiceDetail = useCallback(async (
+    accountId: string,
+    period: string,
+    account: { name: string; code: string; amount: number }
+  ) => {
+    setLoadingInvoices(true);
+    setInvoiceAccount(account);
+    try {
+      // Convert period (YYYY-MM or YYYY-MM-DD) to start/end of month
+      const periodMonth = period.length === 7 ? period : period.slice(0, 7);
+      const [year, month] = periodMonth.split('-').map(Number);
+      const periodStart = `${periodMonth}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const periodEnd = `${periodMonth}-${String(lastDay).padStart(2, '0')}`;
+
+      const params = new URLSearchParams({
+        orgId,
+        accountId,
+        periodStart,
+        periodEnd,
+      });
+      const res = await fetch(`/api/financials/account-detail?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        setInvoiceLines(data.lineItems ?? []);
+      }
+    } catch {
+      setInvoiceLines([]);
+    } finally {
+      setLoadingInvoices(false);
+    }
+  }, [orgId]);
+
   return (
     <DrillDownContext.Provider value={{ openDrill, closeDrill, isOpen }}>
       {children}
@@ -194,10 +258,14 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
           transactions={transactions}
           loadingTx={loadingTx}
           txAccount={txAccount}
+          invoiceLines={invoiceLines}
+          loadingInvoices={loadingInvoices}
+          invoiceAccount={invoiceAccount}
           onClose={closeDrill}
           onPushLevel={pushLevel}
           onPopLevel={popLevel}
           onFetchTransactions={fetchTransactions}
+          onFetchInvoiceDetail={fetchInvoiceDetail}
         />
       )}
     </DrillDownContext.Provider>
@@ -274,10 +342,14 @@ interface DrillDownSheetProps {
   transactions: Transaction[];
   loadingTx: boolean;
   txAccount: { name: string; code: string; amount: number } | null;
+  invoiceLines: InvoiceLineItem[];
+  loadingInvoices: boolean;
+  invoiceAccount: { name: string; code: string; amount: number } | null;
   onClose: () => void;
   onPushLevel: (label: string, ctx: DrillContext) => void;
   onPopLevel: () => void;
   onFetchTransactions: (accountId: string, period: string, account: { name: string; code: string; amount: number }) => void;
+  onFetchInvoiceDetail: (accountId: string, period: string, account: { name: string; code: string; amount: number }) => void;
 }
 
 function DrillDownSheet({
@@ -286,12 +358,17 @@ function DrillDownSheet({
   transactions,
   loadingTx,
   txAccount,
+  invoiceLines,
+  loadingInvoices,
+  invoiceAccount,
   onClose,
   onPushLevel,
   onPopLevel,
   onFetchTransactions,
+  onFetchInvoiceDetail,
 }: DrillDownSheetProps) {
   const showingTransactions = txAccount !== null;
+  const showingInvoiceDetail = invoiceAccount !== null;
 
   return (
     <>
@@ -320,22 +397,26 @@ function DrillDownSheet({
                 </span>
               ))}
               <span className="text-foreground font-medium shrink-0">
-                {showingTransactions ? txAccount.name : getContextTitle(context)}
+                {showingInvoiceDetail
+                  ? invoiceAccount?.name
+                  : showingTransactions
+                    ? txAccount.name
+                    : getContextTitle(context)
+                }
               </span>
             </div>
           )}
 
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3 min-w-0">
-              {(breadcrumbs.length > 0 || showingTransactions) && (
+              {(breadcrumbs.length > 0 || showingTransactions || showingInvoiceDetail) && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="shrink-0 h-8 w-8"
                   onClick={() => {
-                    if (showingTransactions) {
-                      // Go back to account list, handled by clearing txAccount via popLevel or reset
-                      // This is a "soft" back within the same context level
+                    if (showingTransactions || showingInvoiceDetail) {
+                      // Go back to account list, handled by clearing state via popLevel
                       onPopLevel();
                     } else {
                       onPopLevel();
@@ -347,17 +428,35 @@ function DrillDownSheet({
               )}
               <div className="min-w-0">
                 <h3 className="font-semibold truncate">
-                  {showingTransactions ? txAccount.name : getContextTitle(context)}
+                  {showingInvoiceDetail
+                    ? `${invoiceAccount?.name ?? 'Account'} - Invoice Detail`
+                    : showingTransactions
+                      ? txAccount.name
+                      : getContextTitle(context)
+                  }
                 </h3>
                 <p className="text-xs text-muted-foreground truncate">
-                  {showingTransactions
-                    ? `${txAccount.code} · ${formatCurrency(txAccount.amount)}`
-                    : getContextSubtitle(context)
+                  {showingInvoiceDetail
+                    ? `${invoiceAccount?.code ?? ''} · ${formatCurrency(invoiceAccount?.amount ?? 0)}`
+                    : showingTransactions
+                      ? `${txAccount.code} · ${formatCurrency(txAccount.amount)}`
+                      : getContextSubtitle(context)
                   }
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-1">
+              {showingInvoiceDetail && invoiceLines.length > 0 && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  title="Export invoice detail as CSV"
+                  onClick={() => exportInvoiceDetailCSV(invoiceLines, invoiceAccount?.name ?? 'account')}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              )}
               {showingTransactions && transactions.length > 0 && (
                 <Button
                   variant="ghost"
@@ -378,7 +477,13 @@ function DrillDownSheet({
 
         {/* Content */}
         <div className="overflow-y-auto h-[calc(100vh-80px)] p-4">
-          {showingTransactions ? (
+          {showingInvoiceDetail ? (
+            <InvoiceDetailList
+              lineItems={invoiceLines}
+              loading={loadingInvoices}
+              account={invoiceAccount}
+            />
+          ) : showingTransactions ? (
             <TransactionList
               transactions={transactions}
               loading={loadingTx}
@@ -388,6 +493,7 @@ function DrillDownSheet({
               context={context}
               onPushLevel={onPushLevel}
               onFetchTransactions={onFetchTransactions}
+              onFetchInvoiceDetail={onFetchInvoiceDetail}
             />
           )}
         </div>
@@ -404,10 +510,12 @@ function ContextContent({
   context,
   onPushLevel,
   onFetchTransactions,
+  onFetchInvoiceDetail,
 }: {
   context: DrillContext;
   onPushLevel: (label: string, ctx: DrillContext) => void;
   onFetchTransactions: (accountId: string, period: string, account: { name: string; code: string; amount: number }) => void;
+  onFetchInvoiceDetail: (accountId: string, period: string, account: { name: string; code: string; amount: number }) => void;
 }) {
   switch (context.type) {
     case 'pnl_section':
@@ -416,7 +524,8 @@ function ContextContent({
           section={context.section}
           period={context.period}
           onAccountClick={(row) => {
-            onFetchTransactions(row.accountId, context.period, {
+            // Use invoice-level detail endpoint for richer drill-down
+            onFetchInvoiceDetail(row.accountId, context.period, {
               name: row.accountName,
               code: row.accountCode,
               amount: row.amount,
@@ -824,6 +933,145 @@ function TransactionList({
               </TableCell>
               <TableCell className="text-right font-medium font-mono text-sm">
                 {formatCurrency(tx.amount)}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Invoice Detail List (invoice-level drill-down)
+// ---------------------------------------------------------------------------
+
+function exportInvoiceDetailCSV(lineItems: InvoiceLineItem[], accountName: string) {
+  if (lineItems.length === 0) return;
+  const headers = ['Date', 'Contact/Customer', 'Description', 'Reference', 'Amount', 'Type'];
+  const rows = lineItems.map((li) => [
+    li.date,
+    li.contactName,
+    li.description,
+    li.reference,
+    li.amount.toString(),
+    li.type,
+  ].map((v) => `"${(v ?? '').replace(/"/g, '""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${accountName.replace(/\s+/g, '_')}_invoice_detail.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function InvoiceDetailList({
+  lineItems,
+  loading,
+  account,
+}: {
+  lineItems: InvoiceLineItem[];
+  loading: boolean;
+  account: { name: string; code: string; amount: number } | null;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-center space-y-2">
+          <div className="h-6 w-6 mx-auto animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+          <p className="text-sm text-muted-foreground">Loading invoice detail...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (lineItems.length === 0) {
+    return (
+      <div className="space-y-4">
+        {/* Account summary */}
+        {account && (
+          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">{account.name}</p>
+              <p className="text-xs text-muted-foreground">Code: {account.code}</p>
+            </div>
+            <p className="text-lg font-bold">{formatCurrency(account.amount)}</p>
+          </div>
+        )}
+        <div className="text-center py-8 space-y-2">
+          <p className="text-sm text-muted-foreground">No invoice line items found for this account.</p>
+          <p className="text-xs text-muted-foreground">
+            Invoice detail is populated from Xero invoices and bills. Make sure your data is synced.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const total = lineItems.reduce((sum, li) => sum + li.amount, 0);
+
+  return (
+    <div className="space-y-3">
+      {/* Account summary card */}
+      {account && (
+        <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
+          <div>
+            <p className="text-sm font-medium">{account.name}</p>
+            <p className="text-xs text-muted-foreground">Code: {account.code}</p>
+          </div>
+          <p className="text-lg font-bold">{formatCurrency(account.amount)}</p>
+        </div>
+      )}
+
+      {/* Line item count and total */}
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span>{lineItems.length} invoice line items</span>
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-foreground">{formatCurrency(total)}</span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            title="Export invoice detail as CSV"
+            onClick={() => exportInvoiceDetailCSV(lineItems, account?.name ?? 'account')}
+          >
+            <Download className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+
+      {/* Invoice line items table */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead className="w-[85px]">Date</TableHead>
+            <TableHead>Contact</TableHead>
+            <TableHead>Description</TableHead>
+            <TableHead className="w-[80px]">Ref</TableHead>
+            <TableHead className="text-right">Amount</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {lineItems.map((li) => (
+            <TableRow key={li.id}>
+              <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                {formatDate(li.date)}
+              </TableCell>
+              <TableCell className="text-sm">
+                {li.contactName || <span className="text-muted-foreground italic">Unknown</span>}
+              </TableCell>
+              <TableCell>
+                <div className="text-sm truncate max-w-[200px]" title={li.description}>
+                  {li.description || <span className="text-muted-foreground italic">No description</span>}
+                </div>
+              </TableCell>
+              <TableCell className="text-xs text-muted-foreground font-mono truncate max-w-[80px]" title={li.reference}>
+                {li.reference || '-'}
+              </TableCell>
+              <TableCell className="text-right font-medium font-mono text-sm whitespace-nowrap">
+                {formatCurrency(li.amount)}
               </TableCell>
             </TableRow>
           ))}

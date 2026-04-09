@@ -246,6 +246,47 @@ describe('buildSemanticPnL', () => {
     });
   });
 
+  describe('Xero class=EXPENSE type=DIRECTCOSTS accounts (unmapped)', () => {
+    // Xero can set class=EXPENSE for accounts whose type=DIRECTCOSTS.
+    // Without a mapping, the fallback should use the type field to route
+    // these into cost_of_sales rather than other_expense.
+    const accountsWithMisclass: ChartOfAccount[] = [
+      ...mockAccounts,
+      {
+        id: 'acc-fabric',
+        org_id: 'org-1',
+        xero_account_id: 'x8',
+        code: '309',
+        name: 'Fabric Materials',
+        type: 'DIRECTCOSTS',
+        class: 'EXPENSE',
+        status: 'ACTIVE',
+        created_at: '',
+        updated_at: '',
+      },
+    ];
+
+    const financialsWithMisclass: NormalisedFinancial[] = [
+      ...mockFinancials,
+      { id: 'f8', org_id: 'org-1', period: PERIOD, account_id: 'acc-fabric', amount: -5000, transaction_count: 3, source: 'xero', created_at: '', updated_at: '' },
+    ];
+
+    it('routes EXPENSE-class DIRECTCOSTS-type accounts to cost_of_sales when unmapped', () => {
+      const pnl = buildSemanticPnL(financialsWithMisclass, accountsWithMisclass, [], PERIOD);
+      const cosSection = pnl.sections.find((s) => s.section === 'cost_of_sales');
+      expect(cosSection).toBeDefined();
+      const fabricRow = cosSection!.rows.find((r) => r.accountId === 'acc-fabric');
+      expect(fabricRow).toBeDefined();
+      expect(fabricRow!.standardCategory).toBe('cost_of_sales');
+    });
+
+    it('includes misclassified accounts in costOfSales total', () => {
+      const pnl = buildSemanticPnL(financialsWithMisclass, accountsWithMisclass, [], PERIOD);
+      // Original COGS: 40000, Fabric: 5000 => 45000
+      expect(pnl.costOfSales).toBe(45000);
+    });
+  });
+
   describe('empty data', () => {
     it('returns zeroes for empty period', () => {
       const pnl = buildSemanticPnL(mockFinancials, mockAccounts, fullMappings, '2099-01-01');

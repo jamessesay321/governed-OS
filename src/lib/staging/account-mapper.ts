@@ -5,6 +5,7 @@ import {
   STANDARD_CATEGORIES,
   CATEGORY_META,
   classToDefaultCategory,
+  classAndTypeToDefaultCategory,
   getTaxonomyPromptContext,
   type StandardCategory,
 } from '@/lib/financial/taxonomy';
@@ -114,14 +115,19 @@ Schema: [{ "code": "string", "category": "string", "confidence": number, "reason
     const parsed = JSON.parse(jsonMatch[0]) as LLMMappingSuggestion[];
 
     // Validate categories against the unified taxonomy
-    suggestions = parsed.map((s) => ({
-      ...s,
-      category: (STANDARD_CATEGORIES as readonly string[]).includes(s.category)
-        ? s.category
-        : classToDefaultCategory(
-            accounts.find((a) => a.code === s.code)?.class ?? 'EXPENSE'
-          ),
-    }));
+    suggestions = parsed.map((s) => {
+      if ((STANDARD_CATEGORIES as readonly string[]).includes(s.category)) {
+        return s;
+      }
+      const acct = accounts.find((a) => a.code === s.code);
+      return {
+        ...s,
+        category: classAndTypeToDefaultCategory(
+          acct?.class ?? 'EXPENSE',
+          acct?.type ?? acct?.class ?? 'EXPENSE'
+        ),
+      };
+    });
 
     // Governance checkpoint — audit trail for account mapping
     await governedOutput({
@@ -138,12 +144,12 @@ Schema: [{ "code": "string", "category": "string", "confidence": number, "reason
     });
   } catch (err) {
     console.error('[ACCOUNT-MAPPER] LLM mapping failed, using heuristic fallback:', err);
-    // Fallback: map by Xero class heuristic
+    // Fallback: map by Xero class+type heuristic
     suggestions = accounts.map((a) => ({
       code: a.code,
-      category: classToDefaultCategory(a.class ?? 'EXPENSE'),
+      category: classAndTypeToDefaultCategory(a.class ?? 'EXPENSE', a.type ?? a.class ?? 'EXPENSE'),
       confidence: 0.3,
-      reasoning: 'AI mapping failed, using class-based heuristic',
+      reasoning: 'AI mapping failed, using class+type heuristic',
     }));
   }
 

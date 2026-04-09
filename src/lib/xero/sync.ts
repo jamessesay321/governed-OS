@@ -386,7 +386,7 @@ async function syncBalanceSheetData(
             account_id: row.accountId,
             amount: Math.round((row.amount + Number.EPSILON) * 100) / 100,
             transaction_count: 0, // Report-derived, not transaction count
-            source: 'xero',
+            source: 'xero_trial_balance',
           },
           { onConflict: 'org_id,period,account_id' }
         );
@@ -476,9 +476,11 @@ export async function runFullSync(
     const normalised = await normaliseTransactions(orgId);
     console.log(`[XERO SYNC] Normalised: ${normalised} period-account records`);
 
-    // Balance sheet data is fetched on-demand when visiting the BS/Cash Flow pages
-    // via ensureBalanceSheetData(). Skipped during sync to stay within 5-min limit.
-    const bsSynced = 0;
+    // Sync balance sheet data from Xero Trial Balance API.
+    // This makes only 2-4 API calls (3 most recent periods) — well within rate limits.
+    console.log('[XERO SYNC] Syncing balance sheet (Trial Balance)...');
+    const bsSynced = await syncBalanceSheetData(orgId, tokens.accessToken, tokens.tenantId);
+    console.log(`[XERO SYNC] Balance sheet: ${bsSynced} records synced`);
 
     // Update sync log
     await supabase
@@ -636,16 +638,19 @@ export async function runFullSync(
 export async function ensureBalanceSheetData(orgId: string): Promise<number> {
   const supabase = await createServiceClient();
 
-  // Check if BS data already exists
+  // Check if BS data already exists by looking for rows with the
+  // 'xero_trial_balance' source tag. This avoids false positives from
+  // incidental BS-class rows created during invoice normalisation
+  // (e.g. Prepayments, Computer Equipment).
   const { data: existing } = await supabase
     .from('normalised_financials')
-    .select('id, chart_of_accounts!inner(class)')
+    .select('id')
     .eq('org_id', orgId)
-    .in('chart_of_accounts.class', ['ASSET', 'LIABILITY', 'EQUITY'])
+    .eq('source', 'xero_trial_balance')
     .limit(1);
 
   if (existing && existing.length > 0) {
-    // BS data already present — nothing to do
+    // Trial Balance data already present — nothing to do
     return 0;
   }
 

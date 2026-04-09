@@ -355,6 +355,9 @@ export function getStaffCosts(): StandardCategory[] {
 /**
  * Heuristic: map a Xero account class to the best default standard category.
  * Used as a fallback when AI mapping fails or for quick initial classification.
+ *
+ * NOTE: Prefer `classAndTypeToDefaultCategory` when the account `type` field is
+ * available, as Xero may set class=EXPENSE for DIRECTCOSTS-type accounts.
  */
 export function classToDefaultCategory(xeroClass: string): StandardCategory {
   switch (xeroClass.toUpperCase()) {
@@ -374,6 +377,24 @@ export function classToDefaultCategory(xeroClass: string): StandardCategory {
     default:
       return 'other_expense';
   }
+}
+
+/**
+ * Heuristic: map a Xero account using both class AND type fields.
+ * In Xero, class is a broad grouping (ASSET, EQUITY, EXPENSE, LIABILITY, REVENUE)
+ * while type is more granular (DIRECTCOSTS, OVERHEADS, EXPENSE, BANK, etc.).
+ * Accounts with type=DIRECTCOSTS may have class=EXPENSE, so the type field
+ * is checked first to correctly classify Cost of Sales accounts.
+ */
+export function classAndTypeToDefaultCategory(xeroClass: string, xeroType: string): StandardCategory {
+  // Type takes precedence for DIRECTCOSTS detection
+  if (xeroType.toUpperCase() === 'DIRECTCOSTS') {
+    return 'cost_of_sales';
+  }
+  if (xeroType.toUpperCase() === 'OTHERINCOME') {
+    return 'other_income';
+  }
+  return classToDefaultCategory(xeroClass);
 }
 
 /**

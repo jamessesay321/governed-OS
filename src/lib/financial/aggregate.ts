@@ -63,7 +63,15 @@ export function buildPnL(
     const account = accountMap.get(fin.account_id);
     if (!account) continue;
 
-    const classKey = account.class.toUpperCase();
+    // Xero's `class` groups into broad categories (ASSET, EQUITY, EXPENSE,
+    // LIABILITY, REVENUE).  The `type` field is more granular and, critically,
+    // accounts whose type is DIRECTCOSTS may have class=EXPENSE.  We must use
+    // the type to correctly route direct-cost accounts into the Cost of Sales
+    // section instead of Operating Expenses.
+    const typeUpper = account.type.toUpperCase();
+    const classKey = typeUpper === 'DIRECTCOSTS'
+      ? 'DIRECTCOSTS'
+      : account.class.toUpperCase();
     const rows = sectionMap.get(classKey);
     if (!rows) continue; // Skip non-P&L accounts (assets, liabilities, equity)
 
@@ -237,16 +245,26 @@ export function buildSemanticPnL(
       category = mapping.standard_category as StandardCategory;
       mappedCount++;
     } else {
-      // Fallback: derive from Xero class
-      switch (classUpper) {
-        case 'REVENUE':
-          category = 'revenue';
-          break;
-        case 'DIRECTCOSTS':
-          category = 'cost_of_sales';
-          break;
-        default:
-          category = 'other_expense';
+      // Fallback: derive from Xero class/type.
+      // The Xero type field is more granular than class and must take
+      // precedence for DIRECTCOSTS (may have class=EXPENSE) and
+      // OTHERINCOME (has class=REVENUE but is non-trading income).
+      const typeUpper = account.type.toUpperCase();
+      if (typeUpper === 'DIRECTCOSTS') {
+        category = 'cost_of_sales';
+      } else if (typeUpper === 'OTHERINCOME') {
+        category = 'other_income';
+      } else {
+        switch (classUpper) {
+          case 'REVENUE':
+            category = 'revenue';
+            break;
+          case 'DIRECTCOSTS':
+            category = 'cost_of_sales';
+            break;
+          default:
+            category = 'other_expense';
+        }
       }
     }
 

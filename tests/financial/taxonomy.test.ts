@@ -9,6 +9,7 @@ import {
   getDiscretionaryCosts,
   getStaffCosts,
   classToDefaultCategory,
+  classAndTypeToDefaultCategory,
   getTaxonomyPromptContext,
   type StandardCategory,
   type PnLSection,
@@ -254,6 +255,37 @@ describe('classToDefaultCategory', () => {
   it('returns other_expense for unknown classes', () => {
     expect(classToDefaultCategory('UNKNOWN')).toBe('other_expense');
     expect(classToDefaultCategory('')).toBe('other_expense');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// classAndTypeToDefaultCategory
+// ---------------------------------------------------------------------------
+
+describe('classAndTypeToDefaultCategory', () => {
+  it('routes EXPENSE-class + DIRECTCOSTS-type to cost_of_sales', () => {
+    expect(classAndTypeToDefaultCategory('EXPENSE', 'DIRECTCOSTS')).toBe('cost_of_sales');
+  });
+
+  it('routes DIRECTCOSTS-class + DIRECTCOSTS-type to cost_of_sales', () => {
+    expect(classAndTypeToDefaultCategory('DIRECTCOSTS', 'DIRECTCOSTS')).toBe('cost_of_sales');
+  });
+
+  it('routes REVENUE-class + OTHERINCOME-type to other_income', () => {
+    expect(classAndTypeToDefaultCategory('REVENUE', 'OTHERINCOME')).toBe('other_income');
+  });
+
+  it('falls back to class-based mapping when type is generic EXPENSE', () => {
+    expect(classAndTypeToDefaultCategory('EXPENSE', 'EXPENSE')).toBe('other_expense');
+  });
+
+  it('falls back to class-based mapping for REVENUE/REVENUE', () => {
+    expect(classAndTypeToDefaultCategory('REVENUE', 'REVENUE')).toBe('revenue');
+  });
+
+  it('is case-insensitive', () => {
+    expect(classAndTypeToDefaultCategory('expense', 'directcosts')).toBe('cost_of_sales');
+    expect(classAndTypeToDefaultCategory('Expense', 'DirectCosts')).toBe('cost_of_sales');
   });
 });
 
