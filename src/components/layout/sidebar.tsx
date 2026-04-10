@@ -171,6 +171,14 @@ const navigation: NavGroup[] = [
     ],
   },
   {
+    group: 'Unit Economics',
+    icon: 'TrendingUp',
+    href: '/dashboard/unit-economics',
+    children: [
+      { href: '/dashboard/unit-economics', label: 'Per-Bride & Production' },
+    ],
+  },
+  {
     group: 'Bridal Orders',
     icon: 'ClipboardList',
     href: '/orders',
