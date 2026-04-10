@@ -28,7 +28,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { X, ChevronRight, ArrowLeft, Download, ExternalLink, AlertTriangle, Info } from 'lucide-react';
+import { X, ChevronRight, ArrowLeft, Download, ExternalLink, AlertTriangle, Info, ShoppingBag, Package } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -77,6 +77,23 @@ interface Transaction {
   description: string;
   amount: number;
   type: string;
+}
+
+/** Shopify product-level revenue breakdown */
+interface ShopifyProduct {
+  title: string;
+  revenue: number;
+  units: number;
+  orderCount: number;
+  percentage: number;
+  sku?: string;
+}
+
+interface ShopifyProductBreakdown {
+  products: ShopifyProduct[];
+  total: number;
+  orderCount: number;
+  period: string;
 }
 
 /** Invoice-level line item returned by /api/financials/account-detail */
@@ -136,6 +153,10 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
   const [loadingInvoices, setLoadingInvoices] = useState(false);
   const [invoiceAccount, setInvoiceAccount] = useState<{ name: string; code: string; amount: number } | null>(null);
 
+  // Shopify product breakdown state
+  const [shopifyProducts, setShopifyProducts] = useState<ShopifyProductBreakdown | null>(null);
+  const [loadingShopify, setLoadingShopify] = useState(false);
+
   const openDrill = useCallback((ctx: DrillContext) => {
     setContext(ctx);
     setBreadcrumbs([]);
@@ -143,6 +164,7 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
     setTxAccount(null);
     setInvoiceLines([]);
     setInvoiceAccount(null);
+    setShopifyProducts(null);
     setIsOpen(true);
 
     // Auto-fetch invoice-level detail for account drill-down
@@ -152,6 +174,22 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
       const periodStart = `${periodMonth}-01`;
       const lastDay = new Date(yr, mo, 0).getDate();
       const periodEnd = `${periodMonth}-${String(lastDay).padStart(2, '0')}`;
+
+      // Detect Shopify revenue accounts and fetch product breakdown
+      const isShopifyAccount = /shopify/i.test(ctx.accountName);
+      if (isShopifyAccount) {
+        setLoadingShopify(true);
+        const shopifyParams = new URLSearchParams({ orgId, period: periodMonth });
+        fetch(`/api/integrations/shopify/product-revenue?${shopifyParams}`)
+          .then((res) => (res.ok ? res.json() : null))
+          .then((data) => {
+            if (data?.products?.length > 0) {
+              setShopifyProducts(data);
+            }
+          })
+          .catch(() => setShopifyProducts(null))
+          .finally(() => setLoadingShopify(false));
+      }
 
       setLoadingInvoices(true);
       setInvoiceAccount({ name: ctx.accountName, code: ctx.accountCode, amount: ctx.amount });
@@ -172,6 +210,7 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
     setTxAccount(null);
     setInvoiceLines([]);
     setInvoiceAccount(null);
+    setShopifyProducts(null);
   }, []);
 
   const pushLevel = useCallback((label: string, newContext: DrillContext) => {
@@ -273,6 +312,8 @@ export function DrillDownProvider({ orgId, children }: DrillDownProviderProps) {
           invoiceLines={invoiceLines}
           loadingInvoices={loadingInvoices}
           invoiceAccount={invoiceAccount}
+          shopifyProducts={shopifyProducts}
+          loadingShopify={loadingShopify}
           onClose={closeDrill}
           onPushLevel={pushLevel}
           onPopLevel={popLevel}
@@ -357,6 +398,8 @@ interface DrillDownSheetProps {
   invoiceLines: InvoiceLineItem[];
   loadingInvoices: boolean;
   invoiceAccount: { name: string; code: string; amount: number } | null;
+  shopifyProducts: ShopifyProductBreakdown | null;
+  loadingShopify: boolean;
   onClose: () => void;
   onPushLevel: (label: string, ctx: DrillContext) => void;
   onPopLevel: () => void;
@@ -373,6 +416,8 @@ function DrillDownSheet({
   invoiceLines,
   loadingInvoices,
   invoiceAccount,
+  shopifyProducts,
+  loadingShopify,
   onClose,
   onPushLevel,
   onPopLevel,
@@ -494,6 +539,8 @@ function DrillDownSheet({
               lineItems={invoiceLines}
               loading={loadingInvoices}
               account={invoiceAccount}
+              shopifyProducts={shopifyProducts}
+              loadingShopify={loadingShopify}
             />
           ) : showingTransactions ? (
             <TransactionList
@@ -1015,10 +1062,14 @@ function InvoiceDetailList({
   lineItems,
   loading,
   account,
+  shopifyProducts,
+  loadingShopify,
 }: {
   lineItems: InvoiceLineItem[];
   loading: boolean;
   account: { name: string; code: string; amount: number } | null;
+  shopifyProducts?: ShopifyProductBreakdown | null;
+  loadingShopify?: boolean;
 }) {
   if (loading) {
     return (
@@ -1030,6 +1081,66 @@ function InvoiceDetailList({
       </div>
     );
   }
+
+  // Shopify product breakdown component (shown when available)
+  const shopifySection = (shopifyProducts && shopifyProducts.products.length > 0) ? (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <ShoppingBag className="h-4 w-4 text-emerald-600" />
+        <p className="text-sm font-semibold">Product Breakdown</p>
+        <span className="text-[10px] uppercase tracking-wider text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded font-medium">
+          from Shopify
+        </span>
+      </div>
+      <div className="flex items-center justify-between rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 px-4 py-3">
+        <span className="text-sm text-emerald-800 dark:text-emerald-200">
+          {shopifyProducts.products.length} products across {shopifyProducts.orderCount} orders
+        </span>
+        <span className="font-semibold text-emerald-800 dark:text-emerald-200">{formatCurrency(shopifyProducts.total)}</span>
+      </div>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Product</TableHead>
+            <TableHead className="text-right w-[80px]">Units</TableHead>
+            <TableHead className="text-right">Revenue</TableHead>
+            <TableHead className="text-right w-[50px]">%</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {shopifyProducts.products.map((product, idx) => (
+            <TableRow key={idx}>
+              <TableCell>
+                <div className="flex items-center gap-1.5">
+                  <Package className="h-3 w-3 text-muted-foreground shrink-0" />
+                  <span className="text-sm">{product.title}</span>
+                </div>
+                {product.sku && (
+                  <span className="text-[10px] text-muted-foreground font-mono ml-5">
+                    SKU: {product.sku}
+                  </span>
+                )}
+              </TableCell>
+              <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
+                {product.units}
+              </TableCell>
+              <TableCell className="text-right font-medium font-mono text-sm">
+                {formatCurrency(product.revenue)}
+              </TableCell>
+              <TableCell className="text-right text-xs text-muted-foreground tabular-nums">
+                {product.percentage}%
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  ) : loadingShopify ? (
+    <div className="flex items-center gap-2 py-3 text-sm text-muted-foreground">
+      <div className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
+      <span>Loading product breakdown from Shopify...</span>
+    </div>
+  ) : null;
 
   if (lineItems.length === 0) {
     return (
@@ -1044,12 +1155,16 @@ function InvoiceDetailList({
             <p className="text-lg font-bold">{formatCurrency(account.amount)}</p>
           </div>
         )}
-        <div className="text-center py-8 space-y-2">
-          <p className="text-sm text-muted-foreground">No invoice line items found for this account.</p>
-          <p className="text-xs text-muted-foreground">
-            Invoice detail is populated from Xero invoices and bills. Make sure your data is synced.
-          </p>
-        </div>
+        {/* Show Shopify product breakdown even when no Xero invoices */}
+        {shopifySection}
+        {!shopifySection && (
+          <div className="text-center py-8 space-y-2">
+            <p className="text-sm text-muted-foreground">No invoice line items found for this account.</p>
+            <p className="text-xs text-muted-foreground">
+              Invoice detail is populated from Xero invoices and bills. Make sure your data is synced.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -1068,6 +1183,9 @@ function InvoiceDetailList({
           <p className="text-lg font-bold">{formatCurrency(account.amount)}</p>
         </div>
       )}
+
+      {/* Shopify product breakdown (above invoice detail) */}
+      {shopifySection}
 
       {/* Line item count and total */}
       <div className="flex items-center justify-between text-xs text-muted-foreground">
