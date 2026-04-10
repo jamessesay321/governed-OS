@@ -288,7 +288,7 @@ export async function PUT(
             account_id: account.id,
             standard_category: suggestion.category,
             ai_confidence: suggestion.confidence,
-            ai_suggested: suggestion.category,
+            ai_suggested: true,
             user_confirmed: false,
             user_overridden: false,
             updated_at: new Date().toISOString(),

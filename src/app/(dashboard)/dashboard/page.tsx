@@ -6,6 +6,7 @@ import { diagnoseCashFlow, type CashFlowDiagnosis } from '@/lib/financial/cash-f
 import { getDefaultTemplate, getTemplateById } from '@/lib/dashboard/templates';
 import { DashboardClient } from './dashboard-client';
 import { adaptMappingsFromDB } from '@/lib/financial/adapt-mappings';
+import { runSenseChecks, type SenseCheckFlag } from '@/lib/intelligence/sense-check';
 
 // Extract default recs for server-side fallback
 function getDefaultRecommendationsSync() {
@@ -131,6 +132,27 @@ export default async function DashboardPage() {
     }
   }
 
+  // ── Sense-check intelligence flags ─────────────────────────────
+  // Compute per-period flags so the client can show them on KPI cards.
+  // We pre-compute for the latest period; the client re-selects on period change.
+  const industryStr = (orgProfile?.industry as string) || '';
+  const allPnlsDescending = periods.map((p) => pnlByPeriod[p]).filter(Boolean);
+  const senseCheckFlagsByPeriod: Record<string, SenseCheckFlag[]> = {};
+  for (let i = 0; i < periods.length; i++) {
+    const p = periods[i];
+    const pnlForPeriod = pnlByPeriod[p];
+    if (!pnlForPeriod) continue;
+    const prevPnl = i < periods.length - 1 ? pnlByPeriod[periods[i + 1]] ?? null : null;
+    const remainingPnls = periods.slice(i).map((pp) => pnlByPeriod[pp]).filter(Boolean);
+    senseCheckFlagsByPeriod[p] = runSenseChecks(
+      pnlForPeriod,
+      prevPnl,
+      remainingPnls,
+      industryStr,
+      p,
+    );
+  }
+
   // Cash flow root cause diagnosis (requires latest period P&L + debt data)
   // Operating profit = revenue - costOfSales - expenses (BEFORE finance costs)
   const latestPeriod = periods[0];
@@ -217,6 +239,7 @@ export default async function DashboardPage() {
         goals: (orgProfile?.growth_goals as string[]) || [],
       }}
       cashFlowDiagnosis={cashFlowDiagnosis}
+      senseCheckFlagsByPeriod={senseCheckFlagsByPeriod}
     />
   );
 }

@@ -3,8 +3,9 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { SourceBadge } from '@/components/data-primitives';
-import { TrendingUp, TrendingDown, Minus, DollarSign, Percent, Receipt, PiggyBank, BarChart3, Wallet, Target } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, DollarSign, Percent, Receipt, PiggyBank, BarChart3, Wallet, Target, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { formatCurrency, formatPercent } from '@/lib/formatting/currency';
+import type { SenseCheckFlag, FlagSeverity } from '@/lib/intelligence/sense-check';
 
 type BenchmarkStatus = 'green' | 'amber' | 'red' | 'none';
 
@@ -45,6 +46,8 @@ interface KPICardsProps {
     expenses?: BenchmarkStatus;
     netProfit?: BenchmarkStatus;
   };
+  /** Intelligence flags from sense-check engine */
+  senseCheckFlags?: SenseCheckFlag[];
   onCardClick?: (metric: string) => void;
 }
 
@@ -111,6 +114,41 @@ const statusLabels: Record<BenchmarkStatus, { text: string; className: string }>
   amber: { text: 'Near benchmark', className: 'text-yellow-700 bg-yellow-50 dark:text-yellow-400 dark:bg-yellow-950/50' },
   red: { text: 'Below benchmark', className: 'text-red-600 bg-red-50 dark:text-red-400 dark:bg-red-950/50' },
   none: { text: '', className: '' },
+};
+
+// ─── Sense-Check Flag Renderers ──────────────────────────────────
+const SEVERITY_STYLES: Record<FlagSeverity, { icon: React.ElementType; bg: string; text: string; border: string }> = {
+  critical: { icon: AlertCircle, bg: 'bg-red-50 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-400', border: 'border-red-200 dark:border-red-900' },
+  warning:  { icon: AlertTriangle, bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900' },
+  info:     { icon: Info, bg: 'bg-blue-50 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-900' },
+};
+
+function FlagBadge({ flag }: { flag: SenseCheckFlag }) {
+  const style = SEVERITY_STYLES[flag.severity];
+  const Icon = style.icon;
+  return (
+    <div className={`mt-2 rounded-md border px-2.5 py-1.5 ${style.bg} ${style.border}`}>
+      <div className="flex items-start gap-1.5">
+        <Icon className={`h-3 w-3 mt-0.5 shrink-0 ${style.text}`} />
+        <div className="min-w-0">
+          <p className={`text-[11px] font-semibold leading-tight ${style.text}`}>{flag.title}</p>
+          <p className={`text-[10px] leading-snug mt-0.5 opacity-80 ${style.text}`}>{flag.detail}</p>
+          {flag.benchmark && (
+            <p className={`text-[10px] font-medium mt-1 ${style.text}`}>
+              {flag.benchmark.label}: {flag.benchmark.value}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const METRIC_KEY_MAP: Record<string, string> = {
+  'Revenue': 'revenue',
+  'Gross Margin': 'gross_margin',
+  'Expenses': 'expenses',
+  'Net Profit': 'net_profit',
 };
 
 // ─── Inline Sparkline (pure SVG) ──────────────────────────────────
@@ -199,6 +237,7 @@ export function KPICards({
   trendExpenses,
   trendNetProfit,
   benchmarkStatuses,
+  senseCheckFlags = [],
   onCardClick,
 }: KPICardsProps) {
   const grossMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
@@ -352,6 +391,21 @@ export function KPICards({
                   </p>
                 )}
               </div>
+              {/* Sense-check intelligence flags */}
+              {(() => {
+                const metricKey = METRIC_KEY_MAP[card.label] || '';
+                const cardFlags = senseCheckFlags.filter(
+                  (f) => f.metric === metricKey
+                );
+                // Show max 2 flags per card (most severe first)
+                const sorted = [...cardFlags].sort((a, b) => {
+                  const order: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+                  return (order[a.severity] ?? 3) - (order[b.severity] ?? 3);
+                });
+                return sorted.slice(0, 2).map((flag) => (
+                  <FlagBadge key={flag.id} flag={flag} />
+                ));
+              })()}
             </CardContent>
           </Card>
         );

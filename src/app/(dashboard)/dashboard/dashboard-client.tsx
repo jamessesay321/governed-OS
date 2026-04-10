@@ -22,6 +22,7 @@ import { VoiceInput } from '@/components/ui/voice-input';
 import {
   BarChart3, TrendingUp, Target, Sparkles, FileText, PieChart,
   Settings2, Lightbulb, ShoppingCart, Megaphone, Briefcase, LayoutDashboard,
+  AlertTriangle,
 } from 'lucide-react';
 import Link from 'next/link';
 import { WelcomeIllustration } from '@/components/ui/illustrations';
@@ -34,6 +35,7 @@ import { ActivityFeed } from '@/components/collaboration';
 import type { DashboardTemplate } from '@/lib/dashboard/templates';
 import type { DashboardRecommendations } from './page';
 import type { CashFlowDiagnosis } from '@/lib/financial/cash-flow-analysis';
+import type { SenseCheckFlag } from '@/lib/intelligence/sense-check';
 
 function getGreeting(): string {
   const hour = new Date().getHours();
@@ -120,6 +122,8 @@ interface DashboardClientProps {
   recommendations: DashboardRecommendations;
   businessContext: BusinessContext;
   cashFlowDiagnosis?: CashFlowDiagnosis | null;
+  /** Pre-computed sense-check flags keyed by period */
+  senseCheckFlagsByPeriod?: Record<string, SenseCheckFlag[]>;
 }
 
 // Recommended sections based on industry
@@ -179,6 +183,7 @@ export function DashboardClient({
   recommendations,
   businessContext,
   cashFlowDiagnosis,
+  senseCheckFlagsByPeriod = {},
 }: DashboardClientProps) {
   const { period: selectedPeriod } = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
@@ -370,7 +375,55 @@ export function DashboardClient({
         <NarrativeSummary orgId={orgId} period={selectedPeriod} />
       )}
 
-      {/* KPI Cards with trend comparison */}
+      {/* General sense-check banners (partial month, etc.) */}
+      {(() => {
+        const generalFlags = (senseCheckFlagsByPeriod[selectedPeriod] ?? []).filter(
+          (f) => f.metric === 'general'
+        );
+        if (generalFlags.length === 0) return null;
+        return (
+          <div className="space-y-2">
+            {generalFlags.map((flag) => (
+              <div
+                key={flag.id}
+                className={cn(
+                  'flex items-start gap-2.5 rounded-lg border px-4 py-3',
+                  flag.severity === 'critical' ? 'border-red-200 bg-red-50/60 dark:border-red-900 dark:bg-red-950/30' :
+                  flag.severity === 'warning' ? 'border-amber-200 bg-amber-50/60 dark:border-amber-900 dark:bg-amber-950/30' :
+                  'border-blue-200 bg-blue-50/60 dark:border-blue-900 dark:bg-blue-950/30'
+                )}
+              >
+                <AlertTriangle className={cn(
+                  'h-4 w-4 mt-0.5 shrink-0',
+                  flag.severity === 'critical' ? 'text-red-600' :
+                  flag.severity === 'warning' ? 'text-amber-600' :
+                  'text-blue-600'
+                )} />
+                <div>
+                  <p className={cn(
+                    'text-sm font-semibold',
+                    flag.severity === 'critical' ? 'text-red-800 dark:text-red-300' :
+                    flag.severity === 'warning' ? 'text-amber-800 dark:text-amber-300' :
+                    'text-blue-800 dark:text-blue-300'
+                  )}>
+                    {flag.title}
+                  </p>
+                  <p className={cn(
+                    'text-xs mt-0.5',
+                    flag.severity === 'critical' ? 'text-red-700 dark:text-red-400' :
+                    flag.severity === 'warning' ? 'text-amber-700 dark:text-amber-400' :
+                    'text-blue-700 dark:text-blue-400'
+                  )}>
+                    {flag.detail}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
+      {/* KPI Cards with trend comparison + intelligence flags */}
       {widgetOrder.includes('kpi_cards') && (
         <KPICards
           revenue={pnl.revenue}
@@ -389,6 +442,7 @@ export function DashboardClient({
           trendGrossMargin={trendGrossMargin}
           trendExpenses={trendExpenses}
           trendNetProfit={trendNetProfit}
+          senseCheckFlags={senseCheckFlagsByPeriod[selectedPeriod] ?? []}
           onCardClick={(metric) => {
             const value = metric === 'revenue' ? pnl.revenue
               : metric === 'gross_margin' ? (pnl.revenue > 0 ? (pnl.grossProfit / pnl.revenue) * 100 : 0)
