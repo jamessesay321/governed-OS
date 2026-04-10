@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "governed-os-dev",
-      "runtimeExecutable": "/usr/local/bin/node",
-      "runtimeArgs": ["node_modules/.bin/next", "dev", "--turbopack", "--port", "3000"],
+      "runtimeExecutable": "/bin/bash",
+      "runtimeArgs": [".claude/start-dev.sh"],
       "port": 3000,
       "autoPort": false
     }

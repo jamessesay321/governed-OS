@@ -432,7 +432,239 @@ async function syncBalanceSheetData(
 }
 
 /**
- * Full sync pipeline: accounts → invoices → bank transactions → normalise → balance sheet.
+ * P&L section → platform class mapping.
+ * Xero P&L report sections use human-readable titles.
+ * We normalise them to the class keys used by buildPnL.
+ */
+type PnLSectionClass = 'REVENUE' | 'DIRECTCOSTS' | 'EXPENSE';
+
+function classifyPnLSection(sectionTitle: string): PnLSectionClass | null {
+  const t = sectionTitle.toLowerCase();
+  if (t.includes('income') || t.includes('revenue')) return 'REVENUE';
+  if (t.includes('cost of sales') || t.includes('direct cost') || t.includes('purchases')) return 'DIRECTCOSTS';
+  if (t.includes('expense') || t.includes('operating')) return 'EXPENSE';
+  return null; // Summary rows, headers, etc.
+}
+
+/**
+ * Sync P&L data from Xero Reports/ProfitAndLoss endpoint.
+ *
+ * The Xero P&L report is the AUTHORITATIVE source for profit & loss figures.
+ * It returns net-of-VAT amounts grouped into sections (Income, Cost of Sales,
+ * Operating Expenses) that match what the accountant sees.
+ *
+ * This replaces raw-transaction normalisation (which double-counts, includes
+ * VAT, and doesn't reflect Xero's own P&L section groupings).
+ *
+ * The report also tells us which section each account belongs to, which we use
+ * to fix chart_of_accounts.type for COGS accounts that Xero marks as EXPENSE.
+ *
+ * Called AFTER normaliseTransactions so it overwrites the raw-tx data with
+ * Xero-authoritative figures.
+ */
+async function syncProfitAndLossData(
+  orgId: string,
+  accessToken: string,
+  tenantId: string
+): Promise<number> {
+  const supabase = await createServiceClient();
+
+  // Get all periods that have transaction data
+  const { data: periodsData } = await supabase
+    .from('normalised_financials')
+    .select('period')
+    .eq('org_id', orgId);
+
+  const periods = [...new Set((periodsData ?? []).map((p) => p.period))].sort().reverse();
+  if (periods.length === 0) return 0;
+
+  // Build account lookup by Xero UUID and by code
+  const { data: accounts } = await supabase
+    .from('chart_of_accounts')
+    .select('id, code, name, class, type, xero_account_id')
+    .eq('org_id', orgId);
+
+  const accountByXeroId = new Map<string, { id: string; code: string; type: string }>();
+  const accountByName = new Map<string, { id: string; code: string; type: string }>();
+  for (const acc of (accounts ?? [])) {
+    const entry = { id: acc.id, code: acc.code || '', type: acc.type || '' };
+    if (acc.xero_account_id && !acc.xero_account_id.startsWith('SEED-') && !acc.xero_account_id.startsWith('demo-')) {
+      accountByXeroId.set(acc.xero_account_id, entry);
+    }
+    // Also index by "Name (Code)" for fallback matching against P&L report cell values
+    if (acc.name) {
+      accountByName.set(acc.name.toLowerCase(), entry);
+      if (acc.code) {
+        accountByName.set(`${acc.name.toLowerCase()} (${acc.code.toLowerCase()})`, entry);
+      }
+    }
+  }
+
+  let totalUpserted = 0;
+  // Track accounts that need their type updated to DIRECTCOSTS
+  const cogsAccountIds = new Set<string>();
+
+  // Fetch P&L for the 13 most recent periods (matching the invoice sync date window).
+  // 13 API calls is well within Xero's 60/min rate limit.
+  const periodsToFetch = periods.slice(0, 13);
+  console.log(`[XERO SYNC] Fetching P&L report for ${periodsToFetch.length} periods`);
+
+  for (const period of periodsToFetch) {
+    try {
+      const [year, month] = period.split('-').map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const fromDate = `${year}-${String(month).padStart(2, '0')}-01`;
+      const toDate = `${year}-${String(month).padStart(2, '0')}-${lastDay}`;
+
+      const data = await xeroGet(
+        `Reports/ProfitAndLoss?fromDate=${fromDate}&toDate=${toDate}`,
+        accessToken,
+        tenantId
+      );
+
+      const report = data?.Reports?.[0];
+      if (!report?.Rows) {
+        console.log(`[XERO SYNC] No P&L data for ${period}`);
+        continue;
+      }
+
+      const rows: Array<{
+        period: string;
+        accountId: string;
+        amount: number;
+        sectionClass: PnLSectionClass;
+      }> = [];
+
+      for (const section of report.Rows) {
+        if (section.RowType !== 'Section' || !section.Rows) continue;
+
+        const sectionClass = classifyPnLSection(section.Title || '');
+        if (!sectionClass) continue;
+
+        for (const row of section.Rows) {
+          if (row.RowType !== 'Row' || !row.Cells) continue;
+
+          const accountCell = row.Cells[0];
+          const amount = parseFloat(row.Cells[1]?.Value || '0') || 0;
+          if (amount === 0) continue;
+
+          // Try to resolve account via Attributes UUID
+          const xeroUuid = accountCell?.Attributes?.find(
+            (a: { Id: string; Value: string }) => a.Id === 'account'
+          )?.Value;
+
+          let accInfo: { id: string; code: string; type: string } | undefined;
+
+          if (xeroUuid) {
+            accInfo = accountByXeroId.get(xeroUuid);
+          }
+
+          // Fallback: match by name
+          if (!accInfo && accountCell?.Value) {
+            accInfo = accountByName.get(accountCell.Value.toLowerCase());
+          }
+
+          if (!accInfo) {
+            // Skip unmatched accounts (rare — usually system accounts)
+            continue;
+          }
+
+          // Track COGS accounts for type update
+          if (sectionClass === 'DIRECTCOSTS') {
+            cogsAccountIds.add(accInfo.id);
+          }
+
+          // Xero P&L report convention: positive = income or cost, negative = credit/reduction.
+          // Platform convention (for buildPnL):
+          //   Revenue amounts: positive (income), negative (refund) — keep sign as-is
+          //   COGS/Expense amounts: flip sign — so costs become negative (Math.abs in buildPnL)
+          //   This ensures: grossProfit = revenue(+) - Math.abs(COGS total(-))
+          //
+          // Example: Fabric +11,805 → store as -11,805 (cost)
+          //          Closing WIP -75,997 → store as +75,997 (credit reduces COGS)
+          const normalisedAmount = sectionClass === 'REVENUE' ? amount : -amount;
+
+          rows.push({
+            period,
+            accountId: accInfo.id,
+            amount: normalisedAmount,
+            sectionClass,
+          });
+        }
+      }
+
+      console.log(`[XERO SYNC] P&L report ${period}: ${rows.length} account entries`);
+
+      // CLEAN: delete stale non-report P&L rows for this period.
+      // Raw-transaction normalisation (source='xero') and demo data (source='demo')
+      // contain incorrect amounts. The P&L report is authoritative, so we remove
+      // all P&L-source data before upserting. BS data (source='xero_trial_balance')
+      // is preserved.
+      for (const staleSource of ['xero', 'demo']) {
+        const { error: cleanError } = await supabase
+          .from('normalised_financials')
+          .delete()
+          .eq('org_id', orgId)
+          .eq('period', period)
+          .eq('source', staleSource);
+
+        if (cleanError) {
+          console.warn(`[XERO SYNC] Failed to clean ${staleSource} data for ${period}: ${cleanError.message}`);
+        }
+      }
+
+      // Upsert P&L data — now the only P&L rows for this period
+      for (const row of rows) {
+        const { error } = await supabase.from('normalised_financials').upsert(
+          {
+            org_id: orgId,
+            period: row.period,
+            account_id: row.accountId,
+            amount: Math.round((row.amount + Number.EPSILON) * 100) / 100,
+            transaction_count: 0,
+            source: 'xero_pnl_report',
+          },
+          { onConflict: 'org_id,period,account_id' }
+        );
+
+        if (error) {
+          console.warn(`[XERO SYNC] P&L upsert failed for ${row.period}/${row.accountId}: ${error.message}`);
+        } else {
+          totalUpserted++;
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[XERO SYNC] P&L report fetch failed for ${period}: ${msg}`);
+      if (msg.includes('429')) {
+        console.warn(`[XERO SYNC] Rate limited — stopping P&L report fetch`);
+        break;
+      }
+    }
+  }
+
+  // Update chart_of_accounts.type for COGS accounts
+  // This ensures buildPnL (class-based) correctly categorises them as Cost of Sales
+  if (cogsAccountIds.size > 0) {
+    const cogsIds = [...cogsAccountIds];
+    const { error } = await supabase
+      .from('chart_of_accounts')
+      .update({ type: 'DIRECTCOSTS' })
+      .eq('org_id', orgId)
+      .in('id', cogsIds);
+
+    if (error) {
+      console.warn(`[XERO SYNC] Failed to update COGS account types: ${error.message}`);
+    } else {
+      console.log(`[XERO SYNC] Updated ${cogsIds.length} accounts to type=DIRECTCOSTS`);
+    }
+  }
+
+  return totalUpserted;
+}
+
+/**
+ * Full sync pipeline: accounts → invoices → bank transactions → normalise → balance sheet → P&L report.
  */
 export async function runFullSync(
   orgId: string,
@@ -500,6 +732,13 @@ export async function runFullSync(
     const bsSynced = await syncBalanceSheetData(orgId, tokens.accessToken, tokens.tenantId);
     console.log(`[XERO SYNC] Balance sheet: ${bsSynced} records synced`);
 
+    // Sync P&L from Xero Reports API — OVERWRITES raw-transaction normalisation
+    // with Xero-authoritative figures (net of VAT, correct section groupings).
+    // Makes 6 API calls (6 most recent periods).
+    console.log('[XERO SYNC] Syncing P&L (Xero Reports)...');
+    const pnlSynced = await syncProfitAndLossData(orgId, tokens.accessToken, tokens.tenantId);
+    console.log(`[XERO SYNC] P&L report: ${pnlSynced} records synced`);
+
     // Update sync log
     await supabase
       .from('sync_log')
@@ -517,7 +756,7 @@ export async function runFullSync(
       action: 'xero.sync_completed',
       entityType: 'sync_log',
       entityId: syncLog.id,
-      metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, bsSynced, totalSynced },
+      metadata: { accountsSynced, invoicesSynced, bankTxSynced, normalised, bsSynced, pnlSynced, totalSynced },
     });
 
     // Run all non-blocking post-sync steps IN PARALLEL to stay within Vercel 60s limit
