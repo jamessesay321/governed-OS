@@ -28,7 +28,7 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import { X, ChevronRight, ArrowLeft, Download, ExternalLink } from 'lucide-react';
+import { X, ChevronRight, ArrowLeft, Download, ExternalLink, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -315,7 +315,7 @@ function getContextTitle(ctx: DrillContext): string {
 
 function getContextSubtitle(ctx: DrillContext): string {
   switch (ctx.type) {
-    case 'pnl_section': return `${ctx.section.rows.length} accounts in ${formatPeriodLabel(ctx.period)}`;
+    case 'pnl_section': return `${ctx.section.rows.length} ${ctx.section.rows.length === 1 ? 'account' : 'accounts'} in ${formatPeriodLabel(ctx.period)}`;
     case 'account': return `${ctx.accountCode} in ${formatPeriodLabel(ctx.period)}`;
     case 'kpi': return `${ctx.formattedValue} for ${formatPeriodLabel(ctx.period)}`;
     case 'variance': return `${formatCurrency(ctx.current)} vs ${formatCurrency(ctx.previous)}`;
@@ -620,16 +620,46 @@ function PnLSectionContent({
   onAccountClick: (row: PnLRow) => void;
 }) {
   const sorted = [...section.rows].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+  const MIN_ACCOUNTS_FOR_GRANULARITY = 4;
+  const hasLowGranularity = section.rows.length > 0 && section.rows.length < MIN_ACCOUNTS_FOR_GRANULARITY;
+  const isSingleAccount = section.rows.length === 1;
 
   return (
     <div className="space-y-3">
       {/* Summary bar */}
       <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3">
         <span className="text-sm text-muted-foreground">
-          {section.rows.length} accounts in {formatPeriodLabel(period)}
+          {section.rows.length} {section.rows.length === 1 ? 'account' : 'accounts'} in {formatPeriodLabel(period)}
         </span>
         <span className="font-semibold">{formatCurrency(section.total)}</span>
       </div>
+
+      {/* Granularity nudge — encourage better chart of accounts structure */}
+      {hasLowGranularity && Math.abs(section.total) > 0 && (
+        <div className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-xs ${
+          isSingleAccount
+            ? 'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-200'
+            : 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950/30 dark:text-blue-200'
+        }`}>
+          {isSingleAccount ? (
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          ) : (
+            <Info className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          )}
+          <div>
+            <p className="font-medium">
+              {isSingleAccount
+                ? 'Low visibility — only 1 account in this section'
+                : `Only ${section.rows.length} accounts in this section`}
+            </p>
+            <p className="mt-0.5 opacity-80">
+              {isSingleAccount
+                ? `All ${section.label} spend is grouped under "${sorted[0]?.accountName}". Consider splitting this into sub-accounts in Xero (e.g. materials, packaging, labour) for better cost visibility and trend analysis.`
+                : `For better financial visibility, consider adding more detail in your chart of accounts. Most businesses benefit from 4+ accounts per major section.`}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Account table */}
       <Table>

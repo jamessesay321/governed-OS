@@ -282,13 +282,16 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
       const section = findSection(p, cls);
       return section?.total ?? 0;
     });
+    // Materiality gate: don't make sections drillable if every period total is zero
+    // (e.g. Tax £0 across all months — no value in drilling into nothing)
+    const isMaterial = sectionTotals.some((v) => Math.abs(v) >= 0.01);
     rows.push({
       label: sectionLabels[cls] ?? cls,
       description: sectionDescriptions[cls],
       values: sectionTotals,
       bold: true,
       sectionHeader: true,
-      drillSectionClass: cls,
+      drillSectionClass: isMaterial ? cls : undefined,
     });
 
     // Individual account rows (only shown in detailed view)
