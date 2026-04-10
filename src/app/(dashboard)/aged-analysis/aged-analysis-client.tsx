@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, chartAxisFormatter, formatPercent } from '@/lib/formatting/currency';
 import { ExportButton } from '@/components/shared/export-button';
+import { NumberLegend } from '@/components/data-primitives';
 import type { AgedAnalysisData, AgingBucket } from './page';
 
 /* ================================================================== */
@@ -348,6 +349,8 @@ export function AgedAnalysisClient({ data }: AgedAnalysisClientProps) {
           subtitle={`Total Debtors: ${formatCurrency(data.totalDebtors)} · Total Creditors: ${formatCurrency(data.totalCreditors)} · DSO: ${data.dso} days · DPO: ${data.dpo} days`}
         />
       </div>
+
+      <NumberLegend />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

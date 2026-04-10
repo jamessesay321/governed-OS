@@ -27,6 +27,7 @@ import {
   LineChart,
 } from 'recharts';
 import { formatCurrency, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type { MonthComparison, AccuracyMetrics } from './page';
 
 /* ================================================================== */
@@ -197,6 +198,8 @@ export function ForecastAccuracyClient({
           {comparisons.length} months
         </p>
       </div>
+
+      <NumberLegend />
 
       {/* ── Accuracy Score + Summary Cards ── */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">

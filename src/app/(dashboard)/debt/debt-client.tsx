@@ -40,6 +40,7 @@ import type {
 } from '@/types/debt';
 import { CLASSIFICATION_CONFIG, FACILITY_TYPE_LABELS } from '@/types/debt';
 import { ExportButton, type ExportColumn } from '@/components/shared/export-button';
+import { NumberLegend } from '@/components/data-primitives';
 
 /* ================================================================== */
 /*  Props                                                              */
@@ -1190,6 +1191,8 @@ export function DebtClient({ facilities, summary, hasData, orgId, taxLiabilities
           title="Debt Command Centre"
         />
       </div>
+
+      <NumberLegend />
 
       {/* Tab Navigation */}
       <div className="border-b border-gray-200 overflow-x-auto">

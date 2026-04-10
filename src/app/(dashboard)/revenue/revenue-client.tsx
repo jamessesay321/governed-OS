@@ -30,6 +30,7 @@ import {
   Line,
 } from 'recharts';
 import { formatCurrency } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type { RevenueAccount, RevenuePeriodSummary } from './page';
 
 /* ================================================================== */
@@ -185,6 +186,8 @@ export function RevenueClient({
           title="Revenue Breakdown"
         />
       </div>
+
+      <NumberLegend />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

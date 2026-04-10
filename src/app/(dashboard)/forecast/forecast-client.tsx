@@ -22,6 +22,7 @@ import type { ForecastResult, ForecastAssumption } from '@/lib/forecast/engine';
 import type { Scenario } from '@/lib/forecast/scenarios';
 import { ExportButton } from '@/components/shared/export-button';
 import type { ExportColumn } from '@/components/shared/export-button';
+import { NumberLegend } from '@/components/data-primitives';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -240,6 +241,8 @@ export function ForecastDashboardClient({ orgId, role }: ForecastDashboardClient
           />
         </div>
       </div>
+
+      <NumberLegend />
 
       {error && (
         <Card className="border-destructive">

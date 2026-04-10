@@ -20,6 +20,7 @@ import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { DollarSign, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
+import { NumberLegend } from '@/components/data-primitives';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -160,6 +161,9 @@ export default function RevenueClient({
           exportData={csvData}
         />
       )}
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* AI Narrative Summary */}
       {hasData && (

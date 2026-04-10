@@ -32,6 +32,7 @@ import {
   Area,
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type { CostAccount, CostPeriodSummary } from './page';
 import type { CostStructureSummary } from '@/lib/financial/cost-structure';
 
@@ -182,6 +183,8 @@ export function CostsClient({
           subtitle={`Total Costs: ${formatCurrencyCompact(totalCosts)} · Cost:Revenue Ratio: ${formatPercent(costToRevenueRatio)}`}
         />
       </div>
+
+      <NumberLegend />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -27,6 +27,7 @@ import {
   ZAxis,
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, chartAxisFormatter } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type { Anomaly } from './page';
 
 /* ================================================================== */
@@ -167,6 +168,8 @@ export function AnomaliesClient({
           deviations from the median using robust z-scores
         </p>
       </div>
+
+      <NumberLegend />
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

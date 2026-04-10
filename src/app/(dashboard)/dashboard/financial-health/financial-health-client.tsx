@@ -26,6 +26,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { Scale, Building2, Wallet, Flame } from 'lucide-react';
 import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
+import { NumberLegend } from '@/components/data-primitives';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -206,6 +207,9 @@ export default function FinancialHealthClient({
           </CardContent>
         </Card>
       )}
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* AI Narrative Summary */}
       {hasData && (

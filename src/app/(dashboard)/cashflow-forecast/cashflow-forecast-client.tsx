@@ -27,6 +27,7 @@ import {
   Legend,
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, chartAxisFormatter } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type { MonthlyCashProjection, DebtMaturityMarker } from './page';
 
 /* ================================================================== */
@@ -122,6 +123,8 @@ export function CashflowForecastClient({
           24-month cash projection with actual debt repayment schedules
         </p>
       </div>
+
+      <NumberLegend />
 
       {/* Scenario Toggle */}
       <div className="flex items-center gap-2">

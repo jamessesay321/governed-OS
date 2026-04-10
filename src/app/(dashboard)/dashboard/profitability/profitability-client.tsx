@@ -19,6 +19,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { DollarSign, Percent, BarChart3, PiggyBank } from 'lucide-react';
 import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
+import { NumberLegend } from '@/components/data-primitives';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -166,6 +167,9 @@ export default function ProfitabilityClient({
           exportData={csvData}
         />
       )}
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* AI Narrative Summary */}
       {hasData && (

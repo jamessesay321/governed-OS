@@ -32,6 +32,7 @@ import {
   Area,
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, chartAxisFormatter } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type {
   ValuationData,
   BridgeStep,
@@ -182,6 +183,8 @@ export function ValuationClient({ data }: ValuationClientProps) {
           )}
         </p>
       </div>
+
+      <NumberLegend />
 
       {/* ── Current Fundraise Banner ── */}
       <div className="rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/30 p-5">

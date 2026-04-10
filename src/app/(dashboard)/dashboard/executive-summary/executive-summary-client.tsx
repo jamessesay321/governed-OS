@@ -15,6 +15,7 @@ import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { useChallenge } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { ProductIntelligence } from '@/components/dashboard/product-intelligence';
+import { NumberLegend } from '@/components/data-primitives';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -285,6 +286,9 @@ export function ExecutiveSummaryClient({
           </div>
         </div>
       </div>
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* AI Narrative Lead */}
       <NarrativeSummary orgId={orgId} period={currentPeriod} />

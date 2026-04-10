@@ -11,6 +11,7 @@ import {
   ArrowRight,
   AlertCircle,
 } from 'lucide-react';
+import { NumberLegend } from '@/components/data-primitives';
 import type { HealthCategory } from './page';
 
 interface HealthClientProps {
@@ -111,6 +112,8 @@ export function HealthClient({ overallScore, categories, hasData }: HealthClient
           </Link>
         </div>
       </div>
+
+      <NumberLegend />
 
       {/* Score Circle */}
       <div className="flex justify-center">

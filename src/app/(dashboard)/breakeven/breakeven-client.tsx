@@ -25,6 +25,7 @@ import {
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, formatPercent, chartAxisFormatter } from '@/lib/formatting/currency';
 import { ExportButton } from '@/components/shared/export-button';
+import { NumberLegend } from '@/components/data-primitives';
 import type { BreakevenPageData } from './page';
 import type { ActionLever } from '@/lib/financial/normalised-ebitda';
 
@@ -209,6 +210,8 @@ export function BreakevenClient({ data }: BreakevenClientProps) {
           subtitle={periodRange}
         />
       </div>
+
+      <NumberLegend />
 
       {/* ── Top KPI Cards ───────────────────────────────────────── */}
       <div className="grid gap-4 md:grid-cols-4">

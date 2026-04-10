@@ -29,6 +29,7 @@ import {
   Area,
 } from 'recharts';
 import { formatCurrency, formatCurrencyCompact, chartAxisFormatter, formatPercent } from '@/lib/formatting/currency';
+import { NumberLegend } from '@/components/data-primitives';
 import type { StaffRole, StaffPeriodSummary } from './page';
 
 /* ================================================================== */
@@ -174,6 +175,8 @@ export function StaffCostsClient({
         subtitle={`Total: ${formatCurrencyCompact(totalStaffCost)} · ${activeRoles} roles · On-cost ratio: ${formatPercent(employerOnCostRatio)}`}
       />
       </div>
+
+      <NumberLegend />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

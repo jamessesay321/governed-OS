@@ -18,6 +18,7 @@ import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
+import { NumberLegend } from '@/components/data-primitives';
 import type { VarianceReport, VarianceLine } from '@/lib/variance/engine';
 import type { Role } from '@/types';
 import { ROLE_HIERARCHY } from '@/types';
@@ -200,6 +201,9 @@ export function VarianceClient({
           {/* Period selection now handled by global period selector in layout */}
         </div>
       </div>
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* AI Narrative Summary */}
       <NarrativeSummary
