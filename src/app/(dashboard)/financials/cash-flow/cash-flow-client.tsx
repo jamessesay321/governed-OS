@@ -25,6 +25,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { ExportButton, ExportColumn } from '@/components/shared/export-button';
+import { NumberLegend } from '@/components/data-primitives';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string; type: string };
 type BSSection = { class: string; accounts: AccountEntry[]; total: number };
@@ -749,6 +750,9 @@ export function CashFlowClient({
           title="Cash Flow Statement"
         />
       </div>
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* Method Toggle */}
       <div className="flex items-center gap-3">

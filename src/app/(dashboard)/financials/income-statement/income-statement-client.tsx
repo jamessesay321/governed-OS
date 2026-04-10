@@ -16,7 +16,7 @@ import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { ExportButton } from '@/components/shared/export-button';
 import type { ExportColumn } from '@/components/shared/export-button';
 import { CrossRef } from '@/components/shared/in-page-link';
-import { DrillableNumber } from '@/components/data-primitives';
+import { DrillableNumber, NumberLegend } from '@/components/data-primitives';
 import type { DrillableValue } from '@/components/data-primitives';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
@@ -462,6 +462,9 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
         </div>
       </div>
 
+      {/* Data type legend */}
+      <NumberLegend />
+
       {/* AI Narrative Summary */}
       <NarrativeSummary
         orgId={orgId}
@@ -518,7 +521,9 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                     if (row.drillSectionClass && sortedPeriods.length > 0) {
                       // Use the latest period for drill-down; build a PnLSection-like object
                       const latestPeriod = sortedPeriods[sortedPeriods.length - 1];
-                      const section = latestPeriod.sections.find((s) => s.class === row.drillSectionClass);
+                      // Use findSection helper which handles normalised class names
+                      // (e.g. OPERATING_EXPENSES → EXPENSE, COST_OF_SALES → DIRECTCOSTS)
+                      const section = findSection(latestPeriod, row.drillSectionClass);
                       if (section) {
                         openDrill({
                           type: 'pnl_section',
@@ -588,7 +593,8 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
                         });
                       } else if (row.drillSectionClass) {
                         const pData = sortedPeriods[i];
-                        const section = pData?.sections.find((s) => s.class === row.drillSectionClass);
+                        // Use findSection for normalised class matching
+                        const section = pData ? findSection(pData, row.drillSectionClass) : undefined;
                         if (section) {
                           openDrill({
                             type: 'pnl_section',

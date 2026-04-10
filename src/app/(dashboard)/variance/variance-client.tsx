@@ -66,6 +66,9 @@ export function VarianceClient({
   function handleVarianceLineClick(line: VarianceLine) {
     setSelectedLine(line);
     // Also open drill-down sheet with variance context
+    // Known limitation: `drivers` array is not passed here because the
+    // variance engine API does not yet return per-line driver breakdowns.
+    // Once the API supplies drivers, add: drivers: line.drivers ?? []
     openDrill({
       type: 'variance',
       metric: line.category.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' '),

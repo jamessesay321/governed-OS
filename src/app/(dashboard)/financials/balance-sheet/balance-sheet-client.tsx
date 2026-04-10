@@ -18,6 +18,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
 import { ExportButton, ExportColumn } from '@/components/shared/export-button';
+import { NumberLegend } from '@/components/data-primitives';
 
 type AccountEntry = { name: string; amount: number; accountId: string; code: string };
 type SubGroup = { label: string; accounts: AccountEntry[]; total: number };
@@ -271,6 +272,9 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
         metricLabel="Balance Sheet"
         period={currentPeriod ?? undefined}
       />
+
+      {/* Data type legend */}
+      <NumberLegend />
 
       {/* AI Narrative Summary */}
       <NarrativeSummary
