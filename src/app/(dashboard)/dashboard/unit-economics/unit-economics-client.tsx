@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -1064,6 +1065,169 @@ export default function UnitEconomicsClient({
         </CardContent>
       </Card>
 
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  DATA GAPS — what we need to make these numbers right  */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      <Card className="border-blue-200 dark:border-blue-800 bg-blue-50/30 dark:bg-blue-950/20">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Info className="h-5 w-5 text-blue-500" />
+            <div>
+              <CardTitle className="text-base">Data Gaps — What We Need</CardTitle>
+              <CardDescription>
+                These metrics will become accurate once the missing data is provided.
+                Click each action to resolve.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {/* Gap 1: Production staff */}
+            {summary.production.totalProductionStaffCost === 0 && (
+              <div className="flex items-start gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-3">
+                <div className="rounded-full bg-rose-100 dark:bg-rose-950 p-1.5 mt-0.5">
+                  <Users className="h-3.5 w-3.5 text-rose-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Production staff not entered</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    You have 8-10 production staff but their salaries aren&apos;t flowing into unit economics.
+                    Enter each employee with their role (Seamstress, Pattern Cutter, etc.) and annual salary.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    Affects: Production Staff Cost, UK Cost per Garment, Fully Loaded Cost, Channel Profitability
+                  </p>
+                </div>
+                <Link href="/headcount">
+                  <Button size="sm" variant="default" className="shrink-0">
+                    <Users className="h-3 w-3 mr-1" /> Add Staff
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            {/* Gap 2: Bride count */}
+            {summary.perBride.brideCountSource === 'estimated' && (
+              <div className="flex items-start gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-3">
+                <div className="rounded-full bg-orange-100 dark:bg-orange-950 p-1.5 mt-0.5">
+                  <Users className="h-3.5 w-3.5 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Bride count is estimated</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    We estimated {summary.perBride.brideCount} brides using your average order value.
+                    Enter the actual monthly bride count above, or sync Shopify orders to detect bridal sales automatically.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    Affects: Revenue per Bride, Gross Margin per Bride, Direct Cost per Bride, Avg Items per Bride
+                  </p>
+                </div>
+                <div className="flex flex-col gap-1 shrink-0">
+                  <Link href="/interview">
+                    <Button size="sm" variant="outline" className="w-full text-xs">
+                      Update via Interview
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+
+            {/* Gap 3: No Shopify sync */}
+            {currentData && currentData.shopifyProductCount === 0 && (
+              <div className="flex items-start gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-3">
+                <div className="rounded-full bg-amber-100 dark:bg-amber-950 p-1.5 mt-0.5">
+                  <Package className="h-3.5 w-3.5 text-amber-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">No Shopify order data for {fmtPeriod(selectedPeriod)}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Product-level revenue splits, bride identification, and channel profitability all require Shopify
+                    order line items. Sync your Shopify store or check the integration connection.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    Affects: Product Revenue Split, Bride Count, Channel Economics, Online vs Consultation
+                  </p>
+                </div>
+                <Link href="/storefront">
+                  <Button size="sm" variant="outline" className="shrink-0">
+                    <Store className="h-3 w-3 mr-1" /> Shopify Settings
+                  </Button>
+                </Link>
+              </div>
+            )}
+
+            {/* Gap 4: Outsource cost comparison */}
+            <div className="flex items-start gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-3">
+              <div className="rounded-full bg-blue-100 dark:bg-blue-950 p-1.5 mt-0.5">
+                <Scissors className="h-3.5 w-3.5 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Outsource production cost not set</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  To compare UK vs China production costs, we need your outsource cost per garment.
+                  This can be added via the business interview.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  Affects: UK vs Outsource Comparison (not yet shown — will appear once set)
+                </p>
+              </div>
+              <Link href="/interview">
+                <Button size="sm" variant="outline" className="shrink-0">
+                  <Pencil className="h-3 w-3 mr-1" /> Add via Interview
+                </Button>
+              </Link>
+            </div>
+
+            {/* Gap 5: Average dress price for sanity checking */}
+            <div className="flex items-start gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-3">
+              <div className="rounded-full bg-violet-100 dark:bg-violet-950 p-1.5 mt-0.5">
+                <Receipt className="h-3.5 w-3.5 text-violet-600" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-medium">Average dress price not confirmed</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  We default to £5,000 for average bridal order value. If your MTO range is different (e.g. bespoke
+                  up to £20k), update this so bride count estimates and sanity checks use the right baseline.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1 italic">
+                  Affects: Estimated Bride Count (when Shopify data unavailable), Revenue per Bride sanity check
+                </p>
+              </div>
+              <Link href="/interview">
+                <Button size="sm" variant="outline" className="shrink-0">
+                  <Pencil className="h-3 w-3 mr-1" /> Set via Interview
+                </Button>
+              </Link>
+            </div>
+
+            {/* Gap 6: Trunk show revenue attribution */}
+            {summary.trunkShow.totalTrunkShowCost > 0 && (
+              <div className="flex items-start gap-3 rounded-lg border border-blue-200 dark:border-blue-800 bg-white dark:bg-slate-900 p-3">
+                <div className="rounded-full bg-indigo-100 dark:bg-indigo-950 p-1.5 mt-0.5">
+                  <Store className="h-3.5 w-3.5 text-indigo-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Trunk show revenue attribution unknown</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    You invested {format(summary.trunkShow.totalTrunkShowCost)} in trunk shows this month,
+                    but we can&apos;t calculate ROI without knowing what % of revenue trunk shows drive.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 italic">
+                    Affects: Trunk Show ROI (not yet shown — will appear once attribution is set)
+                  </p>
+                </div>
+                <Link href="/interview">
+                  <Button size="sm" variant="outline" className="shrink-0">
+                    <Pencil className="h-3 w-3 mr-1" /> Set via Interview
+                  </Button>
+                </Link>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Cross-references */}
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="font-medium">Related:</span>
@@ -1072,6 +1236,7 @@ export default function UnitEconomicsClient({
         <CrossRef href="/revenue" label="Revenue Breakdown" />
         <CrossRef href="/costs" label="Cost Analysis" />
         <CrossRef href="/staff-costs" label="Staff Costs" />
+        <CrossRef href="/headcount" label="Headcount Register" />
       </div>
     </div>
   );
