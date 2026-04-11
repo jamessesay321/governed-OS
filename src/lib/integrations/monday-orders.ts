@@ -100,7 +100,7 @@ function findColumnText(
   pattern: RegExp
 ): string | null {
   for (const cv of columnValues) {
-    const title = cv.title ?? cv.column?.title ?? cv.id;
+    const title = cv.title ?? cv.id;
     if (pattern.test(title) && cv.text) {
       return cv.text;
     }
@@ -180,7 +180,7 @@ export function mapMondayItemToBridalOrder(
   // Build the raw column values map
   const columnValues: Record<string, string> = {};
   for (const col of cv) {
-    const title = col.title ?? col.column?.title ?? col.id;
+    const title = col.title ?? col.id;
     columnValues[title] = col.text ?? '';
   }
 

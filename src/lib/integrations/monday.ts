@@ -446,3 +446,48 @@ export async function syncMondayBoard(
   console.log(`[MONDAY] Synced ${total} items from "${boardName}"`);
   return { synced: total };
 }
+
+// ---------------------------------------------------------------------------
+// Compatibility Aliases (used by older API routes)
+// ---------------------------------------------------------------------------
+
+/** Alias for listBoards — used by legacy API routes */
+export const fetchBoards = listBoards;
+
+/**
+ * Cursor-compatible board items fetch.
+ * Legacy routes expect { items, cursor } return shape.
+ */
+export async function fetchBoardItems(
+  apiToken: string,
+  boardId: string,
+  _cursor?: string
+): Promise<{ items: MondayItem[]; cursor: string | null }> {
+  const { items } = await getBoardItems(apiToken, boardId);
+  return { items, cursor: null };
+}
+
+/**
+ * Map a Monday.com item to a generic Grove record.
+ * Used by the legacy sync route.
+ */
+export function mapItemToGroveRecord(
+  item: MondayItem,
+  boardName: string
+): Record<string, unknown> {
+  const cols: Record<string, string> = {};
+  for (const cv of item.column_values) {
+    cols[cv.title] = cv.text ?? '';
+  }
+  return {
+    sourceId: `monday_${item.id}`,
+    source: 'monday',
+    boardName,
+    name: item.name,
+    group: item.group?.title ?? 'Ungrouped',
+    status: item.state,
+    columns: cols,
+    createdAt: item.created_at,
+    updatedAt: item.updated_at,
+  };
+}
