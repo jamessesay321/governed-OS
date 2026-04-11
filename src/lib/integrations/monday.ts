@@ -1,56 +1,16 @@
 /**
- * Monday.com API Client
+ * Monday.com Integration
  *
- * Interacts with Monday.com's GraphQL API (v2) to fetch boards,
- * items, updates, and search results. Maps board items to Grove
- * client/invoice format for ERP integration.
+ * GraphQL API client for reading boards, items, and column values.
+ * Uses API token authentication (Personal or OAuth).
  */
+
+import { createUntypedServiceClient } from '@/lib/supabase/server';
+import { updateLastSync } from './framework';
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export interface MondayColumn {
-  id: string;
-  title: string;
-  type: string;
-  settings_str?: string;
-}
-
-export interface MondayColumnValue {
-  id: string;
-  type: string;
-  text: string;
-  value: string | null;
-  column?: {
-    title: string;
-  };
-  /** Derived title from column.title */
-  title?: string;
-}
-
-export interface MondayUpdate {
-  id: string;
-  body: string;
-  created_at: string;
-  creator: {
-    id: string;
-    name: string;
-  };
-}
-
-export interface MondayItem {
-  id: string;
-  name: string;
-  state: string;
-  created_at: string;
-  updated_at: string;
-  group: {
-    id: string;
-    title: string;
-  };
-  column_values: MondayColumnValue[];
-}
 
 export interface MondayBoard {
   id: string;
@@ -59,357 +19,430 @@ export interface MondayBoard {
   state: string;
   board_kind: string;
   columns: MondayColumn[];
+  groups: MondayGroup[];
   items_count: number;
 }
 
-export interface MondayBoardWithItems extends MondayBoard {
-  items_page: {
-    cursor: string | null;
-    items: MondayItem[];
-  };
+export interface MondayColumn {
+  id: string;
+  title: string;
+  type: string;
+  settings_str: string;
 }
 
-/** Mapped Grove record from a Monday.com item */
-export interface GroveMappedRecord {
-  sourceId: string;
-  sourceName: string;
-  sourceBoard: string;
-  group: string;
-  status: string | null;
-  date: string | null;
-  amount: number | null;
-  client: string | null;
-  description: string | null;
-  columnValues: Record<string, string>;
-  updatedAt: string;
+export interface MondayGroup {
+  id: string;
+  title: string;
+  color: string;
+}
+
+export interface MondayItem {
+  id: string;
+  name: string;
+  state: string;
+  group: { id: string; title: string };
+  column_values: MondayColumnValue[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MondayColumnValue {
+  id: string;
+  title: string;
+  type: string;
+  text: string;
+  value: string | null;
+}
+
+export interface MondayBrideSummary {
+  name: string;
+  status: string;
+  dressPrice: number | null;
+  depositPaid: number | null;
+  balanceOwed: number | null;
+  weddingDate: string | null;
+  consultationDate: string | null;
+  dressType: string | null;
+  notes: string | null;
+  itemId: string;
+  rawColumns: Record<string, string>;
 }
 
 // ---------------------------------------------------------------------------
-// API Client
+// GraphQL Client
 // ---------------------------------------------------------------------------
 
 const MONDAY_API_URL = 'https://api.monday.com/v2';
 
-/**
- * Execute a GraphQL query against the Monday.com API.
- */
-async function mondayQuery<T = Record<string, unknown>>(
-  apiKey: string,
+async function mondayQuery<T>(
+  apiToken: string,
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
-  const res = await fetch(MONDAY_API_URL, {
+  const response = await fetch(MONDAY_API_URL, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: apiKey,
+      Authorization: apiToken,
     },
     body: JSON.stringify({ query, variables }),
   });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => 'Unknown error');
-    throw new Error(`Monday.com API error (${res.status}): ${text}`);
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Monday.com API error: ${response.status} ${text}`);
   }
 
-  const json = await res.json();
+  const json = await response.json();
 
-  if (json.errors && json.errors.length > 0) {
-    const msg = json.errors.map((e: { message: string }) => e.message).join('; ');
-    throw new Error(`Monday.com GraphQL error: ${msg}`);
+  if (json.errors?.length) {
+    throw new Error(
+      `Monday.com GraphQL error: ${json.errors.map((e: { message: string }) => e.message).join(', ')}`
+    );
   }
 
   return json.data as T;
 }
 
-/** Normalise column_values: lift column.title to top-level title */
-function normaliseItems(items: MondayItem[]): MondayItem[] {
-  return items.map((item) => ({
-    ...item,
-    column_values: (item.column_values ?? []).map((cv) => ({
-      ...cv,
-      title: cv.column?.title ?? cv.title ?? cv.id,
-    })),
-  }));
+// ---------------------------------------------------------------------------
+// Credential Management
+// ---------------------------------------------------------------------------
+
+export async function getMondayToken(orgId: string): Promise<string | null> {
+  const supabase = await createUntypedServiceClient();
+  const { data } = await supabase
+    .from('integration_connections')
+    .select('credentials')
+    .eq('org_id', orgId)
+    .eq('integration_id', 'monday')
+    .eq('status', 'active')
+    .single();
+
+  if (!data) return null;
+  const creds = data.credentials as { apiToken?: string };
+  return creds.apiToken ?? null;
 }
 
 // ---------------------------------------------------------------------------
-// Public Functions
+// Board Operations
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch all boards for the authenticated account.
+ * List all boards accessible to the token.
  */
-export async function fetchBoards(
-  apiKey: string
-): Promise<MondayBoard[]> {
-  const query = `
-    query {
-      boards(limit: 50) {
+export async function listBoards(apiToken: string): Promise<MondayBoard[]> {
+  const data = await mondayQuery<{ boards: MondayBoard[] }>(
+    apiToken,
+    `query {
+      boards(limit: 100) {
         id
         name
         description
         state
         board_kind
         items_count
-        columns {
-          id
-          title
-          type
-          settings_str
-        }
+        columns { id title type settings_str }
+        groups { id title color }
       }
-    }
-  `;
-
-  const data = await mondayQuery<{ boards: MondayBoard[] }>(apiKey, query);
-  return data.boards ?? [];
+    }`
+  );
+  return data.boards;
 }
 
 /**
- * Fetch items for a specific board (paginated, first 100).
+ * Get items from a specific board with all column values.
  */
-export async function fetchBoardItems(
-  apiKey: string,
+export async function getBoardItems(
+  apiToken: string,
   boardId: string,
-  cursor?: string
-): Promise<{ items: MondayItem[]; cursor: string | null }> {
-  const query = cursor
-    ? `
-      query ($cursor: String!) {
-        next_items_page(limit: 100, cursor: $cursor) {
-          cursor
+  limit = 500
+): Promise<{ board: MondayBoard; items: MondayItem[] }> {
+  const data = await mondayQuery<{
+    boards: Array<
+      MondayBoard & { items_page: { items: MondayItem[] } }
+    >;
+  }>(
+    apiToken,
+    `query ($boardId: [ID!]!, $limit: Int!) {
+      boards(ids: $boardId) {
+        id
+        name
+        description
+        state
+        board_kind
+        items_count
+        columns { id title type settings_str }
+        groups { id title color }
+        items_page(limit: $limit) {
           items {
             id
             name
             state
+            group { id title }
+            column_values { id title type text value }
             created_at
             updated_at
-            group {
-              id
-              title
-            }
-            column_values {
-              id
-              type
-              text
-              value
-              column {
-                title
-              }
-            }
           }
         }
       }
-    `
-    : `
-      query ($boardId: [ID!]!) {
-        boards(ids: $boardId) {
-          items_page(limit: 100) {
-            cursor
-            items {
-              id
-              name
-              state
-              created_at
-              updated_at
-              group {
-                id
-                title
-              }
-              column_values {
-                id
-                type
-                text
-                value
-                column {
-                  title
-                }
-              }
-            }
-          }
-        }
-      }
-    `;
+    }`,
+    { boardId: [boardId], limit }
+  );
 
-  if (cursor) {
-    const data = await mondayQuery<{
-      next_items_page: { cursor: string | null; items: MondayItem[] };
-    }>(apiKey, query, { cursor });
-    return {
-      items: normaliseItems(data.next_items_page?.items ?? []),
-      cursor: data.next_items_page?.cursor ?? null,
-    };
-  }
-
-  const data = await mondayQuery<{
-    boards: Array<{
-      items_page: { cursor: string | null; items: MondayItem[] };
-    }>;
-  }>(apiKey, query, { boardId: [boardId] });
-
-  const board = data.boards?.[0];
+  const board = data.boards[0];
   return {
-    items: normaliseItems(board?.items_page?.items ?? []),
-    cursor: board?.items_page?.cursor ?? null,
+    board,
+    items: board.items_page.items,
   };
 }
 
 /**
- * Fetch updates (comments/activity) for a specific item.
+ * Search boards by name (case-insensitive partial match).
  */
-export async function fetchItemUpdates(
-  apiKey: string,
-  itemId: string
-): Promise<MondayUpdate[]> {
-  const query = `
-    query ($itemId: [ID!]!) {
-      items(ids: $itemId) {
-        updates(limit: 25) {
-          id
-          body
-          created_at
-          creator {
-            id
-            name
-          }
-        }
-      }
-    }
-  `;
-
-  const data = await mondayQuery<{
-    items: Array<{ updates: MondayUpdate[] }>;
-  }>(apiKey, query, { itemId: [itemId] });
-
-  return data.items?.[0]?.updates ?? [];
+export async function findBoard(
+  apiToken: string,
+  nameQuery: string
+): Promise<MondayBoard | null> {
+  const boards = await listBoards(apiToken);
+  const lower = nameQuery.toLowerCase();
+  return (
+    boards.find((b) => b.name.toLowerCase().includes(lower)) ?? null
+  );
 }
 
+// ---------------------------------------------------------------------------
+// Bride / Client Data Extraction
+// ---------------------------------------------------------------------------
+
 /**
- * Search items across all boards by keyword.
+ * Parse items from a "confirmed clients" board into bride summaries.
+ * Attempts to auto-detect column meanings by title keywords.
  */
-export async function searchItems(
-  apiKey: string,
-  queryText: string
-): Promise<MondayItem[]> {
-  const query = `
-    query ($queryText: String!) {
-      items_page_by_column_values(
-        limit: 50,
-        board_id: 0,
-        columns: [{ column_id: "name", column_values: [$queryText] }]
+export function parseBrideData(items: MondayItem[]): MondayBrideSummary[] {
+  return items.map((item) => {
+    const cols: Record<string, string> = {};
+    let status = '';
+    let dressPrice: number | null = null;
+    let depositPaid: number | null = null;
+    let balanceOwed: number | null = null;
+    let weddingDate: string | null = null;
+    let consultationDate: string | null = null;
+    let dressType: string | null = null;
+    let notes: string | null = null;
+
+    for (const cv of item.column_values) {
+      const titleLower = cv.title.toLowerCase();
+      const text = cv.text?.trim() || '';
+      cols[cv.title] = text;
+
+      // Auto-detect column meanings
+      if (titleLower.includes('status') && !status) {
+        status = text;
+      }
+      if (
+        titleLower.includes('price') ||
+        titleLower.includes('total') ||
+        titleLower.includes('amount') ||
+        titleLower.includes('cost')
       ) {
-        items {
-          id
-          name
-          state
-          created_at
-          updated_at
-          group {
-            id
-            title
-          }
-          column_values {
-            id
-            type
-            text
-            value
-            column {
-              title
-            }
-          }
+        const num = parseFloat(text.replace(/[£$,]/g, ''));
+        if (!isNaN(num)) {
+          if (titleLower.includes('deposit')) depositPaid = num;
+          else if (titleLower.includes('balance') || titleLower.includes('owed'))
+            balanceOwed = num;
+          else dressPrice = num;
         }
       }
+      if (titleLower.includes('wedding') && titleLower.includes('date')) {
+        weddingDate = text || null;
+      }
+      if (
+        titleLower.includes('consultation') ||
+        titleLower.includes('appointment')
+      ) {
+        consultationDate = text || null;
+      }
+      if (
+        titleLower.includes('dress') &&
+        (titleLower.includes('type') || titleLower.includes('style'))
+      ) {
+        dressType = text || null;
+      }
+      if (titleLower.includes('note')) {
+        notes = text || null;
+      }
     }
-  `;
 
-  // Note: board_id: 0 searches all boards, but this endpoint requires
-  // a specific board. As a fallback, use a simpler text search approach.
-  // Monday.com v2 does not have a universal text search, so we use
-  // a boards + items query with filtering client-side.
-
-  const boards = await fetchBoards(apiKey);
-  const allItems: MondayItem[] = [];
-  const lowerQuery = queryText.toLowerCase();
-
-  // Search across first 10 boards for performance
-  for (const board of boards.slice(0, 10)) {
-    const { items } = await fetchBoardItems(apiKey, board.id);
-    const matching = items.filter(
-      (item) =>
-        item.name.toLowerCase().includes(lowerQuery) ||
-        item.column_values.some((cv) =>
-          cv.text?.toLowerCase().includes(lowerQuery)
-        )
-    );
-    allItems.push(...matching);
-  }
-
-  return allItems;
+    return {
+      name: item.name,
+      status: status || item.group.title,
+      dressPrice,
+      depositPaid,
+      balanceOwed,
+      weddingDate,
+      consultationDate,
+      dressType,
+      notes,
+      itemId: item.id,
+      rawColumns: cols,
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------
-// Mapping helpers
+// Finance Request Extraction
+// ---------------------------------------------------------------------------
+
+export interface MondayFinanceRequest {
+  name: string;
+  amount: number | null;
+  category: string | null;
+  status: string;
+  requestDate: string | null;
+  approvedBy: string | null;
+  supplier: string | null;
+  description: string | null;
+  itemId: string;
+  group: string;
+  rawColumns: Record<string, string>;
+}
+
+/**
+ * Parse items from a finance request board.
+ */
+export function parseFinanceRequests(
+  items: MondayItem[]
+): MondayFinanceRequest[] {
+  return items.map((item) => {
+    const cols: Record<string, string> = {};
+    let amount: number | null = null;
+    let category: string | null = null;
+    let status = '';
+    let requestDate: string | null = null;
+    let approvedBy: string | null = null;
+    let supplier: string | null = null;
+    let description: string | null = null;
+
+    for (const cv of item.column_values) {
+      const titleLower = cv.title.toLowerCase();
+      const text = cv.text?.trim() || '';
+      cols[cv.title] = text;
+
+      if (
+        titleLower.includes('amount') ||
+        titleLower.includes('cost') ||
+        titleLower.includes('price') ||
+        titleLower.includes('budget')
+      ) {
+        const num = parseFloat(text.replace(/[£$,]/g, ''));
+        if (!isNaN(num)) amount = num;
+      }
+      if (titleLower.includes('category') || titleLower.includes('type')) {
+        category = text || null;
+      }
+      if (titleLower.includes('status')) {
+        status = text;
+      }
+      if (titleLower.includes('date')) {
+        requestDate = text || null;
+      }
+      if (titleLower.includes('approved') || titleLower.includes('approver')) {
+        approvedBy = text || null;
+      }
+      if (
+        titleLower.includes('supplier') ||
+        titleLower.includes('vendor') ||
+        titleLower.includes('payee')
+      ) {
+        supplier = text || null;
+      }
+      if (
+        titleLower.includes('description') ||
+        titleLower.includes('detail') ||
+        titleLower.includes('note')
+      ) {
+        description = text || null;
+      }
+    }
+
+    return {
+      name: item.name,
+      amount,
+      category,
+      status: status || item.group.title,
+      requestDate,
+      approvedBy,
+      supplier,
+      description,
+      itemId: item.id,
+      group: item.group.title,
+      rawColumns: cols,
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Sync & Staging
 // ---------------------------------------------------------------------------
 
 /**
- * Map a Monday.com item to a Grove-compatible record.
- * Attempts to extract common fields like status, date, amount, and client
- * from column values based on column type.
+ * Sync a Monday.com board's items into staged_transactions.
  */
-export function mapItemToGroveRecord(
-  item: MondayItem,
+export async function syncMondayBoard(
+  orgId: string,
+  apiToken: string,
+  boardId: string,
   boardName: string
-): GroveMappedRecord {
-  let status: string | null = null;
-  let date: string | null = null;
-  let amount: number | null = null;
-  let client: string | null = null;
-  let description: string | null = null;
-  const columnValues: Record<string, string> = {};
+): Promise<{ synced: number }> {
+  console.log(
+    `[MONDAY] Syncing board "${boardName}" (${boardId}) for org ${orgId}`
+  );
 
-  for (const cv of item.column_values) {
-    columnValues[cv.title ?? cv.id] = cv.text ?? '';
+  const { items } = await getBoardItems(apiToken, boardId);
+  const supabase = await createUntypedServiceClient();
 
-    // Heuristic mapping based on column type
-    switch (cv.type) {
-      case 'color': // Status column
-        if (!status && cv.text) status = cv.text;
-        break;
-      case 'date':
-        if (!date && cv.text) date = cv.text;
-        break;
-      case 'numeric':
-        if (amount === null && cv.text) {
-          const parsed = parseFloat(cv.text.replace(/[^0-9.-]/g, ''));
-          if (!isNaN(parsed)) amount = parsed;
-        }
-        break;
-      case 'text':
-        // Try to identify client/description columns by title
-        if (!client && cv.title && /client|customer|company/i.test(cv.title) && cv.text) {
-          client = cv.text;
-        } else if (!description && cv.title && /desc|note|detail/i.test(cv.title) && cv.text) {
-          description = cv.text;
-        }
-        break;
-      case 'long_text':
-        if (!description && cv.text) description = cv.text;
-        break;
+  const rows = items.map((item) => ({
+    org_id: orgId,
+    source: 'monday',
+    source_id: `monday_item_${boardId}_${item.id}`,
+    status: 'pending',
+    raw_data: {
+      board_id: boardId,
+      board_name: boardName,
+      item_id: item.id,
+      name: item.name,
+      group: item.group,
+      column_values: item.column_values.map((cv) => ({
+        id: cv.id,
+        title: cv.title,
+        type: cv.type,
+        text: cv.text,
+      })),
+      created_at: item.created_at,
+      updated_at: item.updated_at,
+    },
+    confidence_score: 0,
+  }));
+
+  // Upsert in batches
+  const batchSize = 50;
+  let total = 0;
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const { error } = await supabase
+      .from('staged_transactions')
+      .upsert(batch, { onConflict: 'org_id,source,source_id' });
+
+    if (error) {
+      console.warn(
+        `[MONDAY] Batch insert error: ${error.message}`
+      );
+    } else {
+      total += batch.length;
     }
   }
 
-  return {
-    sourceId: item.id,
-    sourceName: item.name,
-    sourceBoard: boardName,
-    group: item.group?.title ?? 'Ungrouped',
-    status,
-    date,
-    amount,
-    client,
-    description,
-    columnValues,
-    updatedAt: item.updated_at,
-  };
+  await updateLastSync(orgId, 'monday');
+  console.log(`[MONDAY] Synced ${total} items from "${boardName}"`);
+  return { synced: total };
 }
