@@ -53,6 +53,8 @@ export default async function UnitEconomicsPage() {
     period: string;
     summary: ReturnType<typeof calculateFashionUnitEconomics>;
     shopifyProducts: ShopifyProductData[];
+    rawTotalRevenue: number;
+    rawTotalCOGS: number;
   }> = [];
 
   for (const period of sortedPeriods) {
@@ -153,7 +155,13 @@ export default async function UnitEconomicsPage() {
       period
     );
 
-    periodSummaries.push({ period, summary, shopifyProducts });
+    periodSummaries.push({
+      period,
+      summary,
+      shopifyProducts,
+      rawTotalRevenue: pnl.revenue,
+      rawTotalCOGS: pnl.costOfSales,
+    });
   }
 
   /* ── Fetch last sync time ── */
@@ -173,10 +181,11 @@ export default async function UnitEconomicsPage() {
         period: ps.period,
         summary: {
           ...ps.summary,
-          // Strip Set objects for JSON serialisation
           costBreakdown: ps.summary.costBreakdown,
         },
         shopifyProductCount: ps.shopifyProducts.length,
+        rawTotalRevenue: ps.rawTotalRevenue,
+        rawTotalCOGS: ps.rawTotalCOGS,
       }))}
       availablePeriods={sortedPeriods}
       lastSync={{ completedAt: syncLog?.completed_at ?? null }}

@@ -5,11 +5,10 @@
  * economics by cross-referencing Shopify order data with Xero
  * cost accounts.
  *
- * This is the module that turns a generic P&L into fashion-specific
- * intelligence: "What does it cost to produce and sell one bridal
- * piece? Is it more profitable to produce in the UK or outsource?"
- *
  * DETERMINISTIC — all calculations are pure functions, no AI.
+ *
+ * v2: Added data quality alerts, sanity checks, upper bounds,
+ *     overridable assumptions, and Xero type-aware classification.
  *
  * Key metrics:
  * 1. Per-bride economics (revenue, COGS, gross margin per bride)
@@ -41,6 +40,8 @@ export interface CostAccount {
   accountCode: string;
   amount: number;
   costCategory: FashionCostCategory;
+  /** Whether this was classified by regex or by Xero class fallback */
+  classifiedBy: 'regex' | 'xero_class' | 'override';
 }
 
 export type FashionCostCategory =
@@ -61,9 +62,63 @@ export type FashionCostCategory =
   | 'other_overhead'
   | 'interest_finance';
 
+// ─── Data Quality ──────────────────────────────────────────
+
+export type AlertActionType =
+  | 'input_number'      // User types a number (bride count, avg order value)
+  | 'reclassify'        // Show account reclassification UI
+  | 'review_accounts'   // Navigate to account review
+  | 'acknowledge';      // User confirms they've seen it
+
+export interface DataQualityAlert {
+  id: string;
+  severity: 'critical' | 'warning' | 'info';
+  title: string;
+  message: string;
+  actionType: AlertActionType;
+  actionLabel: string;
+  /** For input_number: which assumption key to override */
+  assumptionKey?: keyof UnitEconomicsOverrides;
+  /** For reclassify: which accounts need review */
+  accountIds?: string[];
+}
+
+// ─── Overrides ─────────────────────────────────────────────
+
+export interface UnitEconomicsOverrides {
+  /** User-provided bride count for the period */
+  brideCount?: number;
+  /** Average bridal order value (used for sanity check) */
+  avgBridalOrderValue?: number;
+  /** Production rent allocation % (default 60%) */
+  productionRentPct?: number;
+  /** Account category overrides: accountId → category */
+  accountOverrides?: Record<string, FashionCostCategory>;
+}
+
+export const DEFAULT_OVERRIDES: Required<Omit<UnitEconomicsOverrides, 'accountOverrides'>> = {
+  brideCount: 0,    // 0 = auto-detect from Shopify
+  avgBridalOrderValue: 5000,
+  productionRentPct: 60,
+};
+
+// ─── Industry Benchmarks (for sanity checks) ──────────────
+
+const BENCHMARKS = {
+  revenuePerBride: { min: 1500, max: 25000, label: '£1,500-£25,000' },
+  grossMarginPct: { min: 35, max: 80, label: '35-80%' },
+  cogsPctOfRevenue: { min: 20, max: 65, label: '20-65% of revenue' },
+  collectionCostPct: { min: 3, max: 20, label: '3-20% of revenue' },
+  fabricPerDress: { min: 30, max: 500, label: '£30-£500/dress' },
+} as const;
+
+// ─── Existing types (unchanged) ────────────────────────────
+
 export interface PerBrideEconomics {
   period: string;
   brideCount: number;
+  /** Whether bride count was auto-detected or user-provided */
+  brideCountSource: 'shopify' | 'estimated' | 'user_override';
   totalBridalRevenue: number;
   revenuePerBride: number;
   totalDirectCosts: number;
@@ -71,67 +126,44 @@ export interface PerBrideEconomics {
   grossMarginPerBride: number;
   grossMarginPct: number;
   avgItemsPerBride: number;
-  /** Consultation income as separate stream */
   consultationRevenue: number;
   consultationRevenuePerBride: number;
 }
 
 export interface ProductionEconomics {
   period: string;
-  /** Total production staff costs (seamstress, pattern cutter wages + NIC + pension) */
   totalProductionStaffCost: number;
-  /** Estimated garments produced this month */
   estimatedGarments: number;
-  /** UK production cost per garment (staff + rent allocation) */
   ukCostPerGarment: number;
-  /** Just the labour component */
   labourCostPerGarment: number;
-  /** Rent/premises allocation to production */
   premisesAllocationPerGarment: number;
-  /** Fabric cost per garment */
   fabricCostPerGarment: number;
-  /** Total fully-loaded cost per garment (materials + labour + premises) */
   fullyLoadedCostPerGarment: number;
-  /** Employee details */
   productionStaffAccounts: { name: string; amount: number }[];
 }
 
 export interface CollectionEconomics {
   period: string;
-  /** Photoshoot costs this period */
   photoshootCost: number;
-  /** Marketing/advertising spend */
   marketingCost: number;
-  /** Design staff costs */
   designStaffCost: number;
-  /** Total collection development cost */
   totalCollectionCost: number;
-  /** Revenue in the period */
   revenue: number;
-  /** Collection cost as % of revenue */
   collectionCostPct: number;
-  /** ROI: (Revenue - Collection Cost) / Collection Cost */
   collectionROI: number;
 }
 
 export interface TrunkShowEconomics {
   period: string;
-  /** Trunk show food/drink costs */
   foodDrinkCost: number;
-  /** Travel costs (assumed partially trunk show) */
   travelCost: number;
-  /** Accommodation (assumed partially trunk show) */
   accommodationCost: number;
-  /** Total trunk show investment */
   totalTrunkShowCost: number;
-  /** Revenue in the period (assumes trunk shows drive some revenue) */
   periodRevenue: number;
 }
 
 export interface ChannelEconomics {
-  /** Online (Shopify) revenue and estimated costs */
   online: { revenue: number; merchantFees: number; shippingCost: number; netMargin: number; marginPct: number };
-  /** Consultation / in-person revenue */
   consultation: { revenue: number; premisesCost: number; staffCost: number; netMargin: number; marginPct: number };
 }
 
@@ -142,10 +174,14 @@ export interface FashionUnitEconomicsSummary {
   collection: CollectionEconomics;
   trunkShow: TrunkShowEconomics;
   channel: ChannelEconomics;
-  /** All cost accounts classified */
   costBreakdown: CostAccount[];
-  /** Key KPIs for dashboard cards */
   kpis: FashionKPI[];
+  /** Data quality alerts requiring user attention */
+  alerts: DataQualityAlert[];
+  /** Accounts that fell to 'other_overhead' — candidates for reclassification */
+  unclassifiedAccounts: CostAccount[];
+  /** Applied overrides */
+  overrides: UnitEconomicsOverrides;
 }
 
 export interface FashionKPI {
@@ -157,7 +193,7 @@ export interface FashionKPI {
   trend?: 'up' | 'down' | 'flat';
   trendValue?: number;
   benchmark?: string;
-  severity?: 'good' | 'warning' | 'critical';
+  severity?: 'good' | 'warning' | 'critical' | 'needs_verification';
 }
 
 // ─── Cost Classification ────────────────────────────────────
@@ -165,25 +201,35 @@ export interface FashionKPI {
 const FASHION_COST_PATTERNS: { pattern: RegExp; category: FashionCostCategory }[] = [
   // Materials
   { pattern: /^fabric$/i, category: 'fabric' },
-  { pattern: /fabric.*purchase/i, category: 'fabric' },
+  { pattern: /fabric/i, category: 'fabric' },
   { pattern: /embroidery/i, category: 'embroidery' },
+  { pattern: /^purchases$/i, category: 'fabric' },  // generic "Purchases" in COGS = materials
 
-  // Production staff
+  // Production staff — wide patterns to catch Xero naming variations
   { pattern: /bridal.*production.*salar/i, category: 'production_staff' },
   { pattern: /production.*salar/i, category: 'production_staff' },
   { pattern: /seamstress/i, category: 'production_staff' },
   { pattern: /pattern.*cut/i, category: 'production_staff' },
   { pattern: /samples.*production/i, category: 'production_staff' },
   { pattern: /production.*manager/i, category: 'production_staff' },
+  { pattern: /production.*wage/i, category: 'production_staff' },
+  { pattern: /direct.*labour/i, category: 'production_staff' },
+  { pattern: /direct.*labor/i, category: 'production_staff' },
   // NIC and pension for production staff
   { pattern: /employer.*nic.*production/i, category: 'production_staff' },
   { pattern: /employer.*pension.*production/i, category: 'production_staff' },
+  { pattern: /nic.*production/i, category: 'production_staff' },
+  { pattern: /pension.*production/i, category: 'production_staff' },
 
   // Freelance/outsourced production
   { pattern: /freelance.*cogs/i, category: 'freelance_production' },
   { pattern: /freelance.*production/i, category: 'freelance_production' },
+  { pattern: /freelance.*work/i, category: 'freelance_production' },
   { pattern: /outsourc/i, category: 'freelance_production' },
   { pattern: /subcontract/i, category: 'freelance_production' },
+
+  // CoS sub-categories
+  { pattern: /cos\s*-/i, category: 'fabric' }, // "CoS - Accessories", "CoS - Robes" etc.
 
   // Shipping
   { pattern: /courier/i, category: 'shipping_delivery' },
@@ -196,6 +242,7 @@ const FASHION_COST_PATTERNS: { pattern: RegExp; category: FashionCostCategory }[
   { pattern: /shopify.*fee/i, category: 'merchant_fees' },
   { pattern: /stripe/i, category: 'merchant_fees' },
   { pattern: /payment.*fee/i, category: 'merchant_fees' },
+  { pattern: /credit.*card.*fee/i, category: 'merchant_fees' },
 
   // Photoshoot & campaign
   { pattern: /photoshoot/i, category: 'photoshoot' },
@@ -218,21 +265,25 @@ const FASHION_COST_PATTERNS: { pattern: RegExp; category: FashionCostCategory }[
   { pattern: /studio.*expense/i, category: 'rent_premises' },
   { pattern: /rates$/i, category: 'rent_premises' },
   { pattern: /cleaning/i, category: 'rent_premises' },
+  { pattern: /insurance/i, category: 'rent_premises' },
 
   // Design staff
   { pattern: /design.*salar/i, category: 'design_staff' },
   { pattern: /creative.*director/i, category: 'design_staff' },
+  { pattern: /product.*dev/i, category: 'design_staff' },
 
   // Admin staff
   { pattern: /director.*remuneration/i, category: 'admin_staff' },
   { pattern: /wages.*salar/i, category: 'admin_staff' },
   { pattern: /employer.*nic$/i, category: 'admin_staff' },
   { pattern: /employer.*pension$/i, category: 'admin_staff' },
+  { pattern: /staff.*training/i, category: 'admin_staff' },
 
   // Professional fees
   { pattern: /accountancy/i, category: 'professional_fees' },
   { pattern: /legal/i, category: 'professional_fees' },
   { pattern: /professional.*fee/i, category: 'professional_fees' },
+  { pattern: /consultancy/i, category: 'professional_fees' },
 
   // Software
   { pattern: /subscription/i, category: 'software_subscriptions' },
@@ -242,18 +293,42 @@ const FASHION_COST_PATTERNS: { pattern: RegExp; category: FashionCostCategory }[
   { pattern: /interest/i, category: 'interest_finance' },
   { pattern: /bank.*charge/i, category: 'interest_finance' },
   { pattern: /bbl/i, category: 'interest_finance' },
+  { pattern: /finance.*charge/i, category: 'interest_finance' },
 ];
 
 /**
  * Classify a cost account into a fashion-specific category.
+ * Uses regex first, then falls back to Xero class/type if no match.
+ *
+ * Key insight: In Xero, accounts with type=DIRECTCOSTS may have class=EXPENSE.
+ * Salary/wage accounts under DIRECTCOSTS are almost certainly production staff.
  */
-export function classifyFashionCost(accountName: string): FashionCostCategory {
+export function classifyFashionCost(
+  accountName: string,
+  xeroClass?: string,
+  xeroType?: string
+): { category: FashionCostCategory; classifiedBy: 'regex' | 'xero_class' } {
+  // Try regex patterns first
   for (const { pattern, category } of FASHION_COST_PATTERNS) {
     if (pattern.test(accountName)) {
-      return category;
+      return { category, classifiedBy: 'regex' };
     }
   }
-  return 'other_overhead';
+
+  // Fallback: use Xero class/type to infer category
+  const typeUpper = (xeroType ?? '').toUpperCase();
+  const classUpper = (xeroClass ?? '').toUpperCase();
+
+  // DIRECTCOSTS salary/wages accounts = production staff
+  if (typeUpper === 'DIRECTCOSTS' || classUpper === 'DIRECTCOSTS') {
+    if (/salar|wages|nic|pension|employer/i.test(accountName)) {
+      return { category: 'production_staff', classifiedBy: 'xero_class' };
+    }
+    // Other DIRECTCOSTS are likely materials/fabric
+    return { category: 'fabric', classifiedBy: 'xero_class' };
+  }
+
+  return { category: 'other_overhead', classifiedBy: 'xero_class' };
 }
 
 // ─── Cost Labels ────────────────────────────────────────────
@@ -277,6 +352,126 @@ export const FASHION_COST_LABELS: Record<FashionCostCategory, string> = {
   interest_finance: 'Interest & Finance',
 };
 
+// ─── Sanity Checks ─────────────────────────────────────────
+
+function buildAlerts(
+  perBride: PerBrideEconomics,
+  production: ProductionEconomics,
+  costBreakdown: CostAccount[],
+  totalRevenue: number,
+  totalCOGS: number,
+  shopifyProducts: ShopifyProductData[],
+): DataQualityAlert[] {
+  const alerts: DataQualityAlert[] = [];
+
+  // 1. Bride count looks wrong
+  if (perBride.brideCountSource === 'estimated') {
+    alerts.push({
+      id: 'bride_count_estimated',
+      severity: 'critical',
+      title: 'Bride count is estimated',
+      message: `We couldn't match bridal products from Shopify, so bride count (${perBride.brideCount}) is a rough estimate. This makes per-bride metrics unreliable.`,
+      actionType: 'input_number',
+      actionLabel: 'Enter actual bride count',
+      assumptionKey: 'brideCount',
+    });
+  }
+
+  // 2. Revenue per bride exceeds upper bound
+  if (perBride.revenuePerBride > BENCHMARKS.revenuePerBride.max) {
+    alerts.push({
+      id: 'revenue_per_bride_high',
+      severity: 'warning',
+      title: 'Revenue per bride seems too high',
+      message: `£${Math.round(perBride.revenuePerBride).toLocaleString()} per bride is above the typical bridal range (${BENCHMARKS.revenuePerBride.label}). This usually means the bride count is too low or non-bridal revenue is included.`,
+      actionType: 'input_number',
+      actionLabel: 'Correct bride count',
+      assumptionKey: 'brideCount',
+    });
+  }
+
+  // 3. Gross margin unrealistically high
+  if (perBride.grossMarginPct > BENCHMARKS.grossMarginPct.max) {
+    alerts.push({
+      id: 'margin_too_high',
+      severity: 'critical',
+      title: 'Gross margin is unrealistically high',
+      message: `${perBride.grossMarginPct.toFixed(1)}% gross margin suggests direct costs are incomplete. Fashion businesses typically see ${BENCHMARKS.grossMarginPct.label} margins. Check that production staff salaries, fabric, and embroidery are classified under Cost of Sales.`,
+      actionType: 'review_accounts',
+      actionLabel: 'Review cost classification',
+    });
+  }
+
+  // 4. COGS suspiciously low relative to revenue
+  const cogsPct = totalRevenue > 0 ? (Math.abs(totalCOGS) / totalRevenue) * 100 : 0;
+  if (totalRevenue > 0 && cogsPct < BENCHMARKS.cogsPctOfRevenue.min) {
+    alerts.push({
+      id: 'cogs_too_low',
+      severity: 'warning',
+      title: 'Cost of Sales looks too low',
+      message: `COGS is only ${cogsPct.toFixed(1)}% of revenue (expected ${BENCHMARKS.cogsPctOfRevenue.label}). Staff salaries or material costs may be misclassified as operating expenses rather than direct costs in Xero.`,
+      actionType: 'review_accounts',
+      actionLabel: 'Review account classification',
+    });
+  }
+
+  // 5. Production staff cost = 0 when it shouldn't be
+  if (production.totalProductionStaffCost === 0 && totalRevenue > 1000) {
+    const potentialStaffAccounts = costBreakdown.filter(
+      (c) => c.costCategory === 'admin_staff' || c.costCategory === 'other_overhead'
+    ).filter(
+      (c) => /salar|wages|employer|nic|pension/i.test(c.accountName)
+    );
+
+    alerts.push({
+      id: 'no_production_staff',
+      severity: 'critical',
+      title: 'No production staff costs detected',
+      message: `Production staff cost is £0, but a fashion business with revenue needs seamstresses, pattern cutters, and production managers. ${potentialStaffAccounts.length > 0 ? `Found ${potentialStaffAccounts.length} salary account(s) that may be production staff.` : 'Check that production salary accounts exist in Xero.'}`,
+      actionType: 'reclassify',
+      actionLabel: potentialStaffAccounts.length > 0
+        ? `Review ${potentialStaffAccounts.length} salary account(s)`
+        : 'Review cost accounts',
+      accountIds: potentialStaffAccounts.map((a) => a.accountId),
+    });
+  }
+
+  // 6. No Shopify products found
+  if (shopifyProducts.length === 0 && totalRevenue > 0) {
+    alerts.push({
+      id: 'no_shopify_products',
+      severity: 'info',
+      title: 'No Shopify order data for this period',
+      message: 'Product-level revenue breakdown and bride count are unavailable. Connect Shopify and sync orders to enable per-bride and per-product analytics.',
+      actionType: 'acknowledge',
+      actionLabel: 'Understood',
+    });
+  }
+
+  // 7. Large "other_overhead" bucket
+  const otherOverheadTotal = costBreakdown
+    .filter((c) => c.costCategory === 'other_overhead')
+    .reduce((sum, c) => sum + c.amount, 0);
+  const totalCosts = costBreakdown.reduce((sum, c) => sum + c.amount, 0);
+  const otherOverheadPct = totalCosts > 0 ? (otherOverheadTotal / totalCosts) * 100 : 0;
+  if (otherOverheadPct > 15 && otherOverheadTotal > 500) {
+    const unclassifiedCount = costBreakdown.filter((c) => c.costCategory === 'other_overhead').length;
+    alerts.push({
+      id: 'large_other_overhead',
+      severity: 'warning',
+      title: `${unclassifiedCount} unclassified cost account(s)`,
+      message: `${otherOverheadPct.toFixed(0)}% of costs (£${Math.round(otherOverheadTotal).toLocaleString()}) fell into "Other Overheads". Reclassifying these improves accuracy.`,
+      actionType: 'reclassify',
+      actionLabel: `Classify ${unclassifiedCount} account(s)`,
+      accountIds: costBreakdown
+        .filter((c) => c.costCategory === 'other_overhead')
+        .map((c) => c.accountId),
+    });
+  }
+
+  return alerts;
+}
+
 // ─── Core Calculation ───────────────────────────────────────
 
 /**
@@ -288,6 +483,7 @@ export const FASHION_COST_LABELS: Record<FashionCostCategory, string> = {
  * @param totalRevenue - total revenue for the period
  * @param totalCOGS - total COGS for the period
  * @param period - YYYY-MM
+ * @param overrides - user-provided assumption overrides
  */
 export function calculateFashionUnitEconomics(
   financials: NormalisedFinancial[],
@@ -295,8 +491,11 @@ export function calculateFashionUnitEconomics(
   shopifyProducts: ShopifyProductData[],
   totalRevenue: number,
   totalCOGS: number,
-  period: string
+  period: string,
+  overrides: UnitEconomicsOverrides = {}
 ): FashionUnitEconomicsSummary {
+  const productionRentPct = overrides.productionRentPct ?? DEFAULT_OVERRIDES.productionRentPct;
+
   // Build account lookup
   const accountMap = new Map<string, ChartOfAccount>();
   for (const acc of accounts) {
@@ -312,10 +511,27 @@ export function calculateFashionUnitEconomics(
     if (!acc) continue;
 
     const classUpper = acc.class.toUpperCase();
-    // Only classify cost accounts (skip revenue, assets, liabilities)
-    if (!['EXPENSE', 'OVERHEADS', 'DIRECTCOSTS'].includes(classUpper)) continue;
+    const typeUpper = acc.type.toUpperCase();
 
-    const category = classifyFashionCost(acc.name);
+    // Include DIRECTCOSTS (type or class) + EXPENSE + OVERHEADS
+    const isCost = ['EXPENSE', 'OVERHEADS', 'DIRECTCOSTS'].includes(classUpper)
+      || typeUpper === 'DIRECTCOSTS';
+    if (!isCost) continue;
+
+    // Check for user override first
+    const userOverride = overrides.accountOverrides?.[acc.id];
+    let category: FashionCostCategory;
+    let classifiedBy: 'regex' | 'xero_class' | 'override';
+
+    if (userOverride) {
+      category = userOverride;
+      classifiedBy = 'override';
+    } else {
+      const result = classifyFashionCost(acc.name, acc.class, acc.type);
+      category = result.category;
+      classifiedBy = result.classifiedBy;
+    }
+
     const amount = Math.abs(Number(fin.amount));
 
     costBreakdown.push({
@@ -324,6 +540,7 @@ export function calculateFashionUnitEconomics(
       accountCode: acc.code,
       amount,
       costCategory: category,
+      classifiedBy,
     });
 
     costByCategory.set(category, (costByCategory.get(category) ?? 0) + amount);
@@ -335,14 +552,38 @@ export function calculateFashionUnitEconomics(
 
   // Identify bridal products from Shopify
   const bridalProducts = shopifyProducts.filter((p) =>
-    /bridal|bespoke|mto|made.*to.*order|wedding|gown|dress/i.test(p.title)
+    /bridal|bespoke|mto|made.*to.*order|wedding|gown|dress|evening.*wear|custom/i.test(p.title)
   );
   const bridalRevenue = bridalProducts.reduce((sum, p) => sum + p.revenue, 0);
   const bridalUnits = bridalProducts.reduce((sum, p) => sum + p.units, 0);
-  // Each bridal order ≈ 1 bride (may have multiple items like dress + veil)
-  const brideCount = bridalProducts.reduce((sum, p) => sum + p.orderCount, 0);
-  // If no bridal products identified, estimate from total orders
-  const effectiveBrideCount = brideCount > 0 ? brideCount : Math.max(1, Math.round(bridalUnits));
+  const shopifyBrideCount = bridalProducts.reduce((sum, p) => sum + p.orderCount, 0);
+
+  // Total orders as fallback
+  const totalShopifyOrders = shopifyProducts.reduce((sum, p) => sum + p.orderCount, 0);
+
+  // Determine bride count source and value
+  let effectiveBrideCount: number;
+  let brideCountSource: 'shopify' | 'estimated' | 'user_override';
+
+  if (overrides.brideCount && overrides.brideCount > 0) {
+    // User explicitly told us the bride count
+    effectiveBrideCount = overrides.brideCount;
+    brideCountSource = 'user_override';
+  } else if (shopifyBrideCount > 0) {
+    // Matched bridal products in Shopify
+    effectiveBrideCount = shopifyBrideCount;
+    brideCountSource = 'shopify';
+  } else if (totalShopifyOrders > 0) {
+    // No bridal products matched, but we have orders — estimate
+    // Use total orders as rough proxy (better than 1)
+    effectiveBrideCount = totalShopifyOrders;
+    brideCountSource = 'estimated';
+  } else {
+    // No Shopify data at all — estimate from revenue / avg order value
+    const avgOrderValue = overrides.avgBridalOrderValue ?? DEFAULT_OVERRIDES.avgBridalOrderValue;
+    effectiveBrideCount = totalRevenue > 0 ? Math.max(1, Math.round(totalRevenue / avgOrderValue)) : 0;
+    brideCountSource = 'estimated';
+  }
 
   // Consultation revenue
   const consultationProducts = shopifyProducts.filter((p) =>
@@ -350,26 +591,25 @@ export function calculateFashionUnitEconomics(
   );
   const consultationRevenue = consultationProducts.reduce((sum, p) => sum + p.revenue, 0);
 
-  // Direct costs attributable to production
-  const fabricCost = getCost('fabric');
-  const embroideryCost = getCost('embroidery');
-  const freelanceProductionCost = getCost('freelance_production');
-  const directMaterialsCost = fabricCost + embroideryCost + freelanceProductionCost;
-  // Use COGS as a more accurate direct cost if available
-  const effectiveDirectCost = totalCOGS > 0 ? Math.abs(totalCOGS) : directMaterialsCost;
+  // Direct costs: use actual COGS from P&L (includes all DIRECTCOSTS accounts)
+  const effectiveDirectCost = Math.abs(totalCOGS);
+
+  // Use bridal revenue if identified, otherwise total revenue
+  const effectiveBridalRevenue = bridalRevenue > 0 ? bridalRevenue : totalRevenue;
 
   const perBride: PerBrideEconomics = {
     period,
     brideCount: effectiveBrideCount,
-    totalBridalRevenue: bridalRevenue > 0 ? bridalRevenue : totalRevenue,
-    revenuePerBride: effectiveBrideCount > 0 ? (bridalRevenue > 0 ? bridalRevenue : totalRevenue) / effectiveBrideCount : 0,
+    brideCountSource,
+    totalBridalRevenue: effectiveBridalRevenue,
+    revenuePerBride: effectiveBrideCount > 0 ? effectiveBridalRevenue / effectiveBrideCount : 0,
     totalDirectCosts: effectiveDirectCost,
     directCostPerBride: effectiveBrideCount > 0 ? effectiveDirectCost / effectiveBrideCount : 0,
     grossMarginPerBride: effectiveBrideCount > 0
-      ? ((bridalRevenue > 0 ? bridalRevenue : totalRevenue) - effectiveDirectCost) / effectiveBrideCount
+      ? (effectiveBridalRevenue - effectiveDirectCost) / effectiveBrideCount
       : 0,
-    grossMarginPct: (bridalRevenue > 0 ? bridalRevenue : totalRevenue) > 0
-      ? (((bridalRevenue > 0 ? bridalRevenue : totalRevenue) - effectiveDirectCost) / (bridalRevenue > 0 ? bridalRevenue : totalRevenue)) * 100
+    grossMarginPct: effectiveBridalRevenue > 0
+      ? ((effectiveBridalRevenue - effectiveDirectCost) / effectiveBridalRevenue) * 100
       : 0,
     avgItemsPerBride: effectiveBrideCount > 0 ? bridalUnits / effectiveBrideCount : 0,
     consultationRevenue,
@@ -380,17 +620,18 @@ export function calculateFashionUnitEconomics(
 
   const productionStaffCost = getCost('production_staff');
   const rentCost = getCost('rent_premises');
-  // Estimate: 60% of rent is production space (studio/atelier), 40% is showroom/office
-  const productionRentAllocation = rentCost * 0.6;
+  const productionRentAllocation = rentCost * (productionRentPct / 100);
 
-  // Estimate garments produced: use total units from Shopify as proxy
   const totalUnitsProduced = shopifyProducts.reduce((sum, p) => sum + p.units, 0);
-  const estimatedGarments = Math.max(1, totalUnitsProduced);
+  const estimatedGarments = Math.max(1, totalUnitsProduced || effectiveBrideCount);
 
   const productionStaffAccounts = costBreakdown
     .filter((c) => c.costCategory === 'production_staff')
     .map((c) => ({ name: c.accountName, amount: c.amount }))
     .sort((a, b) => b.amount - a.amount);
+
+  const fabricCost = getCost('fabric');
+  const embroideryCost = getCost('embroidery');
 
   const production: ProductionEconomics = {
     period,
@@ -431,7 +672,6 @@ export function calculateFashionUnitEconomics(
   // ── Trunk Show Economics ─────────────────────────────
 
   const trunkShowCost = getCost('trunk_show');
-  // Travel and accommodation partially attributable to trunk shows
   const travelAccounts = costBreakdown.filter((c) => /travel|subsistence/i.test(c.accountName));
   const accommAccounts = costBreakdown.filter((c) => /accommodation/i.test(c.accountName));
   const travelCost = travelAccounts.reduce((sum, c) => sum + c.amount, 0);
@@ -451,15 +691,13 @@ export function calculateFashionUnitEconomics(
   const merchantFees = getCost('merchant_fees');
   const shippingCost = getCost('shipping_delivery');
 
-  // Online = Shopify revenue minus merchant fees and shipping
   const onlineRevenue = shopifyProducts
     .filter((p) => !/consultation|fitting/i.test(p.title))
     .reduce((sum, p) => sum + p.revenue, 0);
   const onlineNetMargin = onlineRevenue - merchantFees - shippingCost;
 
-  // Consultation = in-person / by-appointment revenue minus premises allocation
-  const consultationPremisesCost = rentCost * 0.4; // 40% of rent is showroom
-  const consultationStaffCost = getCost('admin_staff') * 0.3; // 30% of admin time on consultations
+  const consultationPremisesCost = rentCost * ((100 - productionRentPct) / 100);
+  const consultationStaffCost = getCost('admin_staff') * 0.3;
   const consultNetMargin = consultationRevenue - consultationPremisesCost - consultationStaffCost;
 
   const channel: ChannelEconomics = {
@@ -479,11 +717,33 @@ export function calculateFashionUnitEconomics(
     },
   };
 
+  // ── Data Quality Alerts ──────────────────────────────
+
+  const alerts = buildAlerts(perBride, production, costBreakdown, totalRevenue, totalCOGS, shopifyProducts);
+
+  // Unclassified accounts (fell to other_overhead via xero_class fallback)
+  const unclassifiedAccounts = costBreakdown.filter(
+    (c) => c.costCategory === 'other_overhead' && c.classifiedBy !== 'override'
+  );
+
   // ── KPI Cards ────────────────────────────────────────
 
   const formatGBP = (v: number) =>
     new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(v);
   const formatPct = (v: number) => `${v.toFixed(1)}%`;
+
+  // Severity with upper-bound checks
+  function kpiSeverity(
+    value: number,
+    goodRange: [number, number],
+  ): 'good' | 'warning' | 'critical' | 'needs_verification' {
+    const [min, max] = goodRange;
+    if (value >= min && value <= max) return 'good';
+    if (value > max * 1.5 || value < min * 0.3) return 'needs_verification';
+    if (value > max) return 'warning';
+    if (value < min) return 'critical';
+    return 'warning';
+  }
 
   const kpis: FashionKPI[] = [
     {
@@ -492,8 +752,10 @@ export function calculateFashionUnitEconomics(
       value: perBride.revenuePerBride,
       formattedValue: formatGBP(perBride.revenuePerBride),
       unit: 'GBP',
-      benchmark: 'Fashion avg: £2,000-£5,000',
-      severity: perBride.revenuePerBride > 2000 ? 'good' : perBride.revenuePerBride > 1000 ? 'warning' : 'critical',
+      benchmark: `Industry: ${BENCHMARKS.revenuePerBride.label}`,
+      severity: perBride.brideCountSource === 'estimated'
+        ? 'needs_verification'
+        : kpiSeverity(perBride.revenuePerBride, [BENCHMARKS.revenuePerBride.min, BENCHMARKS.revenuePerBride.max]),
     },
     {
       key: 'gross_margin_per_bride',
@@ -501,8 +763,8 @@ export function calculateFashionUnitEconomics(
       value: perBride.grossMarginPct,
       formattedValue: formatPct(perBride.grossMarginPct),
       unit: '%',
-      benchmark: 'Target: 60-75%',
-      severity: perBride.grossMarginPct > 60 ? 'good' : perBride.grossMarginPct > 40 ? 'warning' : 'critical',
+      benchmark: `Target: ${BENCHMARKS.grossMarginPct.label}`,
+      severity: kpiSeverity(perBride.grossMarginPct, [BENCHMARKS.grossMarginPct.min, BENCHMARKS.grossMarginPct.max]),
     },
     {
       key: 'bride_count',
@@ -510,6 +772,12 @@ export function calculateFashionUnitEconomics(
       value: perBride.brideCount,
       formattedValue: String(perBride.brideCount),
       unit: 'brides',
+      severity: perBride.brideCountSource === 'estimated' ? 'needs_verification' : undefined,
+      benchmark: perBride.brideCountSource === 'estimated'
+        ? 'Estimated — enter actual count below'
+        : perBride.brideCountSource === 'user_override'
+          ? 'User-provided'
+          : 'From Shopify orders',
     },
     {
       key: 'uk_cost_per_garment',
@@ -525,6 +793,12 @@ export function calculateFashionUnitEconomics(
       value: production.totalProductionStaffCost,
       formattedValue: formatGBP(production.totalProductionStaffCost),
       unit: 'GBP/month',
+      severity: production.totalProductionStaffCost === 0 && totalRevenue > 1000
+        ? 'needs_verification'
+        : undefined,
+      benchmark: production.totalProductionStaffCost === 0
+        ? 'Missing — review account classification'
+        : undefined,
     },
     {
       key: 'collection_cost_pct',
@@ -532,8 +806,8 @@ export function calculateFashionUnitEconomics(
       value: collection.collectionCostPct,
       formattedValue: formatPct(collection.collectionCostPct),
       unit: '%',
-      benchmark: 'Fashion norm: 8-15% of revenue',
-      severity: collection.collectionCostPct < 15 ? 'good' : collection.collectionCostPct < 25 ? 'warning' : 'critical',
+      benchmark: `Fashion norm: ${BENCHMARKS.collectionCostPct.label}`,
+      severity: kpiSeverity(collection.collectionCostPct, [BENCHMARKS.collectionCostPct.min, BENCHMARKS.collectionCostPct.max]),
     },
     {
       key: 'trunk_show_investment',
@@ -548,7 +822,10 @@ export function calculateFashionUnitEconomics(
       value: production.fabricCostPerGarment,
       formattedValue: formatGBP(production.fabricCostPerGarment),
       unit: 'GBP',
-      benchmark: 'Bridal fabric: £50-£300/dress',
+      benchmark: `Bridal: ${BENCHMARKS.fabricPerDress.label}`,
+      severity: production.fabricCostPerGarment > 0
+        ? kpiSeverity(production.fabricCostPerGarment, [BENCHMARKS.fabricPerDress.min, BENCHMARKS.fabricPerDress.max])
+        : undefined,
     },
   ];
 
@@ -561,5 +838,8 @@ export function calculateFashionUnitEconomics(
     channel,
     costBreakdown,
     kpis,
+    alerts,
+    unclassifiedAccounts,
+    overrides,
   };
 }

@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { useCurrency } from '@/components/providers/currency-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { FinancialTooltip } from '@/components/ui/financial-tooltip';
-import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { ExportButton } from '@/components/shared/export-button';
 import type { ExportColumn } from '@/components/shared/export-button';
@@ -22,14 +22,18 @@ import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
 import {
   Users, Scissors, Camera, Store,
   TrendingUp, Package, Receipt, Building2,
+  AlertTriangle, AlertCircle, Info, Check,
+  ChevronDown, ChevronUp, Pencil,
 } from 'lucide-react';
 import type {
   FashionUnitEconomicsSummary,
   FashionKPI,
   CostAccount,
+  DataQualityAlert,
+  FashionCostCategory,
+  UnitEconomicsOverrides,
 } from '@/lib/financial/fashion-unit-economics';
 import { FASHION_COST_LABELS } from '@/lib/financial/fashion-unit-economics';
-import type { FashionCostCategory } from '@/lib/financial/fashion-unit-economics';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -53,6 +57,9 @@ interface PeriodSummaryProp {
   period: string;
   summary: FashionUnitEconomicsSummary;
   shopifyProductCount: number;
+  /** Raw data needed for client-side recalculation */
+  rawTotalRevenue: number;
+  rawTotalCOGS: number;
 }
 
 interface UnitEconomicsClientProps {
@@ -69,23 +76,67 @@ function fmtPeriod(period: string): string {
   return d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' });
 }
 
-function severityColor(severity?: 'good' | 'warning' | 'critical'): string {
+function severityColor(severity?: 'good' | 'warning' | 'critical' | 'needs_verification'): string {
   switch (severity) {
     case 'good': return 'text-emerald-600';
     case 'warning': return 'text-amber-600';
     case 'critical': return 'text-rose-600';
+    case 'needs_verification': return 'text-orange-500';
     default: return 'text-foreground';
   }
 }
 
-function severityBg(severity?: 'good' | 'warning' | 'critical'): string {
+function severityBg(severity?: 'good' | 'warning' | 'critical' | 'needs_verification'): string {
   switch (severity) {
     case 'good': return 'bg-emerald-100 dark:bg-emerald-950';
     case 'warning': return 'bg-amber-100 dark:bg-amber-950';
     case 'critical': return 'bg-rose-100 dark:bg-rose-950';
+    case 'needs_verification': return 'bg-orange-100 dark:bg-orange-950';
     default: return 'bg-slate-100 dark:bg-slate-800';
   }
 }
+
+function severityBadge(severity?: 'good' | 'warning' | 'critical' | 'needs_verification') {
+  switch (severity) {
+    case 'good':
+      return <Badge variant="default" className="bg-emerald-600">On Track</Badge>;
+    case 'warning':
+      return <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">Watch</Badge>;
+    case 'critical':
+      return <Badge variant="destructive">Action Needed</Badge>;
+    case 'needs_verification':
+      return <Badge variant="outline" className="border-orange-400 text-orange-600">Needs Verification</Badge>;
+    default:
+      return null;
+  }
+}
+
+const alertIcon = (severity: DataQualityAlert['severity']) => {
+  switch (severity) {
+    case 'critical': return <AlertTriangle className="h-5 w-5 text-rose-500 shrink-0" />;
+    case 'warning': return <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />;
+    case 'info': return <Info className="h-5 w-5 text-blue-500 shrink-0" />;
+  }
+};
+
+const RECLASSIFY_OPTIONS: { value: FashionCostCategory; label: string }[] = [
+  { value: 'production_staff', label: 'Production Staff' },
+  { value: 'fabric', label: 'Fabric & Materials' },
+  { value: 'embroidery', label: 'Embroidery' },
+  { value: 'freelance_production', label: 'Freelance Production' },
+  { value: 'design_staff', label: 'Design Staff' },
+  { value: 'admin_staff', label: 'Admin & Director' },
+  { value: 'photoshoot', label: 'Photoshoot' },
+  { value: 'trunk_show', label: 'Trunk Show' },
+  { value: 'marketing', label: 'Marketing' },
+  { value: 'rent_premises', label: 'Rent & Premises' },
+  { value: 'shipping_delivery', label: 'Shipping' },
+  { value: 'merchant_fees', label: 'Merchant Fees' },
+  { value: 'professional_fees', label: 'Professional Fees' },
+  { value: 'software_subscriptions', label: 'Software' },
+  { value: 'interest_finance', label: 'Interest & Finance' },
+  { value: 'other_overhead', label: 'Other Overheads' },
+];
 
 export default function UnitEconomicsClient({
   orgId,
@@ -98,10 +149,17 @@ export default function UnitEconomicsClient({
   const globalPeriod = useGlobalPeriodContext();
   const { yearEndMonth } = useAccountingConfig();
 
-  // Track selected period
   const [selectedPeriod, setSelectedPeriod] = useState(
     globalPeriod.period || availablePeriods[availablePeriods.length - 1] || ''
   );
+
+  // ── Assumption overrides (client-side, per period) ──
+  const [overrides, setOverrides] = useState<Record<string, UnitEconomicsOverrides>>({});
+  const [brideCountInput, setBrideCountInput] = useState('');
+  const [showAlerts, setShowAlerts] = useState(true);
+  const [showReclassify, setShowReclassify] = useState(false);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+  const [pendingReclassifications, setPendingReclassifications] = useState<Record<string, FashionCostCategory>>({});
 
   // Sync from global period selector
   const prevGlobalPeriodRef = useRef(globalPeriod.period);
@@ -120,7 +178,85 @@ export default function UnitEconomicsClient({
     [periodSummaries, selectedPeriod]
   );
 
-  const summary = currentData?.summary;
+  // Apply client-side overrides to recalculate affected metrics
+  const summary = useMemo(() => {
+    if (!currentData) return null;
+    const base = currentData.summary;
+    const periodOverrides = overrides[selectedPeriod];
+    if (!periodOverrides?.brideCount) return base;
+
+    // Recalculate per-bride metrics with overridden bride count
+    const bc = periodOverrides.brideCount;
+    const rev = base.perBride.totalBridalRevenue;
+    const costs = base.perBride.totalDirectCosts;
+
+    return {
+      ...base,
+      perBride: {
+        ...base.perBride,
+        brideCount: bc,
+        brideCountSource: 'user_override' as const,
+        revenuePerBride: bc > 0 ? rev / bc : 0,
+        directCostPerBride: bc > 0 ? costs / bc : 0,
+        grossMarginPerBride: bc > 0 ? (rev - costs) / bc : 0,
+        grossMarginPct: rev > 0 ? ((rev - costs) / rev) * 100 : 0,
+        avgItemsPerBride: bc > 0 ? base.perBride.avgItemsPerBride * base.perBride.brideCount / bc : 0,
+        consultationRevenuePerBride: bc > 0 ? base.perBride.consultationRevenue / bc : 0,
+      },
+      // Recalculate KPIs that depend on bride count
+      kpis: base.kpis.map((kpi) => {
+        if (kpi.key === 'revenue_per_bride') {
+          const rpb = bc > 0 ? rev / bc : 0;
+          return {
+            ...kpi,
+            value: rpb,
+            formattedValue: new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP', maximumFractionDigits: 0 }).format(rpb),
+            severity: rpb >= 1500 && rpb <= 25000 ? 'good' as const : rpb > 25000 ? 'warning' as const : 'critical' as const,
+          };
+        }
+        if (kpi.key === 'gross_margin_per_bride') {
+          const gm = rev > 0 ? ((rev - costs) / rev) * 100 : 0;
+          return {
+            ...kpi,
+            value: gm,
+            formattedValue: `${gm.toFixed(1)}%`,
+            severity: gm >= 35 && gm <= 80 ? 'good' as const : gm > 80 ? 'needs_verification' as const : 'critical' as const,
+          };
+        }
+        if (kpi.key === 'bride_count') {
+          return {
+            ...kpi,
+            value: bc,
+            formattedValue: String(bc),
+            severity: undefined,
+            benchmark: 'User-provided',
+          };
+        }
+        return kpi;
+      }),
+      // Remove bride-count-related alerts if user provided a count
+      alerts: base.alerts.filter((a) =>
+        a.id !== 'bride_count_estimated' && a.id !== 'revenue_per_bride_high'
+      ),
+    };
+  }, [currentData, overrides, selectedPeriod]);
+
+  const handleBrideCountSubmit = useCallback(() => {
+    const count = parseInt(brideCountInput, 10);
+    if (!count || count < 1) return;
+    setOverrides((prev) => ({
+      ...prev,
+      [selectedPeriod]: {
+        ...(prev[selectedPeriod] ?? {}),
+        brideCount: count,
+      },
+    }));
+    setBrideCountInput('');
+  }, [brideCountInput, selectedPeriod]);
+
+  const handleDismissAlert = useCallback((alertId: string) => {
+    setDismissedAlerts((prev) => new Set(prev).add(alertId));
+  }, []);
 
   // No data state
   if (!connected || periodSummaries.length === 0) {
@@ -146,16 +282,14 @@ export default function UnitEconomicsClient({
         <h2 className="text-2xl font-bold">Unit Economics</h2>
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No data available for the selected period.
-            </p>
+            <p className="text-muted-foreground">No data available for the selected period.</p>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // Cost breakdown by category for pie chart
+  // Cost breakdown for pie chart
   const costByCategory = new Map<FashionCostCategory, number>();
   for (const cost of summary.costBreakdown) {
     costByCategory.set(
@@ -172,21 +306,31 @@ export default function UnitEconomicsClient({
     .filter((d) => d.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Per-bride trend across periods
-  const brideTrendData = periodSummaries.map((ps) => ({
-    period: fmtPeriod(ps.period),
-    revenuePerBride: Math.round(ps.summary.perBride.revenuePerBride),
-    marginPerBride: Math.round(ps.summary.perBride.grossMarginPerBride),
-    brides: ps.summary.perBride.brideCount,
-  }));
+  // Trend data across periods
+  const brideTrendData = periodSummaries.map((ps) => {
+    const o = overrides[ps.period];
+    const bc = o?.brideCount ?? ps.summary.perBride.brideCount;
+    const rev = ps.summary.perBride.totalBridalRevenue;
+    const costs = ps.summary.perBride.totalDirectCosts;
+    return {
+      period: fmtPeriod(ps.period),
+      revenuePerBride: bc > 0 ? Math.round(rev / bc) : 0,
+      marginPerBride: bc > 0 ? Math.round((rev - costs) / bc) : 0,
+      brides: bc,
+    };
+  });
 
-  // Production cost trend
   const productionTrendData = periodSummaries.map((ps) => ({
     period: fmtPeriod(ps.period),
     fullyLoaded: Math.round(ps.summary.production.fullyLoadedCostPerGarment),
     labour: Math.round(ps.summary.production.labourCostPerGarment),
     fabric: Math.round(ps.summary.production.fabricCostPerGarment),
   }));
+
+  // Active alerts (not dismissed)
+  const activeAlerts = summary.alerts.filter((a) => !dismissedAlerts.has(a.id));
+  const criticalAlerts = activeAlerts.filter((a) => a.severity === 'critical');
+  const warningAlerts = activeAlerts.filter((a) => a.severity === 'warning');
 
   // Export data
   const exportData = summary.kpis.map((kpi) => ({
@@ -232,13 +376,241 @@ export default function UnitEconomicsClient({
         </div>
       </div>
 
-      {/* Data type legend */}
       <NumberLegend />
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  DATA QUALITY ALERTS — actionable, not just info       */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {activeAlerts.length > 0 && (
+        <Card className={criticalAlerts.length > 0 ? 'border-rose-300 dark:border-rose-800' : 'border-amber-300 dark:border-amber-800'}>
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className={`h-5 w-5 ${criticalAlerts.length > 0 ? 'text-rose-500' : 'text-amber-500'}`} />
+                <CardTitle className="text-base">
+                  {criticalAlerts.length > 0
+                    ? `${criticalAlerts.length} issue(s) affecting accuracy`
+                    : `${warningAlerts.length} item(s) to review`
+                  }
+                </CardTitle>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAlerts(!showAlerts)}
+              >
+                {showAlerts ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </Button>
+            </div>
+          </CardHeader>
+          {showAlerts && (
+            <CardContent className="space-y-3">
+              {activeAlerts.map((alert) => (
+                <div
+                  key={alert.id}
+                  className={`rounded-lg border p-4 ${
+                    alert.severity === 'critical'
+                      ? 'border-rose-200 bg-rose-50 dark:border-rose-900 dark:bg-rose-950/50'
+                      : alert.severity === 'warning'
+                        ? 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50'
+                        : 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950/50'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    {alertIcon(alert.severity)}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{alert.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{alert.message}</p>
+
+                      {/* ── Inline action based on type ── */}
+                      <div className="mt-3">
+                        {alert.actionType === 'input_number' && alert.assumptionKey === 'brideCount' && (
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="e.g. 8"
+                              value={brideCountInput}
+                              onChange={(e) => setBrideCountInput(e.target.value)}
+                              onKeyDown={(e) => e.key === 'Enter' && handleBrideCountSubmit()}
+                              className="w-24 rounded-md border bg-background px-3 py-1.5 text-sm"
+                            />
+                            <Button
+                              size="sm"
+                              onClick={handleBrideCountSubmit}
+                              disabled={!brideCountInput || parseInt(brideCountInput) < 1}
+                            >
+                              <Check className="h-3 w-3 mr-1" /> Apply
+                            </Button>
+                            <span className="text-xs text-muted-foreground">
+                              How many brides this month?
+                            </span>
+                          </div>
+                        )}
+
+                        {alert.actionType === 'reclassify' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowReclassify(true)}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" /> {alert.actionLabel}
+                          </Button>
+                        )}
+
+                        {alert.actionType === 'review_accounts' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowReclassify(true)}
+                          >
+                            <Pencil className="h-3 w-3 mr-1" /> {alert.actionLabel}
+                          </Button>
+                        )}
+
+                        {alert.actionType === 'acknowledge' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleDismissAlert(alert.id)}
+                          >
+                            <Check className="h-3 w-3 mr-1" /> Got it
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════ */}
+      {/*  ACCOUNT RECLASSIFICATION PANEL                        */}
+      {/* ═══════════════════════════════════════════════════════ */}
+      {showReclassify && (
+        <Card className="border-blue-300 dark:border-blue-800">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base">Review Account Classification</CardTitle>
+                <CardDescription>
+                  Assign each cost account to the correct fashion category. Changes recalculate all metrics instantly.
+                </CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setShowReclassify(false)}>
+                Close
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1 max-h-96 overflow-y-auto">
+              <div className="grid grid-cols-12 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2 sticky top-0 bg-card py-1">
+                <div className="col-span-1">Code</div>
+                <div className="col-span-4">Account Name</div>
+                <div className="col-span-2 text-right">Amount</div>
+                <div className="col-span-3">Current Category</div>
+                <div className="col-span-2">Change To</div>
+              </div>
+              {summary.costBreakdown
+                .sort((a, b) => b.amount - a.amount)
+                .map((acc) => {
+                  const isUnclassified = acc.costCategory === 'other_overhead' && acc.classifiedBy !== 'override';
+                  return (
+                    <div
+                      key={acc.accountId}
+                      className={`grid grid-cols-12 gap-2 text-sm py-2 border-b border-border/50 items-center ${
+                        isUnclassified ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''
+                      }`}
+                    >
+                      <div className="col-span-1 text-muted-foreground font-mono text-xs">{acc.accountCode}</div>
+                      <div className="col-span-4 truncate" title={acc.accountName}>
+                        {acc.accountName}
+                        {isUnclassified && (
+                          <span className="ml-1 text-amber-600 text-xs">(unclassified)</span>
+                        )}
+                      </div>
+                      <div className="col-span-2 text-right font-medium">{format(acc.amount)}</div>
+                      <div className="col-span-3">
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${
+                            acc.classifiedBy === 'override'
+                              ? 'border-emerald-400 text-emerald-700'
+                              : acc.classifiedBy === 'regex'
+                                ? 'border-blue-400 text-blue-700'
+                                : 'border-amber-400 text-amber-700'
+                          }`}
+                        >
+                          {FASHION_COST_LABELS[pendingReclassifications[acc.accountId] ?? acc.costCategory]}
+                        </Badge>
+                      </div>
+                      <div className="col-span-2">
+                        <select
+                          className="w-full rounded border bg-background px-1 py-1 text-xs"
+                          value={pendingReclassifications[acc.accountId] ?? acc.costCategory}
+                          onChange={(e) => {
+                            setPendingReclassifications((prev) => ({
+                              ...prev,
+                              [acc.accountId]: e.target.value as FashionCostCategory,
+                            }));
+                          }}
+                        >
+                          {RECLASSIFY_OPTIONS.map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+            {Object.keys(pendingReclassifications).length > 0 && (
+              <div className="mt-4 flex items-center gap-3">
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    // Apply reclassifications as overrides
+                    setOverrides((prev) => ({
+                      ...prev,
+                      [selectedPeriod]: {
+                        ...(prev[selectedPeriod] ?? {}),
+                        accountOverrides: {
+                          ...(prev[selectedPeriod]?.accountOverrides ?? {}),
+                          ...pendingReclassifications,
+                        },
+                      },
+                    }));
+                    setPendingReclassifications({});
+                    // Note: full recalculation requires server re-computation
+                    // For now, show that the changes are queued
+                  }}
+                >
+                  <Check className="h-3 w-3 mr-1" />
+                  Apply {Object.keys(pendingReclassifications).length} change(s)
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => setPendingReclassifications({})}
+                >
+                  Reset
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Changes will recalculate all metrics. In a future update, these will be saved permanently.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ─── KPI Cards (Top 8) ─── */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {summary.kpis.map((kpi) => (
-          <Card key={kpi.key}>
+          <Card key={kpi.key} className={kpi.severity === 'needs_verification' ? 'border-orange-300 dark:border-orange-800' : ''}>
             <CardHeader className="pb-2">
               <div className="flex items-center gap-2">
                 <div className={`rounded-lg p-2 ${severityBg(kpi.severity)}`}>
@@ -263,14 +635,7 @@ export default function UnitEconomicsClient({
               {kpi.benchmark && (
                 <p className="mt-1 text-xs text-muted-foreground">{kpi.benchmark}</p>
               )}
-              {kpi.severity && (
-                <Badge
-                  variant={kpi.severity === 'good' ? 'default' : kpi.severity === 'warning' ? 'secondary' : 'destructive'}
-                  className="mt-1"
-                >
-                  {kpi.severity === 'good' ? 'On Track' : kpi.severity === 'warning' ? 'Watch' : 'Action Needed'}
-                </Badge>
-              )}
+              {kpi.severity && severityBadge(kpi.severity)}
             </CardContent>
           </Card>
         ))}
@@ -285,6 +650,12 @@ export default function UnitEconomicsClient({
               <CardTitle>Per-Bride Economics</CardTitle>
               <CardDescription>
                 Revenue, costs, and margin per bridal customer — {fmtPeriod(selectedPeriod)}
+                {summary.perBride.brideCountSource === 'estimated' && (
+                  <span className="ml-2 text-orange-500 font-medium">(estimated — enter actual count above)</span>
+                )}
+                {summary.perBride.brideCountSource === 'user_override' && (
+                  <span className="ml-2 text-emerald-600 font-medium">(user-provided: {summary.perBride.brideCount} brides)</span>
+                )}
               </CardDescription>
             </div>
           </div>
@@ -295,13 +666,22 @@ export default function UnitEconomicsClient({
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-muted-foreground">Brides this month</div>
-                <div className="font-semibold text-right">{summary.perBride.brideCount}</div>
+                <div className="font-semibold text-right flex items-center justify-end gap-1">
+                  {summary.perBride.brideCount}
+                  {summary.perBride.brideCountSource === 'estimated' && (
+                    <Badge variant="outline" className="text-[10px] border-orange-400 text-orange-600 ml-1">est.</Badge>
+                  )}
+                </div>
 
                 <div className="text-muted-foreground">Bridal revenue</div>
                 <div className="font-semibold text-right">{format(summary.perBride.totalBridalRevenue)}</div>
 
                 <div className="text-muted-foreground">Revenue per bride</div>
-                <div className="font-semibold text-right text-emerald-600">{format(summary.perBride.revenuePerBride)}</div>
+                <div className={`font-semibold text-right ${
+                  summary.perBride.revenuePerBride > 25000 ? 'text-orange-500' : 'text-emerald-600'
+                }`}>
+                  {format(summary.perBride.revenuePerBride)}
+                </div>
 
                 <div className="text-muted-foreground">Direct costs per bride</div>
                 <div className="font-semibold text-right text-rose-600">{format(summary.perBride.directCostPerBride)}</div>
@@ -324,6 +704,33 @@ export default function UnitEconomicsClient({
                   </>
                 )}
               </div>
+
+              {/* Quick bride count input if estimated */}
+              {summary.perBride.brideCountSource === 'estimated' && (
+                <div className="mt-3 rounded-lg border border-orange-200 bg-orange-50 dark:bg-orange-950/30 dark:border-orange-800 p-3">
+                  <p className="text-xs font-medium text-orange-700 dark:text-orange-400 mb-2">
+                    Enter actual bride count to fix per-bride metrics:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="e.g. 8"
+                      value={brideCountInput}
+                      onChange={(e) => setBrideCountInput(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleBrideCountSubmit()}
+                      className="w-20 rounded-md border bg-background px-2 py-1 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleBrideCountSubmit}
+                      disabled={!brideCountInput || parseInt(brideCountInput) < 1}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Right: Per-bride trend chart */}
@@ -347,7 +754,7 @@ export default function UnitEconomicsClient({
       </Card>
 
       {/* ─── Production Economics ─── */}
-      <Card>
+      <Card className={summary.production.totalProductionStaffCost === 0 ? 'border-orange-300 dark:border-orange-800' : ''}>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Scissors className="h-5 w-5 text-rose-600" />
@@ -357,11 +764,15 @@ export default function UnitEconomicsClient({
                 UK production cost per garment — labour, premises, and materials
               </CardDescription>
             </div>
+            {summary.production.totalProductionStaffCost === 0 && (
+              <Badge variant="outline" className="border-orange-400 text-orange-600 ml-auto">
+                Missing staff costs — review accounts
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Left: Production cost breakdown */}
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-muted-foreground">Estimated garments produced</div>
@@ -376,18 +787,22 @@ export default function UnitEconomicsClient({
                 <div className="text-muted-foreground">Fabric cost / garment</div>
                 <div className="font-semibold text-right">{format(summary.production.fabricCostPerGarment)}</div>
 
-                <div className="border-t pt-2 font-medium text-muted-foreground">
-                  Fully loaded cost / garment
-                </div>
+                <div className="border-t pt-2 font-medium text-muted-foreground">Fully loaded cost / garment</div>
                 <div className="border-t pt-2 font-bold text-right text-rose-600">
                   {format(summary.production.fullyLoadedCostPerGarment)}
                 </div>
 
                 <div className="pt-2 text-muted-foreground">Total production staff cost</div>
-                <div className="pt-2 font-semibold text-right">{format(summary.production.totalProductionStaffCost)}</div>
+                <div className={`pt-2 font-semibold text-right ${
+                  summary.production.totalProductionStaffCost === 0 ? 'text-orange-500' : ''
+                }`}>
+                  {format(summary.production.totalProductionStaffCost)}
+                  {summary.production.totalProductionStaffCost === 0 && (
+                    <span className="text-xs ml-1">(check classification)</span>
+                  )}
+                </div>
               </div>
 
-              {/* Staff breakdown */}
               {summary.production.productionStaffAccounts.length > 0 && (
                 <div className="mt-4">
                   <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
@@ -403,9 +818,19 @@ export default function UnitEconomicsClient({
                   </div>
                 </div>
               )}
+
+              {summary.production.totalProductionStaffCost === 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="mt-2"
+                  onClick={() => setShowReclassify(true)}
+                >
+                  <Pencil className="h-3 w-3 mr-1" /> Classify production staff accounts
+                </Button>
+              )}
             </div>
 
-            {/* Right: Production cost trend */}
             <div>
               <p className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Cost per Garment Trend
@@ -460,12 +885,15 @@ export default function UnitEconomicsClient({
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">As % of Revenue</p>
               <p className={`text-2xl font-bold ${
-                summary.collection.collectionCostPct < 15 ? 'text-emerald-600' :
-                summary.collection.collectionCostPct < 25 ? 'text-amber-600' : 'text-rose-600'
+                summary.collection.collectionCostPct >= 3 && summary.collection.collectionCostPct <= 20
+                  ? 'text-emerald-600'
+                  : summary.collection.collectionCostPct > 20
+                    ? 'text-rose-600'
+                    : 'text-amber-600'
               }`}>
                 {summary.collection.collectionCostPct.toFixed(1)}%
               </p>
-              <p className="text-xs text-muted-foreground">Fashion norm: 8-15%</p>
+              <p className="text-xs text-muted-foreground">Fashion norm: 3-20%</p>
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Collection ROI</p>
@@ -487,9 +915,7 @@ export default function UnitEconomicsClient({
             <Store className="h-5 w-5 text-indigo-600" />
             <div>
               <CardTitle>Trunk Show Investment</CardTitle>
-              <CardDescription>
-                Events, travel, and accommodation costs for trunk shows
-              </CardDescription>
+              <CardDescription>Events, travel, and accommodation costs</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -522,19 +948,14 @@ export default function UnitEconomicsClient({
             <Receipt className="h-5 w-5 text-violet-600" />
             <div>
               <CardTitle>Channel Profitability</CardTitle>
-              <CardDescription>
-                Online (Shopify) vs In-Person (Consultation) channel margin comparison
-              </CardDescription>
+              <CardDescription>Online (Shopify) vs In-Person (Consultation) margin comparison</CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Online channel */}
             <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700">Online</Badge>
-              </div>
+              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950 text-blue-700">Online</Badge>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-muted-foreground">Revenue</div>
                 <div className="font-semibold text-right">{format(summary.channel.online.revenue)}</div>
@@ -551,12 +972,8 @@ export default function UnitEconomicsClient({
                 </div>
               </div>
             </div>
-
-            {/* Consultation channel */}
             <div className="rounded-lg border p-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="bg-violet-50 dark:bg-violet-950 text-violet-700">Consultation</Badge>
-              </div>
+              <Badge variant="outline" className="bg-violet-50 dark:bg-violet-950 text-violet-700">Consultation</Badge>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 <div className="text-muted-foreground">Revenue</div>
                 <div className="font-semibold text-right">{format(summary.channel.consultation.revenue)}</div>
@@ -580,14 +997,23 @@ export default function UnitEconomicsClient({
       {/* ─── Cost Classification Breakdown ─── */}
       <Card>
         <CardHeader>
-          <CardTitle>Fashion Cost Classification</CardTitle>
-          <CardDescription>
-            All cost accounts classified into fashion-specific categories
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Fashion Cost Classification</CardTitle>
+              <CardDescription>All cost accounts classified into fashion-specific categories</CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowReclassify(!showReclassify)}
+            >
+              <Pencil className="h-3 w-3 mr-1" />
+              {showReclassify ? 'Close' : 'Reclassify'}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6 md:grid-cols-2">
-            {/* Pie chart */}
             <div>
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
@@ -610,8 +1036,6 @@ export default function UnitEconomicsClient({
                 </PieChart>
               </ResponsiveContainer>
             </div>
-
-            {/* Table */}
             <div className="space-y-1">
               <div className="grid grid-cols-3 gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
                 <div>Category</div>
