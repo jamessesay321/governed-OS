@@ -72,7 +72,7 @@ export default async function IncomeStatementPage() {
         sections: spnl.sections
           .filter((s) => s.section !== 'balance_sheet')
           .map((s) => {
-            const isCostSection = ['cost_of_sales', 'operating_expenses', 'tax'].includes(s.section);
+            const isCostSection = ['cost_of_sales', 'operating_expenses', 'finance_costs', 'tax'].includes(s.section);
             // Group rows by category for sub-headings
             const categoryGroups = new Map<string, { label: string; key: string; rows: Array<{ id?: string; name: string; code: string; amount: number; category: string }> }>();
             for (const row of s.rows) {
@@ -116,6 +116,8 @@ export default async function IncomeStatementPage() {
         costOfSales: spnl.costOfSales,
         grossProfit: spnl.grossProfit,
         expenses: spnl.operatingExpenses,
+        operatingProfit: spnl.operatingProfit,
+        financeCosts: spnl.financeCosts,
         netProfit: spnl.netProfit,
         mappingCoverage: spnl.mappingCoverage,
       };

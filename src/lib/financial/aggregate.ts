@@ -178,6 +178,8 @@ export interface SemanticPnLSummary {
   grossProfit: number;
   operatingExpenses: number;
   operatingProfit: number;
+  /** Interest payable & finance costs — below operating profit per UK mgmt accounts */
+  financeCosts: number;
   tax: number;
   netProfit: number;
   period: string;
@@ -189,6 +191,7 @@ const SECTION_LABELS: Record<TaxonomyPnLSection, string> = {
   revenue: 'Revenue',
   cost_of_sales: 'Cost of Sales',
   operating_expenses: 'Operating Expenses',
+  finance_costs: 'Interest Payable',
   other_income: 'Other Income',
   tax: 'Tax',
   balance_sheet: 'Balance Sheet',
@@ -220,7 +223,7 @@ export function buildSemanticPnL(
 
   // Group rows by taxonomy section
   const sectionRows = new Map<TaxonomyPnLSection, SemanticPnLRow[]>();
-  const pnlSections: TaxonomyPnLSection[] = ['revenue', 'other_income', 'cost_of_sales', 'operating_expenses', 'tax'];
+  const pnlSections: TaxonomyPnLSection[] = ['revenue', 'other_income', 'cost_of_sales', 'operating_expenses', 'finance_costs', 'tax'];
   for (const section of pnlSections) {
     sectionRows.set(section, []);
   }
@@ -303,11 +306,14 @@ export function buildSemanticPnL(
   const otherIncome = sections.find((s) => s.section === 'other_income')?.total ?? 0;
   const costOfSales = Math.abs(sections.find((s) => s.section === 'cost_of_sales')?.total ?? 0);
   const operatingExpenses = Math.abs(sections.find((s) => s.section === 'operating_expenses')?.total ?? 0);
+  const financeCosts = Math.abs(sections.find((s) => s.section === 'finance_costs')?.total ?? 0);
   const tax = Math.abs(sections.find((s) => s.section === 'tax')?.total ?? 0);
 
   const grossProfit = revenue - costOfSales;
+  // Operating profit EXCLUDES interest/finance costs (UK management accounts convention)
   const operatingProfit = grossProfit + otherIncome - operatingExpenses;
-  const netProfit = operatingProfit - tax;
+  // Net profit = operating profit MINUS interest payable MINUS tax
+  const netProfit = operatingProfit - financeCosts - tax;
 
   return {
     sections,
@@ -316,6 +322,7 @@ export function buildSemanticPnL(
     costOfSales,
     grossProfit,
     operatingExpenses,
+    financeCosts,
     operatingProfit,
     tax,
     netProfit,

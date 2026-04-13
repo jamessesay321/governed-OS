@@ -32,6 +32,8 @@ type PeriodPnL = {
   costOfSales: number;
   grossProfit: number;
   expenses: number;
+  operatingProfit?: number;
+  financeCosts?: number;
   netProfit: number;
 };
 
@@ -141,6 +143,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
       OTHER_INCOME: 'OTHER_INCOME',
       TAX: 'TAX',
       INTEREST_PAYABLE: 'INTEREST_PAYABLE',
+      FINANCE_COSTS: 'FINANCE_COSTS',
     };
     return map[cls] ?? cls;
   };
@@ -365,6 +368,30 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
         drillSectionClass: 'REVENUE',
       });
     }
+
+    // After Operating Expenses (EXPENSE/OVERHEADS), add Operating Profit subtotal
+    // This shows profit BEFORE interest payable — standard UK management accounts format
+    if ((cls === 'EXPENSE' || cls === 'OVERHEADS' || cls === 'OPERATING_EXPENSES') &&
+        sectionOrder.includes('FINANCE_COSTS')) {
+      // Only add once — after the last OpEx section before FINANCE_COSTS
+      const nextIdx = sectionOrder.indexOf(cls) + 1;
+      const nextSection = sectionOrder[nextIdx];
+      if (nextSection === 'FINANCE_COSTS' || nextSection === 'INTEREST_PAYABLE' || nextSection === 'OTHER_INCOME') {
+        const opValues = sortedPeriods.map((p) => p.operatingProfit ?? (p.grossProfit - p.expenses));
+        const opMargins = sortedPeriods.map((p) =>
+          p.revenue > 0 ? formatPercent((p.operatingProfit ?? (p.grossProfit - p.expenses)) / p.revenue, true) : null
+        );
+        rows.push({
+          label: 'Operating Profit',
+          values: opValues,
+          bold: true,
+          separator: true,
+          profitRow: true,
+          marginPcts: opMargins,
+          drillSectionClass: 'EXPENSE',
+        });
+      }
+    }
   }
 
   // Net Profit with inline margin %
@@ -429,8 +456,10 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
   // Summary totals
   const totalRevenue = filteredPeriods.reduce((s, p) => s + p.revenue, 0);
   const totalGrossProfit = filteredPeriods.reduce((s, p) => s + p.grossProfit, 0);
+  const totalOperatingProfit = filteredPeriods.reduce((s, p) => s + (p.operatingProfit ?? (p.grossProfit - p.expenses)), 0);
   const totalNetProfit = filteredPeriods.reduce((s, p) => s + p.netProfit, 0);
   const grossMargin = totalRevenue > 0 ? formatPercent(totalGrossProfit / totalRevenue, true) : '0%';
+  const operatingMargin = totalRevenue > 0 ? formatPercent(totalOperatingProfit / totalRevenue, true) : '0%';
   const netMargin = totalRevenue > 0 ? formatPercent(totalNetProfit / totalRevenue, true) : '0%';
 
   return (
@@ -686,7 +715,7 @@ export function IncomeStatementClient({ connected, periods, orgId, lastSyncAt }:
         {[
           { label: 'Total Revenue', value: formatCurrency(totalRevenue), positive: true },
           { label: 'Gross Margin', value: grossMargin, positive: totalGrossProfit > 0 },
-          { label: 'Net Margin', value: netMargin, positive: totalNetProfit > 0 },
+          { label: 'Operating Profit', value: formatCurrency(totalOperatingProfit), positive: totalOperatingProfit > 0 },
           { label: 'Net Profit', value: formatCurrency(totalNetProfit), positive: totalNetProfit > 0 },
         ].map((card, i) => (
           <div key={i} className="rounded-lg border bg-card p-4">

@@ -54,7 +54,7 @@ export type StandardCategory = (typeof STANDARD_CATEGORIES)[number];
 
 // ─── Category Metadata ──────────────────────────────────────────────
 
-export type PnLSection = 'revenue' | 'cost_of_sales' | 'operating_expenses' | 'other_income' | 'tax' | 'balance_sheet';
+export type PnLSection = 'revenue' | 'cost_of_sales' | 'operating_expenses' | 'finance_costs' | 'other_income' | 'tax' | 'balance_sheet';
 
 export interface CategoryMeta {
   /** Human-readable label */
@@ -170,13 +170,13 @@ export const CATEGORY_META: Record<StandardCategory, CategoryMeta> = {
     description: 'Non-cash charges for asset value reduction',
   },
   interest_and_finance: {
-    label: 'Interest & Finance',
-    pnlSection: 'operating_expenses',
+    label: 'Interest & Finance Costs',
+    pnlSection: 'finance_costs',
     xeroClasses: ['EXPENSE', 'OVERHEADS'],
     affectsGrossMargin: false,
     isStaffRelated: false,
     isDiscretionary: false,
-    description: 'Bank charges, loan interest, finance costs',
+    description: 'Loan interest, bank charges, finance costs — shown below operating profit per UK management accounts convention',
   },
   insurance: {
     label: 'Insurance',
@@ -404,11 +404,12 @@ export function classAndTypeToDefaultCategory(xeroClass: string, xeroType: strin
 export function getTaxonomyPromptContext(): string {
   const lines: string[] = ['Standard Financial Categories:'];
 
-  const sections: PnLSection[] = ['revenue', 'cost_of_sales', 'operating_expenses', 'other_income', 'tax', 'balance_sheet'];
+  const sections: PnLSection[] = ['revenue', 'cost_of_sales', 'operating_expenses', 'finance_costs', 'other_income', 'tax', 'balance_sheet'];
   const sectionLabels: Record<PnLSection, string> = {
     revenue: 'Revenue',
     cost_of_sales: 'Cost of Sales',
     operating_expenses: 'Operating Expenses',
+    finance_costs: 'Interest Payable',
     other_income: 'Other Income',
     tax: 'Tax',
     balance_sheet: 'Balance Sheet',

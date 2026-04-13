@@ -40,10 +40,9 @@ const XERO_SCOPES = [
 function sanitiseUri(uri: string): string {
   try {
     const url = new URL(uri);
-    if (url.hostname === 'localhost' && url.protocol === 'https:') {
-      url.protocol = 'http:';
-      return url.toString().replace(/\/$/, ''); // remove trailing slash
-    }
+    // Remove trailing slash only — preserve protocol as-is
+    // (Xero Developer Portal has https://localhost registered)
+    return url.toString().replace(/\/$/, '');
   } catch {
     // not a valid URL, return as-is
   }

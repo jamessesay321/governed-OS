@@ -95,6 +95,17 @@ export interface KlaviyoMetric {
   };
 }
 
+export interface KlaviyoList {
+  id: string;
+  type: 'list';
+  attributes: {
+    name: string;
+    created: string;
+    updated: string;
+    opt_in_process: string;
+  };
+}
+
 export interface KlaviyoListResponse {
   data: Array<{
     id: string;
@@ -230,6 +241,22 @@ export async function getCampaignMetrics(
     revenueAttributed: revenue,
     conversionRate: recipientCount > 0 ? conversions / recipientCount : 0,
   };
+}
+
+/**
+ * Fetch all lists.
+ */
+export async function getLists(
+  privateKey: string
+): Promise<KlaviyoList[]> {
+  const response = await klaviyoFetch<{ data: KlaviyoList[] }>(
+    privateKey,
+    '/lists',
+    {
+      'page[size]': '50',
+    }
+  );
+  return response.data;
 }
 
 /**

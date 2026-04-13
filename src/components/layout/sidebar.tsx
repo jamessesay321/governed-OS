@@ -507,6 +507,7 @@ const navigation: NavGroup[] = [
       { href: '/settings/scheduled-reports', label: 'Scheduled Reports' },
       { href: '/settings/exports', label: 'Data Exports' },
       { href: '/settings/data', label: 'Data & Privacy' },
+      { href: '/settings/account-mappings', label: 'Account Mappings' },
     ],
   },
   {
