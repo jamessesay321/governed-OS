@@ -19,7 +19,9 @@ export type WidgetType =
   | 'expense_breakdown'
   | 'revenue_trend'
   | 'custom_kpis'
-  | 'bride_funnel';
+  | 'bride_funnel'
+  | 'debt_tracker'
+  | 'trunk_show_roi';
 
 export type WidgetSize = 'full' | 'half' | 'third';
 
@@ -57,7 +59,9 @@ const ownerTemplate: DashboardTemplate = {
     { type: 'cash_forecast', label: '13-Week Cash Flow', size: 'full', order: 6 },
     { type: 'bride_funnel', label: 'Bride Journey Funnel', size: 'half', order: 7 },
     { type: 'expense_breakdown', label: 'Expense Breakdown', size: 'half', order: 8 },
-    { type: 'tax_summary', label: 'Tax Obligations', size: 'half', order: 9 },
+    { type: 'debt_tracker', label: 'Debt Tracker', size: 'half', order: 9 },
+    { type: 'trunk_show_roi', label: 'Trunk Show ROI', size: 'half', order: 10 },
+    { type: 'tax_summary', label: 'Tax Obligations', size: 'half', order: 11 },
   ],
 };
 
@@ -171,4 +175,6 @@ export const WIDGET_REGISTRY: Record<WidgetType, { label: string; description: s
   revenue_trend: { label: 'Revenue Trend', description: 'Multi-period revenue trend chart' },
   custom_kpis: { label: 'Custom KPIs', description: 'User-defined custom KPI metrics' },
   bride_funnel: { label: 'Bride Journey Funnel', description: 'Cross-platform consultation to payment conversion tracking' },
+  debt_tracker: { label: 'Debt Tracker', description: 'Outstanding debt, monthly burn, classification breakdown, and risk flags' },
+  trunk_show_roi: { label: 'Trunk Show ROI', description: 'Cross-platform trunk show revenue attribution and ROI tracking' },
 };

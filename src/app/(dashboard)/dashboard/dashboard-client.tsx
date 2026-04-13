@@ -16,6 +16,8 @@ import { WaterfallChart } from '@/components/dashboard/waterfall-chart';
 import { VariancePanel } from '@/components/dashboard/variance-panel';
 import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
 import { BrideFunnelWidget } from '@/components/dashboard/widgets/bride-funnel-widget';
+import { DebtTrackerWidget } from '@/components/dashboard/widgets/debt-tracker-widget';
+import { TrunkShowROIWidget } from '@/components/dashboard/widgets/trunk-show-roi-widget';
 import { ProposalWidget } from '@/components/dashboard/proposal-widget';
 import { Celebration } from '@/components/ui/celebration';
 import { Button } from '@/components/ui/button';
@@ -568,9 +570,17 @@ export function DashboardClient({
         <WaterfallChart pnl={pnl} />
       )}
 
-      {/* Bride Journey Funnel — cross-platform conversion tracking */}
-      {widgetOrder.includes('bride_funnel') && (
-        <BrideFunnelWidget />
+      {/* Bride Journey Funnel + Debt Tracker side-by-side */}
+      {(widgetOrder.includes('bride_funnel') || widgetOrder.includes('debt_tracker')) && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {widgetOrder.includes('bride_funnel') && <BrideFunnelWidget />}
+          {widgetOrder.includes('debt_tracker') && <DebtTrackerWidget />}
+        </div>
+      )}
+
+      {/* Trunk Show ROI */}
+      {widgetOrder.includes('trunk_show_roi') && (
+        <TrunkShowROIWidget />
       )}
 
       {/* Activity Feed */}

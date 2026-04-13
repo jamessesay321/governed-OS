@@ -21,6 +21,7 @@ import { DollarSign, Calendar, TrendingUp, ArrowUpRight } from 'lucide-react';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { SmartChartTooltip } from '@/components/charts/smart-chart-tooltip';
 import { NumberLegend } from '@/components/data-primitives';
+import { Badge } from '@/components/ui/badge';
 
 /* ─── colour palette ─── */
 const COLORS = {
@@ -33,6 +34,35 @@ const COLORS = {
 };
 
 const PIE_COLORS = [COLORS.blue, COLORS.emerald, COLORS.violet, COLORS.amber, COLORS.cyan];
+
+const PRODUCT_MIX_COLORS: Record<string, string> = {
+  deposits: '#3b82f6',
+  balance_payments: '#10b981',
+  consultations: '#8b5cf6',
+  accessories: '#f59e0b',
+  alterations: '#06b6d4',
+  delivery_fees: '#f97316',
+  other: '#6b7280',
+};
+
+/* ─── Shopify product mix types ─── */
+interface ProductMixEntry {
+  type: string;
+  label: string;
+  count: number;
+  revenue: number;
+  avgPrice: number;
+  pctOfRevenue: number;
+}
+
+interface ShopifyMetricsResponse {
+  connected: boolean;
+  productMix?: {
+    byProductType: ProductMixEntry[];
+    totalRevenue: number;
+    totalLineItems: number;
+  };
+}
 
 /* ─── Props ─── */
 interface RevenueProps {
@@ -62,6 +92,15 @@ export default function RevenueClient({
 }: RevenueProps) {
   const { format } = useCurrency();
   const { openDrill } = useDrillDown();
+
+  // Shopify product mix (fetched client-side)
+  const [shopifyMix, setShopifyMix] = useState<ShopifyMetricsResponse | null>(null);
+  useEffect(() => {
+    fetch('/api/integrations/shopify/metrics')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((d) => { if (d) setShopifyMix(d as ShopifyMetricsResponse); })
+      .catch(() => {});
+  }, []);
 
   const availablePeriods = useMemo(() => periods.map((p) => p.period), [periods]);
   const { yearEndMonth } = useAccountingConfig();
@@ -376,6 +415,107 @@ export default function RevenueClient({
               </CardContent>
             </Card>
           </div>
+
+          {/* Shopify Product Mix */}
+          {shopifyMix?.connected && shopifyMix.productMix && shopifyMix.productMix.byProductType.length > 0 && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">
+                      <FinancialTooltip term="Shopify Product Mix" orgId={orgId}>Shopify Product Mix</FinancialTooltip>
+                    </CardTitle>
+                    <Badge variant="secondary" className="text-[10px]">
+                      {shopifyMix.productMix.totalLineItems} items
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={shopifyMix.productMix.byProductType.filter((e) => e.revenue > 0)}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={110}
+                        paddingAngle={3}
+                        dataKey="revenue"
+                        nameKey="label"
+                        label={({ name, percent }: { name?: string; percent?: number }) =>
+                          `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`
+                        }
+                        labelLine={{ strokeWidth: 1 }}
+                      >
+                        {shopifyMix.productMix.byProductType
+                          .filter((e) => e.revenue > 0)
+                          .map((entry, i) => (
+                            <Cell
+                              key={i}
+                              fill={PRODUCT_MIX_COLORS[entry.type] ?? PIE_COLORS[i % PIE_COLORS.length]}
+                            />
+                          ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value) => [format(Number(value ?? 0)), 'Revenue']}
+                        contentStyle={{ borderRadius: '8px', border: '1px solid #e5e7eb' }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Shopify Revenue Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {shopifyMix.productMix.byProductType
+                      .filter((e) => e.revenue > 0)
+                      .sort((a, b) => b.revenue - a.revenue)
+                      .map((entry) => {
+                        const barWidth = shopifyMix.productMix!.totalRevenue > 0
+                          ? Math.max((entry.revenue / shopifyMix.productMix!.totalRevenue) * 100, 4)
+                          : 0;
+                        return (
+                          <div key={entry.type} className="space-y-1">
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  className="inline-block h-3 w-3 rounded-full shrink-0"
+                                  style={{ backgroundColor: PRODUCT_MIX_COLORS[entry.type] ?? '#6b7280' }}
+                                />
+                                <span className="font-medium">{entry.label}</span>
+                                <span className="text-muted-foreground">({entry.count})</span>
+                              </div>
+                              <span className="font-medium">{format(entry.revenue)}</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-muted overflow-hidden">
+                              <div
+                                className="h-full rounded-full transition-all"
+                                style={{
+                                  width: `${barWidth}%`,
+                                  backgroundColor: PRODUCT_MIX_COLORS[entry.type] ?? '#6b7280',
+                                }}
+                              />
+                            </div>
+                            <div className="flex justify-between text-[10px] text-muted-foreground">
+                              <span>Avg: {format(entry.avgPrice)}</span>
+                              <span>{Math.round(entry.pctOfRevenue)}% of Shopify revenue</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  <div className="mt-4 pt-3 border-t flex items-center justify-between text-sm">
+                    <span className="font-medium">Total Shopify Revenue</span>
+                    <span className="font-bold">{format(shopifyMix.productMix.totalRevenue)}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Cross-references */}
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
