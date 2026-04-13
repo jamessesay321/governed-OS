@@ -15,6 +15,7 @@ import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { WaterfallChart } from '@/components/dashboard/waterfall-chart';
 import { VariancePanel } from '@/components/dashboard/variance-panel';
 import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
+import { BrideFunnelWidget } from '@/components/dashboard/widgets/bride-funnel-widget';
 import { ProposalWidget } from '@/components/dashboard/proposal-widget';
 import { Celebration } from '@/components/ui/celebration';
 import { Button } from '@/components/ui/button';
@@ -565,6 +566,11 @@ export function DashboardClient({
       {/* Waterfall Chart */}
       {widgetOrder.includes('waterfall_chart') && (
         <WaterfallChart pnl={pnl} />
+      )}
+
+      {/* Bride Journey Funnel — cross-platform conversion tracking */}
+      {widgetOrder.includes('bride_funnel') && (
+        <BrideFunnelWidget />
       )}
 
       {/* Activity Feed */}

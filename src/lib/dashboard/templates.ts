@@ -18,7 +18,8 @@ export type WidgetType =
   | 'ar_ap_aging'
   | 'expense_breakdown'
   | 'revenue_trend'
-  | 'custom_kpis';
+  | 'custom_kpis'
+  | 'bride_funnel';
 
 export type WidgetSize = 'full' | 'half' | 'third';
 
@@ -54,8 +55,9 @@ const ownerTemplate: DashboardTemplate = {
     { type: 'pnl_table', label: 'Profit & Loss', size: 'half', order: 4 },
     { type: 'waterfall_chart', label: 'Profit Bridge', size: 'half', order: 5 },
     { type: 'cash_forecast', label: '13-Week Cash Flow', size: 'full', order: 6 },
-    { type: 'expense_breakdown', label: 'Expense Breakdown', size: 'half', order: 7 },
-    { type: 'tax_summary', label: 'Tax Obligations', size: 'half', order: 8 },
+    { type: 'bride_funnel', label: 'Bride Journey Funnel', size: 'half', order: 7 },
+    { type: 'expense_breakdown', label: 'Expense Breakdown', size: 'half', order: 8 },
+    { type: 'tax_summary', label: 'Tax Obligations', size: 'half', order: 9 },
   ],
 };
 
@@ -168,4 +170,5 @@ export const WIDGET_REGISTRY: Record<WidgetType, { label: string; description: s
   expense_breakdown: { label: 'Expense Breakdown', description: 'Operating expense category breakdown' },
   revenue_trend: { label: 'Revenue Trend', description: 'Multi-period revenue trend chart' },
   custom_kpis: { label: 'Custom KPIs', description: 'User-defined custom KPI metrics' },
+  bride_funnel: { label: 'Bride Journey Funnel', description: 'Cross-platform consultation to payment conversion tracking' },
 };
