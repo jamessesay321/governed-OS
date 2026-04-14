@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { formatCurrencyCompact } from '@/lib/formatting/currency';
 import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { calculateMonthlyPayment } from '@/lib/financial/refinance-calculator';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -360,43 +361,43 @@ const TEMPLATES: GoalseekTemplate[] = [
     resultFn: (target, variable) =>
       `To make this channel profitable (>£${target.toLocaleString()}), you need a ${variable}% conversion rate`,
   },
-  // Debt
+  // Debt — defaults; overridden at runtime with real facility data
   {
     id: 'debt-1',
-    question: 'What monthly payment clears debt in 12 months?',
+    question: 'What monthly payment clears debt in X months?',
     category: 'debt',
     targetLabel: 'Payoff Timeline',
-    targetDefault: 12,
+    targetDefault: 24,
     targetUnit: 'months',
     variableLabel: 'Monthly Payment',
-    variableMin: 1000,
-    variableMax: 30000,
-    variableDefault: 9200,
+    variableMin: 5000,
+    variableMax: 150000,
+    variableDefault: 50000,
     variableUnit: '£',
     currentValues: [
-      { label: 'Outstanding Debt', value: 105000, unit: '£' },
-      { label: 'Interest Rate', value: 6.5, unit: '%' },
-      { label: 'Current Payment', value: 3500, unit: '£/mo' },
+      { label: 'Outstanding Debt', value: 0, unit: '£' },
+      { label: 'Weighted Avg Rate', value: 0, unit: '%' },
+      { label: 'Current Payment', value: 0, unit: '£/mo' },
     ],
     resultFn: (target, variable) =>
       `To clear debt in ${target} months, you need monthly payments of £${variable.toLocaleString()}`,
   },
   {
     id: 'debt-2',
-    question: 'What revenue growth covers loan repayments?',
+    question: 'What revenue growth covers all loan repayments?',
     category: 'debt',
     targetLabel: 'Debt Service Coverage',
-    targetDefault: 1.25,
+    targetDefault: 1.5,
     targetUnit: 'x',
     variableLabel: 'Revenue Growth Rate',
     variableMin: 0,
-    variableMax: 30,
-    variableDefault: 12,
+    variableMax: 50,
+    variableDefault: 15,
     variableUnit: '%',
     currentValues: [
-      { label: 'Annual Loan Repayment', value: 48000, unit: '£' },
-      { label: 'Current Net Income', value: 42000, unit: '£/yr' },
-      { label: 'Current DSCR', value: 0.88, unit: 'x' },
+      { label: 'Annual Repayments', value: 0, unit: '£/yr' },
+      { label: 'Current Monthly Cost', value: 0, unit: '£/mo' },
+      { label: 'Facility Count', value: 0, unit: '' },
     ],
     resultFn: (target, variable) =>
       `To achieve ${target}x debt service coverage, revenue needs to grow by ${variable}%`,
@@ -405,23 +406,103 @@ const TEMPLATES: GoalseekTemplate[] = [
     id: 'debt-3',
     question: 'At what rate does refinancing save money?',
     category: 'debt',
-    targetLabel: 'Annual Savings Target',
-    targetDefault: 5000,
-    targetUnit: '£',
-    variableLabel: 'New Interest Rate',
+    targetLabel: 'Target Monthly Saving',
+    targetDefault: 10000,
+    targetUnit: '£/mo',
+    variableLabel: 'New Consolidated Rate',
     variableMin: 2,
-    variableMax: 10,
-    variableDefault: 4.5,
+    variableMax: 20,
+    variableDefault: 8,
     variableUnit: '%',
     currentValues: [
-      { label: 'Outstanding Debt', value: 105000, unit: '£' },
-      { label: 'Current Rate', value: 6.5, unit: '%' },
-      { label: 'Current Annual Interest', value: 6825, unit: '£' },
+      { label: 'Outstanding Debt', value: 0, unit: '£' },
+      { label: 'Current Monthly Cost', value: 0, unit: '£/mo' },
+      { label: 'Avg Effective APR', value: 0, unit: '%' },
+    ],
+    resultFn: (target, variable) => {
+      // Uses real PMT calculation
+      return `At ${variable}% over 60 months, monthly saving is £${target.toLocaleString()}`;
+    },
+  },
+  {
+    id: 'debt-4',
+    question: 'How much funding to clear all bad debt?',
+    category: 'debt',
+    targetLabel: 'Bad Debt to Clear',
+    targetDefault: 0,
+    targetUnit: '£',
+    variableLabel: 'New Loan Amount',
+    variableMin: 100000,
+    variableMax: 1000000,
+    variableDefault: 500000,
+    variableUnit: '£',
+    currentValues: [
+      { label: 'Bad Debt Total', value: 0, unit: '£' },
+      { label: 'Bad Debt Monthly Cost', value: 0, unit: '£/mo' },
+      { label: 'Facilities to Clear', value: 0, unit: '' },
     ],
     resultFn: (target, variable) =>
-      `To save £${target.toLocaleString()}/year, refinance at ${variable}% or lower (from 6.5%)`,
+      `A £${variable.toLocaleString()} facility would clear £${target.toLocaleString()} in bad debt`,
   },
 ];
+
+// Helper: build debt templates with real data
+function buildDebtTemplates(
+  totalDebt: number,
+  monthlyPayment: number,
+  avgRate: number,
+  badDebtTotal: number,
+  badDebtMonthly: number,
+  badDebtCount: number,
+  facilityCount: number
+): GoalseekTemplate[] {
+  return TEMPLATES.filter((t) => t.category !== 'debt').concat([
+    {
+      ...TEMPLATES.find((t) => t.id === 'debt-1')!,
+      variableDefault: Math.round(monthlyPayment),
+      variableMax: Math.round(monthlyPayment * 3),
+      currentValues: [
+        { label: 'Outstanding Debt', value: Math.round(totalDebt), unit: '£' },
+        { label: 'Weighted Avg Rate', value: Math.round(avgRate * 100 * 10) / 10, unit: '%' },
+        { label: 'Current Payment', value: Math.round(monthlyPayment), unit: '£/mo' },
+      ],
+    },
+    {
+      ...TEMPLATES.find((t) => t.id === 'debt-2')!,
+      currentValues: [
+        { label: 'Annual Repayments', value: Math.round(monthlyPayment * 12), unit: '£/yr' },
+        { label: 'Current Monthly Cost', value: Math.round(monthlyPayment), unit: '£/mo' },
+        { label: 'Facility Count', value: facilityCount, unit: '' },
+      ],
+    },
+    {
+      ...TEMPLATES.find((t) => t.id === 'debt-3')!,
+      targetDefault: Math.round(monthlyPayment * 0.5),
+      currentValues: [
+        { label: 'Outstanding Debt', value: Math.round(totalDebt), unit: '£' },
+        { label: 'Current Monthly Cost', value: Math.round(monthlyPayment), unit: '£/mo' },
+        { label: 'Avg Effective APR', value: Math.round(avgRate * 100 * 10) / 10, unit: '%' },
+      ],
+      resultFn: (_target: number, variable: number) => {
+        const newMonthly = calculateMonthlyPayment(totalDebt, variable / 100, 60);
+        const saving = Math.round(monthlyPayment - newMonthly);
+        return saving > 0
+          ? `Consolidating £${Math.round(totalDebt).toLocaleString()} at ${variable}% over 60 months = £${newMonthly.toLocaleString()}/mo (saves £${saving.toLocaleString()}/mo)`
+          : `At ${variable}%, monthly cost would be £${newMonthly.toLocaleString()}/mo (£${Math.abs(saving).toLocaleString()}/mo more than current)`;
+      },
+    },
+    {
+      ...TEMPLATES.find((t) => t.id === 'debt-4')!,
+      targetDefault: Math.round(badDebtTotal),
+      variableDefault: Math.round(badDebtTotal * 1.1),
+      currentValues: [
+        { label: 'Bad Debt Total', value: Math.round(badDebtTotal), unit: '£' },
+        { label: 'Bad Debt Monthly Cost', value: Math.round(badDebtMonthly), unit: '£/mo' },
+        { label: 'Facilities to Clear', value: badDebtCount, unit: '' },
+      ],
+    },
+  ]);
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -435,9 +516,60 @@ export function GoalseekClient({ orgId, role }: GoalseekClientProps) {
   const [customQuestion, setCustomQuestion] = useState('');
   const [savedToPlaybook, setSavedToPlaybook] = useState(false);
 
+  // Fetch real debt data to hydrate debt templates
+  const [liveTemplates, setLiveTemplates] = useState<GoalseekTemplate[]>(TEMPLATES);
+
+  useEffect(() => {
+    fetch('/api/debt')
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data.facilities || data.facilities.length === 0) return;
+
+        const active = data.facilities.filter(
+          (f: { status: string; current_balance: number }) =>
+            f.status === 'active' && f.current_balance > 0
+        );
+        if (active.length === 0) return;
+
+        const totalDebt = active.reduce(
+          (s: number, f: { current_balance: number }) => s + Number(f.current_balance), 0
+        );
+        const monthlyPayment = active.reduce(
+          (s: number, f: { monthly_repayment: number }) => s + Number(f.monthly_repayment), 0
+        );
+
+        // Weighted average rate
+        let weightedRateSum = 0;
+        for (const f of active) {
+          const rate = Number(f.effective_apr ?? f.interest_rate ?? 0);
+          weightedRateSum += rate * Number(f.current_balance);
+        }
+        const avgRate = totalDebt > 0 ? weightedRateSum / totalDebt : 0;
+
+        // Bad debt
+        const bad = active.filter((f: { classification: string }) => f.classification === 'bad');
+        const badDebtTotal = bad.reduce(
+          (s: number, f: { current_balance: number }) => s + Number(f.current_balance), 0
+        );
+        const badDebtMonthly = bad.reduce(
+          (s: number, f: { monthly_repayment: number }) => s + Number(f.monthly_repayment), 0
+        );
+
+        setLiveTemplates(
+          buildDebtTemplates(
+            totalDebt, monthlyPayment, avgRate,
+            badDebtTotal, badDebtMonthly, bad.length, active.length
+          )
+        );
+      })
+      .catch(() => {
+        // Silently fall back to static templates
+      });
+  }, []);
+
   const categoryTemplates = useMemo(
-    () => TEMPLATES.filter((t) => t.category === activeCategory),
-    [activeCategory]
+    () => liveTemplates.filter((t) => t.category === activeCategory),
+    [activeCategory, liveTemplates]
   );
 
   function handleSelectTemplate(template: GoalseekTemplate) {

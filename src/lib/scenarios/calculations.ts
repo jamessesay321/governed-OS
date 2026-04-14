@@ -233,9 +233,14 @@ export function generateFullProjection(
         : (actuals.length > 0 ? actuals[actuals.length - 1].operating_expenses : 0));
     }
 
+    // Finance costs: monthly interest from debt facilities (not in Xero P&L)
+    const financeCosts = resolved.get('finance_costs') ?? 0;
+    // Debt repayments: monthly principal repayments (cash outflow, not P&L)
+    const debtRepayments = resolved.get('debt_repayments') ?? 0;
+
     const grossProfit = roundCurrency(revenue - costOfSales);
     const grossMarginPct = calcGrossMargin(revenue, costOfSales);
-    const profitBeforeTax = roundCurrency(grossProfit - operatingExpenses);
+    const profitBeforeTax = roundCurrency(grossProfit - operatingExpenses - financeCosts);
     // Apply UK Corporation Tax with marginal relief (FY2023+: 19% up to £50k, 25% over £250k)
     const associatedCompanies = Number(resolved.get('associated_companies') ?? 0);
     const corporationTax = actual ? 0 : calculateCorporationTax(Math.max(0, profitBeforeTax * 12), associatedCompanies) / 12;
@@ -245,11 +250,11 @@ export function generateFullProjection(
     const cashFlow = projectCashFlow({
       revenue,
       costOfSales,
-      operatingExpenses,
+      operatingExpenses: operatingExpenses + financeCosts,
       openingCash: prevCash,
       receivablesDays,
       payablesDays,
-      capitalExpenditure,
+      capitalExpenditure: capitalExpenditure + debtRepayments,
     });
 
     const burnRate = calcBurnRate(cashFlow.netCashFlow);

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
   Calculator,
@@ -19,6 +20,7 @@ import {
   Target,
   BarChart3,
   Banknote,
+  ExternalLink,
 } from 'lucide-react';
 import type { DebtFacility, RefinanceAction } from '@/types/debt';
 import {
@@ -664,6 +666,66 @@ export function RefinanceModeller({ facilities }: RefinanceModellerProps) {
           <div className="mt-3 pt-3 border-t border-border flex justify-between text-sm font-semibold">
             <span>Total Debt Cleared</span>
             <span className="text-emerald-600">{formatCurrency(result.total_cleared)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Cash Flow Impact + Scenario Links */}
+      {result.monthly_saving !== 0 && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-300">
+                Cash Flow Impact
+              </h4>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="text-center">
+              <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400">Monthly Cash Freed</p>
+              <p className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                {result.monthly_saving > 0 ? '+' : ''}{formatCurrency(result.monthly_saving)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400">Annual Cash Freed</p>
+              <p className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                {result.annual_saving > 0 ? '+' : ''}{formatCurrency(result.annual_saving)}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400">New Finance Costs</p>
+              <p className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                {formatCurrency(result.total_post_monthly)}/mo
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-[10px] uppercase tracking-wider text-blue-600 dark:text-blue-400">% Cost Reduction</p>
+              <p className="text-lg font-bold text-blue-800 dark:text-blue-200">
+                {result.pct_monthly_saving > 0 ? '-' : '+'}{Math.round(Math.abs(result.pct_monthly_saving) * 100)}%
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-blue-700 dark:text-blue-400 mb-3">
+            These figures feed into the scenario engine. Create a forecast scenario to see the full
+            impact on P&L, cash flow runway, and break-even timing.
+          </p>
+          <div className="flex gap-2">
+            <Link
+              href={`/scenarios/goalseek`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white dark:bg-blue-950/30 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-100 transition-colors"
+            >
+              <Target className="h-3.5 w-3.5" />
+              Goal Seek with Debt
+            </Link>
+            <Link
+              href={`/scenarios`}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-blue-200 bg-white dark:bg-blue-950/30 px-3 py-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 hover:bg-blue-100 transition-colors"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Create Forecast Scenario
+            </Link>
           </div>
         </div>
       )}
