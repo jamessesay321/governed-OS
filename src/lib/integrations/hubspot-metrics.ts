@@ -81,6 +81,32 @@ export interface DealTrends {
   monthOverMonthChange: number | null;
 }
 
+// Stale deal analysis types
+export type StaleSeverity = 'warning' | 'stale' | 'dead';
+
+export interface StaleDeal {
+  id: string;
+  dealname: string;
+  amount: number;
+  stage: string;
+  stageLabel: string;
+  pipeline: string;
+  daysInStage: number;
+  daysSinceCreated: number;
+  closedate: string | null;
+  closedateOverdue: boolean;
+  severity: StaleSeverity;
+  suggestedAction: string;
+}
+
+export interface StaleDealAnalysis {
+  staleDeals: StaleDeal[];
+  totalStaleValue: number;
+  bySeverity: Record<StaleSeverity, { count: number; value: number }>;
+  byStage: Array<{ stageLabel: string; count: number; value: number; avgDaysInStage: number }>;
+  healthScore: number; // 0–100, higher = healthier pipeline
+}
+
 // ---------------------------------------------------------------------------
 // Constants — Alonuko pipeline stage definitions
 // ---------------------------------------------------------------------------
@@ -402,5 +428,179 @@ export function computeDealTrends(
     closedWonThisMonth,
     closedWonLastMonth,
     monthOverMonthChange,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 5. Stale Deal Analysis
+// ---------------------------------------------------------------------------
+
+/**
+ * Stage-specific stale thresholds (days).
+ * Earlier stages go stale faster — a bride who hasn't moved past
+ * "Consultation Booked" in 14 days is likely disengaged.
+ */
+const STALE_THRESHOLDS: Record<string, { warning: number; stale: number; dead: number }> = {
+  // Sales Pipeline
+  consultation_booked:      { warning: 10, stale: 21, dead: 45 },
+  no_deposit_no_tcs:        { warning: 14, stale: 30, dead: 60 },
+  deposit_paid_no_tcs:      { warning: 21, stale: 45, dead: 90 },
+  order_pack_sent:          { warning: 14, stale: 30, dead: 60 },
+  // Unconfirmed Orders
+  consultation_scheduled:   { warning: 7, stale: 14, dead: 30 },
+  consultation_completed:   { warning: 14, stale: 30, dead: 60 },
+  order_pack_sent_uc:       { warning: 14, stale: 30, dead: 60 },
+  committed_awaiting_deposit: { warning: 14, stale: 30, dead: 60 },
+};
+
+const DEFAULT_THRESHOLD = { warning: 14, stale: 30, dead: 60 };
+
+function getSuggestedAction(severity: StaleSeverity, stageId: string): string {
+  if (severity === 'dead') {
+    return 'Close as lost or archive — no response after extended period';
+  }
+  if (severity === 'stale') {
+    switch (stageId) {
+      case 'consultation_booked':
+      case 'consultation_scheduled':
+        return 'Send follow-up email or SMS — confirm attendance';
+      case 'no_deposit_no_tcs':
+      case 'consultation_completed':
+        return 'Personal follow-up call — re-engage or qualify out';
+      case 'deposit_paid_no_tcs':
+      case 'committed_awaiting_deposit':
+        return 'Chase deposit or T&Cs — send reminder with deadline';
+      case 'order_pack_sent':
+      case 'order_pack_sent_uc':
+        return 'Check pack was received — offer to walk through it';
+      default:
+        return 'Follow up to re-engage or move to next stage';
+    }
+  }
+  // warning
+  return 'Monitor — follow up within the next few days';
+}
+
+/**
+ * Identify stale deals and compute pipeline health.
+ * DETERMINISTIC — pure function, no side effects.
+ *
+ * @param now - optional date override for deterministic testing
+ */
+export function computeStaleDealAnalysis(
+  deals: HubSpotDeal[],
+  stages: HubSpotStage[],
+  now: Date = new Date()
+): StaleDealAnalysis {
+  const stageMap = buildStageMap(stages);
+  const staleDeals: StaleDeal[] = [];
+  let totalOpenDeals = 0;
+
+  for (const deal of deals) {
+    const stage = stageMap.get(deal.dealstage);
+    if (!stage || stage.isClosed) continue;
+
+    totalOpenDeals++;
+
+    const daysInStage = deal.stageEnteredAt
+      ? daysBetween(new Date(deal.stageEnteredAt), now)
+      : daysBetween(new Date(deal.createdate), now);
+
+    const daysSinceCreated = daysBetween(new Date(deal.createdate), now);
+
+    const thresholds = STALE_THRESHOLDS[deal.dealstage] ?? DEFAULT_THRESHOLD;
+
+    let severity: StaleSeverity | null = null;
+    if (daysInStage >= thresholds.dead) {
+      severity = 'dead';
+    } else if (daysInStage >= thresholds.stale) {
+      severity = 'stale';
+    } else if (daysInStage >= thresholds.warning) {
+      severity = 'warning';
+    }
+
+    // Also flag deals with overdue close dates
+    const closedateOverdue = deal.closedate
+      ? new Date(deal.closedate).getTime() < now.getTime()
+      : false;
+
+    // If close date is overdue and deal isn't flagged yet, at least flag as warning
+    if (closedateOverdue && !severity) {
+      severity = 'warning';
+    }
+
+    if (severity) {
+      staleDeals.push({
+        id: deal.id,
+        dealname: deal.dealname,
+        amount: deal.amount ?? 0,
+        stage: deal.dealstage,
+        stageLabel: stage.label,
+        pipeline: deal.pipeline,
+        daysInStage: Math.round(daysInStage),
+        daysSinceCreated: Math.round(daysSinceCreated),
+        closedate: deal.closedate,
+        closedateOverdue,
+        severity,
+        suggestedAction: getSuggestedAction(severity, deal.dealstage),
+      });
+    }
+  }
+
+  // Sort: dead first, then stale, then warning; within each, highest value first
+  const severityOrder: Record<StaleSeverity, number> = { dead: 0, stale: 1, warning: 2 };
+  staleDeals.sort((a, b) => {
+    const so = severityOrder[a.severity] - severityOrder[b.severity];
+    if (so !== 0) return so;
+    return b.amount - a.amount;
+  });
+
+  // Aggregates
+  const totalStaleValue = staleDeals.reduce((s, d) => s + d.amount, 0);
+
+  const bySeverity: Record<StaleSeverity, { count: number; value: number }> = {
+    warning: { count: 0, value: 0 },
+    stale: { count: 0, value: 0 },
+    dead: { count: 0, value: 0 },
+  };
+  for (const d of staleDeals) {
+    bySeverity[d.severity].count++;
+    bySeverity[d.severity].value += d.amount;
+  }
+
+  // By stage
+  const stageAgg = new Map<string, { label: string; count: number; value: number; totalDays: number }>();
+  for (const d of staleDeals) {
+    const existing = stageAgg.get(d.stage);
+    if (existing) {
+      existing.count++;
+      existing.value += d.amount;
+      existing.totalDays += d.daysInStage;
+    } else {
+      stageAgg.set(d.stage, { label: d.stageLabel, count: 1, value: d.amount, totalDays: d.daysInStage });
+    }
+  }
+
+  const byStage = Array.from(stageAgg.values()).map((s) => ({
+    stageLabel: s.label,
+    count: s.count,
+    value: round2(s.value),
+    avgDaysInStage: Math.round(s.totalDays / s.count),
+  })).sort((a, b) => b.value - a.value);
+
+  // Pipeline health score: 100 = no stale deals, 0 = all dead
+  const healthScore = totalOpenDeals > 0
+    ? Math.max(0, Math.round(
+        ((totalOpenDeals - staleDeals.length) / totalOpenDeals) * 100
+        - (bySeverity.dead.count / Math.max(totalOpenDeals, 1)) * 30
+      ))
+    : 100;
+
+  return {
+    staleDeals,
+    totalStaleValue: round2(totalStaleValue),
+    bySeverity,
+    byStage,
+    healthScore,
   };
 }

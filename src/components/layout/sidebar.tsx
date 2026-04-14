@@ -179,11 +179,12 @@ const navigation: NavGroup[] = [
     ],
   },
   {
-    group: 'Bridal Orders',
+    group: 'CRM & Orders',
     icon: 'ClipboardList',
     href: '/orders',
     children: [
       { href: '/orders', label: 'Order Management' },
+      { href: '/crm/pipeline', label: 'Pipeline Health' },
     ],
   },
   {
