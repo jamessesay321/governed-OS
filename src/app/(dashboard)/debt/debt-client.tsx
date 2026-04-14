@@ -41,6 +41,7 @@ import type {
 import { CLASSIFICATION_CONFIG, FACILITY_TYPE_LABELS } from '@/types/debt';
 import { ExportButton, type ExportColumn } from '@/components/shared/export-button';
 import { NumberLegend } from '@/components/data-primitives';
+import { RefinanceModeller } from '@/components/debt/refinance-modeller';
 
 /* ================================================================== */
 /*  Props                                                              */
@@ -942,94 +943,7 @@ function MaturityTimeline({ facilities }: { facilities: DebtFacility[] }) {
 /*  Refinance Tab                                                      */
 /* ================================================================== */
 
-function RefinanceTab() {
-  const plan = {
-    source: 'Creative UK',
-    total_funding: 500000,
-    allocation: [
-      { item: 'IWOCA', amount: 20000, action: 'Clear' },
-      { item: 'Director Loans (DLA)', amount: 140000, action: 'Clear' },
-      { item: 'Capital on Tap', amount: 50000, action: 'Clear full balance' },
-      { item: 'BizCap & MaxCap', amount: 40000, action: '2 months remaining' },
-      { item: 'New Working Capital', amount: 60000, action: 'June requirement' },
-    ],
-    total_repay: 310000,
-    balance_for_investing: 190000,
-    remaining_post_refinance: [
-      { item: 'Shopify MCA', amount: 150000 },
-      { item: 'New Creative UK Loan', amount: 500000 },
-      { item: 'BBL', amount: 12748 },
-      { item: 'Funding Circle', amount: 35185 },
-    ],
-  };
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">Refinance Strategy</h3>
-        <p className="text-sm text-gray-500">Consolidation plan to reduce cost and improve debt structure</p>
-      </div>
-
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-sm font-semibold text-gray-900">Refinance Plan: Creative UK</h4>
-          <span className="px-2 py-0.5 text-[10px] font-medium uppercase bg-blue-50 text-blue-600 rounded-full">Proposed</span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="rounded-lg bg-blue-50 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-blue-600">Funding</p>
-            <p className="text-lg font-bold text-blue-800">{formatCurrency(plan.total_funding)}</p>
-          </div>
-          <div className="rounded-lg bg-emerald-50 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-emerald-600">Debt Clearance</p>
-            <p className="text-lg font-bold text-emerald-800">{formatCurrency(plan.total_repay)}</p>
-          </div>
-          <div className="rounded-lg bg-purple-50 p-3 text-center">
-            <p className="text-[10px] uppercase tracking-wider text-purple-600">For Investment</p>
-            <p className="text-lg font-bold text-purple-800">{formatCurrency(plan.balance_for_investing)}</p>
-          </div>
-        </div>
-
-        <div className="space-y-2 mb-4">
-          <p className="text-xs font-medium text-gray-700 mb-2">Allocation Plan</p>
-          {plan.allocation.map((item) => (
-            <div key={item.item} className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2">
-                <ArrowDownRight className="h-3.5 w-3.5 text-emerald-500" />
-                <span className="text-gray-700">{item.item}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
-                <span className="text-gray-400">{item.action}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t border-gray-100 pt-3">
-          <p className="text-xs font-medium text-gray-700 mb-2">Remaining Debt Post-Refinance</p>
-          {plan.remaining_post_refinance.map((item) => (
-            <div key={item.item} className="flex justify-between text-xs py-0.5">
-              <span className="text-gray-600">{item.item}</span>
-              <span className="font-medium text-gray-900">{formatCurrency(item.amount)}</span>
-            </div>
-          ))}
-          <div className="flex justify-between text-xs py-1 mt-1 border-t border-gray-100 font-semibold">
-            <span className="text-gray-900">Total Post-Refinance</span>
-            <span className="text-gray-900">{formatCurrency(plan.remaining_post_refinance.reduce((s, i) => s + i.amount, 0))}</span>
-          </div>
-        </div>
-
-        <div className="mt-3 rounded-lg bg-amber-50 border border-amber-100 p-3">
-          <p className="text-xs text-amber-800">
-            <strong>Note:</strong> Lenders typically require 1.5x DSCR. Sigma declined. Capify declined — still waiting back. Portman lending under review.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+/* RefinanceTab — now uses the interactive RefinanceModeller component */
 
 /* ================================================================== */
 /*  Helpers                                                            */
@@ -1228,7 +1142,7 @@ export function DebtClient({ facilities, summary, hasData, orgId, taxLiabilities
           latestPeriod={latestPeriod}
         />
       )}
-      {activeTab === 'refinance' && <RefinanceTab />}
+      {activeTab === 'refinance' && <RefinanceModeller facilities={facilities} />}
     </div>
   );
 }
