@@ -299,13 +299,15 @@ export function getBuiltInTemplates(): DriverTemplate[] {
       category: 'staff',
       icon: 'Users',
       costComponents: [
-        { label: 'Salary', annualAmount: 28_000, frequency: 'monthly', category: 'salary' },
-        { label: 'Employer NIC', annualAmount: 3_864, frequency: 'monthly', category: 'nic' },
-        { label: 'Employer Pension', annualAmount: 840, frequency: 'monthly', category: 'pension' },
+        // Seamstress salary: £26K avg per draft accounts staff breakdown
+        { label: 'Salary', annualAmount: 26_000, frequency: 'monthly', category: 'salary' },
+        { label: 'Employer NIC', annualAmount: 3_588, frequency: 'monthly', category: 'nic' },
+        { label: 'Employer Pension', annualAmount: 780, frequency: 'monthly', category: 'pension' },
         { label: 'Workspace Overhead', annualAmount: 1_200, frequency: 'monthly', category: 'overhead' },
       ],
       revenueComponents: [
-        { label: 'Dress Production', unitOutput: 3.3, revenuePerUnit: 6_400, frequency: 'monthly' },
+        // ~40 dresses/year = 3.3/month × £7,000 avg (per draft accounts FY25)
+        { label: 'Dress Production', unitOutput: 3.3, revenuePerUnit: 7_000, frequency: 'monthly' },
       ],
       defaultStartDate: new Date().toISOString().slice(0, 10),
       scalable: true,
@@ -326,8 +328,8 @@ export function getBuiltInTemplates(): DriverTemplate[] {
         { label: 'Food & Drink', annualAmount: 500, frequency: 'one-off', category: 'other' },
       ],
       revenueComponents: [
-        // 12 appointments x 80% conversion x £6,400 = £61,440
-        { label: 'Show Orders', unitOutput: 9.6, revenuePerUnit: 6_400, frequency: 'monthly' },
+        // 15 appointments × 65% conversion = ~10 bookings × £7,000 = ~£70,000
+        { label: 'Show Orders', unitOutput: 9.75, revenuePerUnit: 7_000, frequency: 'monthly' },
       ],
       defaultStartDate: new Date().toISOString().slice(0, 10),
       scalable: true,
@@ -361,8 +363,8 @@ export function getBuiltInTemplates(): DriverTemplate[] {
         { label: 'Campaign Spend', annualAmount: 2_500, frequency: 'one-off', category: 'other' },
       ],
       revenueComponents: [
-        // 20 leads x 25% conversion x £6,400 = £32,000
-        { label: 'Campaign Orders', unitOutput: 5, revenuePerUnit: 6_400, frequency: 'monthly' },
+        // 20 leads × 25% conversion = 5 orders × £7,000 = £35,000
+        { label: 'Campaign Orders', unitOutput: 5, revenuePerUnit: 7_000, frequency: 'monthly' },
       ],
       defaultStartDate: new Date().toISOString().slice(0, 10),
       scalable: true,

@@ -84,6 +84,8 @@ const INDUSTRY_COSTS: Record<string, CostProfile> = {
   'creative-agency': { cogsPercent: 0.15, staffPercent: 0.45, rentPercent: 0.06, marketingPercent: 0.08, techPercent: 0.06, adminPercent: 0.04, otherPercent: 0.03 },
   'construction': { cogsPercent: 0.55, staffPercent: 0.20, rentPercent: 0.04, marketingPercent: 0.03, techPercent: 0.02, adminPercent: 0.04, otherPercent: 0.04 },
   'fashion': { cogsPercent: 0.40, staffPercent: 0.18, rentPercent: 0.08, marketingPercent: 0.10, techPercent: 0.04, adminPercent: 0.04, otherPercent: 0.03 },
+  // Bespoke fashion (couture, atelier): low material cost, very high labour. Calibrated from Alonuko draft accounts FY25.
+  'bespoke-fashion': { cogsPercent: 0.26, staffPercent: 0.54, rentPercent: 0.05, marketingPercent: 0.04, techPercent: 0.02, adminPercent: 0.08, otherPercent: 0.18 },
   'education': { cogsPercent: 0.15, staffPercent: 0.45, rentPercent: 0.08, marketingPercent: 0.06, techPercent: 0.06, adminPercent: 0.04, otherPercent: 0.03 },
   'other': { cogsPercent: 0.30, staffPercent: 0.30, rentPercent: 0.06, marketingPercent: 0.06, techPercent: 0.04, adminPercent: 0.04, otherPercent: 0.04 },
 };

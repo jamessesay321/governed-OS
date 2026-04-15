@@ -912,8 +912,8 @@ function CreateTrunkShowModal({
   const [freelancerCost, setFreelancerCost] = useState(2000);
   const [shippingCost, setShippingCost] = useState(1000);
   const [appointments, setAppointments] = useState(10);
-  const [conversionRate, setConversionRate] = useState(0.8);
-  const [dressPrice, setDressPrice] = useState(6400);
+  const [conversionRate, setConversionRate] = useState(0.65);
+  const [dressPrice, setDressPrice] = useState(7000);
   const [notes, setNotes] = useState('');
 
   const totalCost = hotelCost + travelCost + freelancerCost + shippingCost;

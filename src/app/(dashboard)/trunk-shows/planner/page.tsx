@@ -42,97 +42,29 @@ function computePlan(
   return { ...partial, totalCost, expectedRevenue, roi };
 }
 
+/**
+ * 2026 Trunk Show Schedule — aligned with Alonuko Strategic Plan
+ * Priority markets: Houston (warm), New York (flagship), Atlanta (new)
+ * 12 shows, revenue ramp: £40K → £70K → £100K → £130K per show
+ * Avg dress price: £7,000 | Conversion: 65% | Cost: ~£10K/show
+ */
 const SEED_PLANS: PlannedTrunkShow[] = [
-  computePlan({
-    id: 'ts-ny-2026',
-    city: 'New York',
-    country: 'US',
-    startDate: '2026-04-15',
-    endDate: '2026-04-20',
-    staffRequired: 2,
-    freelancersRequired: 1,
-    hotelCostEstimate: 5000,
-    travelCostEstimate: 3500,
-    freelancerCostEstimate: 2500,
-    shippingCostEstimate: 1000,
-    expectedAppointments: 15,
-    conversionRate: 0.8,
-    averageDressPrice: 6400,
-    status: 'confirmed',
-    notes: 'Annual NYC trunk show at The Plaza — flagship event',
-  }),
-  computePlan({
-    id: 'ts-la-2026',
-    city: 'Los Angeles',
-    country: 'US',
-    startDate: '2026-06-10',
-    endDate: '2026-06-14',
-    staffRequired: 2,
-    freelancersRequired: 1,
-    hotelCostEstimate: 4000,
-    travelCostEstimate: 3000,
-    freelancerCostEstimate: 2000,
-    shippingCostEstimate: 1000,
-    expectedAppointments: 10,
-    conversionRate: 0.8,
-    averageDressPrice: 6400,
-    status: 'planned',
-    notes: 'West coast expansion — Beverly Hills bridal boutique partnership',
-  }),
-  computePlan({
-    id: 'ts-ldn-2026',
-    city: 'London',
-    country: 'UK',
-    startDate: '2026-09-05',
-    endDate: '2026-09-10',
-    staffRequired: 3,
-    freelancersRequired: 2,
-    hotelCostEstimate: 800,
-    travelCostEstimate: 200,
-    freelancerCostEstimate: 1500,
-    shippingCostEstimate: 500,
-    expectedAppointments: 20,
-    conversionRate: 0.8,
-    averageDressPrice: 6400,
-    status: 'planned',
-    notes: 'London bridal week — home market showcase',
-  }),
-  computePlan({
-    id: 'ts-dxb-2026',
-    city: 'Dubai',
-    country: 'UAE',
-    startDate: '2026-11-12',
-    endDate: '2026-11-16',
-    staffRequired: 2,
-    freelancersRequired: 1,
-    hotelCostEstimate: 6000,
-    travelCostEstimate: 4000,
-    freelancerCostEstimate: 3000,
-    shippingCostEstimate: 2000,
-    expectedAppointments: 8,
-    conversionRate: 0.8,
-    averageDressPrice: 6400,
-    status: 'planned',
-    notes: 'Premium market — higher-value brides, luxury venue',
-  }),
-  computePlan({
-    id: 'ts-mia-2027',
-    city: 'Miami',
-    country: 'US',
-    startDate: '2027-02-18',
-    endDate: '2027-02-22',
-    staffRequired: 2,
-    freelancersRequired: 1,
-    hotelCostEstimate: 4500,
-    travelCostEstimate: 3000,
-    freelancerCostEstimate: 2500,
-    shippingCostEstimate: 1000,
-    expectedAppointments: 12,
-    conversionRate: 0.8,
-    averageDressPrice: 6400,
-    status: 'planned',
-    notes: 'South Florida market — strong destination wedding demographic',
-  }),
+  // Q1: Ramp-up (£40K target)
+  computePlan({ id: 'ts-hou-jan-2026', city: 'Houston', country: 'US', startDate: '2026-01-17', endDate: '2026-01-21', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3500, travelCostEstimate: 3000, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 10, conversionRate: 0.65, averageDressPrice: 7000, status: 'completed', notes: 'Houston warm market — strong existing client base. Google Ads £500-800/mo.' }),
+  computePlan({ id: 'ts-ny-feb-2026', city: 'New York', country: 'US', startDate: '2026-02-14', endDate: '2026-02-19', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 5000, travelCostEstimate: 3500, freelancerCostEstimate: 2500, shippingCostEstimate: 1500, expectedAppointments: 12, conversionRate: 0.65, averageDressPrice: 7000, status: 'completed', notes: 'NYC flagship — boutique partnerships (Lovely Bride, Designer Loft). Valentine\'s engagement season.' }),
+  computePlan({ id: 'ts-atl-mar-2026', city: 'Atlanta', country: 'US', startDate: '2026-03-14', endDate: '2026-03-18', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3000, travelCostEstimate: 2800, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 10, conversionRate: 0.65, averageDressPrice: 7000, status: 'confirmed', notes: 'Atlanta new market. Google Ads running. Destination wedding demographic.' }),
+  // Q2: Building (£40K → £70K)
+  computePlan({ id: 'ts-hou-may-2026', city: 'Houston', country: 'US', startDate: '2026-05-09', endDate: '2026-05-13', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3500, travelCostEstimate: 3000, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 12, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Houston return — referrals from Jan. Pre-Civil Ceremony launch.' }),
+  computePlan({ id: 'ts-ny-jun-2026', city: 'New York', country: 'US', startDate: '2026-06-20', endDate: '2026-06-25', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 5000, travelCostEstimate: 3500, freelancerCostEstimate: 2500, shippingCostEstimate: 1500, expectedAppointments: 15, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Civil Ceremony collection debut (£1,500-£3,000 range). £70K target.' }),
+  computePlan({ id: 'ts-ldn-jul-2026', city: 'London', country: 'UK', startDate: '2026-07-11', endDate: '2026-07-15', staffRequired: 3, freelancersRequired: 1, hotelCostEstimate: 0, travelCostEstimate: 500, freelancerCostEstimate: 1500, shippingCostEstimate: 500, expectedAppointments: 18, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Home market — Civil Ceremony collection. Low cost. 7,000 mailing list.' }),
+  // Q3: Peak (£100K target)
+  computePlan({ id: 'ts-atl-aug-2026', city: 'Atlanta', country: 'US', startDate: '2026-08-08', endDate: '2026-08-12', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3000, travelCostEstimate: 2800, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 18, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Atlanta return — All-Black collection debut (£800-£2,000). £100K target.' }),
+  computePlan({ id: 'ts-hou-sep-2026', city: 'Houston', country: 'US', startDate: '2026-09-12', endDate: '2026-09-16', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3500, travelCostEstimate: 3000, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 18, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Houston Q3 — autumn season. Mature referral pipeline. Full collection.' }),
+  computePlan({ id: 'ts-ny-sep-2026', city: 'New York', country: 'US', startDate: '2026-09-26', endDate: '2026-10-01', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 5000, travelCostEstimate: 3500, freelancerCostEstimate: 2500, shippingCostEstimate: 1500, expectedAppointments: 20, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'NYC autumn — biggest show. Kleinfeld pathway for 2027.' }),
+  // Q4: Peak performance (£130K target)
+  computePlan({ id: 'ts-hou-oct-2026', city: 'Houston', country: 'US', startDate: '2026-10-24', endDate: '2026-10-28', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3500, travelCostEstimate: 3000, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 22, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Mainline Bridal debut (Oct launch). Full 3-collection offering. £130K target.' }),
+  computePlan({ id: 'ts-atl-nov-2026', city: 'Atlanta', country: 'US', startDate: '2026-11-14', endDate: '2026-11-18', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 3000, travelCostEstimate: 2800, freelancerCostEstimate: 2000, shippingCostEstimate: 1500, expectedAppointments: 22, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'Atlanta year-end — engagement season. Full collection. £130K target.' }),
+  computePlan({ id: 'ts-ny-dec-2026', city: 'New York', country: 'US', startDate: '2026-12-05', endDate: '2026-12-10', staffRequired: 2, freelancersRequired: 1, hotelCostEstimate: 5000, travelCostEstimate: 3500, freelancerCostEstimate: 2500, shippingCostEstimate: 1500, expectedAppointments: 22, conversionRate: 0.65, averageDressPrice: 7000, status: 'planned', notes: 'NYC December peak — engagement season. 3-collection showcase. £130K target.' }),
 ];
 
 /* ================================================================== */
@@ -208,13 +140,13 @@ export default async function TrunkShowPlannerPage() {
   ).length;
   const actualConversionRate = totalEnquiries > 0
     ? confirmedOrders / totalEnquiries
-    : 0.8; // fallback
+    : 0.65; // fallback — 65% per strategic plan
 
   // Average dress price from real orders
   const ordersWithPrice = orders.filter((o) => o.total_price > 0);
   const avgDressPrice = ordersWithPrice.length > 0
     ? ordersWithPrice.reduce((sum, o) => sum + Number(o.total_price), 0) / ordersWithPrice.length
-    : 6400; // fallback GBP
+    : 7000; // fallback — £7K per draft accounts (£1.43M / ~205 orders)
 
   // ── Fetch org config ──
   const { data: orgData } = await supabase

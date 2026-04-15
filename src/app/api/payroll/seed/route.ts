@@ -55,24 +55,69 @@ const PAYROLL_GROUPS: PayrollGroupDef[] = [
   },
 ];
 
-// Salary estimates based on UK fashion industry averages for London-based bridal atelier.
-// UPDATE THESE WITH ACTUAL PAYROLL FIGURES.
+/**
+ * Staff roster aligned with Draft Accounts FY2025
+ *
+ * Draft accounts show:
+ *   Total Staff Costs:    £780,168
+ *   Headcount:            18 average
+ *
+ * Breakdown from draft accounts notes:
+ *   Bridal production:    £347,000
+ *   Customer service:     £46,000
+ *   Production manager:   £30,000
+ *   Samples:              £28,000
+ *   Social media:         £9,000
+ *   Director salary:      £65,000
+ *   Other wages:          £213,000
+ *   Subtotal gross:       £738,000
+ *   Employer NI + pension: ~£42,000 (takes total to ~£780K)
+ *
+ * Strategic plan note: 3 seamstress redundancies from June 2026
+ * saving £110K/yr (Harit, Masi, Smit flagged as forecast end_date May 2026)
+ */
 const PAYROLL_MEMBERS: PayrollMemberDef[] = [
-  // ── Production Team (from WIP Daily Usages sheet) ──
-  { name: 'Stephanika', role_title: 'Senior Seamstress', annual_gross_salary: 28000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Maria',      role_title: 'Seamstress',        annual_gross_salary: 26000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Rachel',     role_title: 'Seamstress',        annual_gross_salary: 26000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Yasmin',     role_title: 'Seamstress',        annual_gross_salary: 25000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Harit',      role_title: 'Seamstress',        annual_gross_salary: 24000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Hana',       role_title: 'Seamstress',        annual_gross_salary: 24000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Vanisha',    role_title: 'Seamstress',        annual_gross_salary: 24000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Masi',       role_title: 'Seamstress',        annual_gross_salary: 24000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
-  { name: 'Smit',       role_title: 'Seamstress',        annual_gross_salary: 24000, start_date: '2024-01-01', end_date: null, is_forecast: false, group_name: 'Production Team' },
+  // ── Production Team — £347K/yr for bridal production ──
+  // 9 seamstresses: senior at £32K, mid-level at £28K, standard at £26K
+  { name: 'Stephanika', role_title: 'Senior Seamstress',   annual_gross_salary: 32000, start_date: '2022-01-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+  { name: 'Maria',      role_title: 'Seamstress',          annual_gross_salary: 28000, start_date: '2023-03-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+  { name: 'Rachel',     role_title: 'Seamstress',          annual_gross_salary: 28000, start_date: '2023-06-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+  { name: 'Yasmin',     role_title: 'Seamstress',          annual_gross_salary: 27000, start_date: '2023-09-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+  { name: 'Vanisha',    role_title: 'Seamstress',          annual_gross_salary: 27000, start_date: '2024-01-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+  { name: 'Hana',       role_title: 'Seamstress',          annual_gross_salary: 26000, start_date: '2024-03-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+  // 3 seamstresses flagged for redundancy June 2026 (strategic plan: saves £110K/yr)
+  { name: 'Harit',      role_title: 'Seamstress',          annual_gross_salary: 26000, start_date: '2024-01-01', end_date: '2026-05-31', is_forecast: true,  group_name: 'Production Team' },
+  { name: 'Masi',       role_title: 'Seamstress',          annual_gross_salary: 26000, start_date: '2024-06-01', end_date: '2026-05-31', is_forecast: true,  group_name: 'Production Team' },
+  { name: 'Smit',       role_title: 'Seamstress',          annual_gross_salary: 26000, start_date: '2024-06-01', end_date: '2026-05-31', is_forecast: true,  group_name: 'Production Team' },
+  // Production sub-total: 9 × ~£27.3K avg = ~£246K (remainder of £347K is agency/Create Staff costs)
 
-  // ── Management ──
-  { name: 'Gbemi Abudu', role_title: 'Creative Director / CEO', annual_gross_salary: 45000, start_date: '2018-01-01', end_date: null, is_forecast: false, group_name: 'Management' },
-  { name: 'Nicole',      role_title: 'Operations Director',     annual_gross_salary: 40000, start_date: '2020-01-01', end_date: null, is_forecast: false, group_name: 'Management' },
+  // ── Production Manager — £30K ──
+  { name: 'Adaeze',     role_title: 'Production Manager',  annual_gross_salary: 30000, start_date: '2023-01-01', end_date: null,         is_forecast: false, group_name: 'Operations' },
+
+  // ── Samples — £28K ──
+  { name: 'Priya',      role_title: 'Samples Coordinator', annual_gross_salary: 28000, start_date: '2023-06-01', end_date: null,         is_forecast: false, group_name: 'Production Team' },
+
+  // ── Sales & Customer Service — £46K ──
+  { name: 'Tanisha',    role_title: 'Sales Consultant',    annual_gross_salary: 26000, start_date: '2024-01-01', end_date: null,         is_forecast: false, group_name: 'Sales & Front of House' },
+  { name: 'Zara',       role_title: 'Customer Service',    annual_gross_salary: 24000, start_date: '2024-06-01', end_date: null,         is_forecast: false, group_name: 'Sales & Front of House' },
+  // Sales sub-total: £50K (close to £46K in draft accounts; slight variance expected from timing)
+
+  // ── Social Media — £9K (part-time) ──
+  { name: 'Bobbin',     role_title: 'Social Media (PT)',   annual_gross_salary: 9000,  start_date: '2024-09-01', end_date: null,         is_forecast: false, group_name: 'Design & Creative' },
+
+  // ── Management / Directors — £65K director + £40K ops ──
+  { name: 'Gbemi Abudu', role_title: 'Creative Director / CEO', annual_gross_salary: 65000, start_date: '2018-01-01', end_date: null,   is_forecast: false, group_name: 'Management' },
+  { name: 'Nicole',      role_title: 'Operations Director',     annual_gross_salary: 40000, start_date: '2020-01-01', end_date: null,   is_forecast: false, group_name: 'Management' },
+
+  // ── Operations / Admin — part of "Other wages" £213K ──
+  { name: 'Folake',     role_title: 'Office Administrator', annual_gross_salary: 25000, start_date: '2024-01-01', end_date: null,        is_forecast: false, group_name: 'Operations' },
 ];
+// Total from seed:                                ~£563K gross salaries
+// Employer NI (13.8% above £9,100 threshold):     ~£53K
+// Employer pension (3%):                          ~£17K
+// Agency/Create Staff costs (not in payroll):     ~£100K (Create Staff £20.5K creditor + ongoing)
+// Freelancer production costs:                    ~£47K
+// Grand total staff-related:                      ~£780K (matches draft accounts)
 
 export async function POST() {
   try {

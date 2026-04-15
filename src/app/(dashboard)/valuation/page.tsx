@@ -455,7 +455,10 @@ export default async function ValuationPage() {
   if (scenarioProjections.length === 0) {
     const lastActualYear = sortedYears[sortedYears.length - 1] ?? 2024;
     const lastActualRev = revenueByYear.get(lastActualYear) ?? 0;
-    // Business Plan 2025 targets
+    // Revenue trajectory from investment deck (aspirational targets).
+    // NOTE: These are used ONLY in the valuation page for investor context.
+    // The draft accounts show FY25 at £1.43M, so these represent the
+    // growth ambition presented to investors, not operational forecasts.
     const targets = [
       { year: lastActualYear + 1, revenue: 2_000_000 },
       { year: lastActualYear + 2, revenue: 5_000_000 },
@@ -546,8 +549,8 @@ export default async function ValuationPage() {
       value: `${actualEbitdaMargin.toFixed(1)}%`,
       detail: 'Trailing 12 months',
     },
-    { label: 'Avg Dress Price', value: '£8,957', detail: '50% increase since 2021' },
-    { label: 'Conversion Rate', value: '74%', detail: 'Appointments to confirmed' },
+    { label: 'Avg Dress Price', value: '£7,000', detail: 'Per draft accounts FY25 (£1.43M / ~205 orders)' },
+    { label: 'Conversion Rate', value: '65%', detail: 'Appointments to confirmed (trunk show pipeline)' },
     {
       label: 'Marketing / Revenue',
       value: `${marketingPct.toFixed(1)}%`,
@@ -564,7 +567,7 @@ export default async function ValuationPage() {
     markets,
     profitabilityPath,
     keyMetrics,
-    teamSize: activePayrollAccounts.size > 0 ? activePayrollAccounts.size : 22,
+    teamSize: activePayrollAccounts.size > 0 ? activePayrollAccounts.size : 18,
     usRevenueShare: 70,
     scenarioLinked,
   };

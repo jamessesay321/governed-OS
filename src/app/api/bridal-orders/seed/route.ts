@@ -7,7 +7,7 @@ import { logAudit } from '@/lib/audit/log';
 // One-time operation to populate bridal order pipeline from real client data
 
 const ALONUKO_ORG_ID = 'd49bc641-5b5e-4089-b931-5a103c69617a';
-const DEFAULT_DEPOSIT = 1750; // 50% of avg dress price (~£3,500)
+const DEFAULT_DEPOSIT = 3500; // 50% of avg dress price (~£7,000 per draft accounts FY25)
 const DEPOSIT_DATE = '2026-01-15'; // approximate deposit date for in-progress orders
 
 interface WipOrder {
@@ -167,13 +167,13 @@ export async function POST() {
     }
 
     // Update total_paid and outstanding_balance on each order
-    // Deposit is £1,750; typical dress price ~£3,500 so outstanding ~£1,750
+    // Deposit is £3,500 (50% of £7,000 avg); outstanding ~£3,500
     for (const order of orders) {
       await supabase
         .from('bridal_orders')
         .update({
           total_paid: DEFAULT_DEPOSIT,
-          outstanding_balance: 3500 - DEFAULT_DEPOSIT, // £1,750 outstanding
+          outstanding_balance: 7000 - DEFAULT_DEPOSIT, // £3,500 outstanding
         })
         .eq('id', order.id as string);
     }
