@@ -83,6 +83,9 @@ const SEARCH_INDEX: SearchItem[] = [
   { label: 'Run Assessment', href: '/playbook/assessment', keywords: ['assessment', 'run assessment', 'analyse', 'evaluate'], category: 'Playbook' },
   { label: 'Assessment History', href: '/playbook/history', keywords: ['history', 'past assessments', 'previous'], category: 'Playbook' },
 
+  // Strategy
+  { label: 'Strategic Plan 2026', href: '/strategy', keywords: ['strategy', 'strategic plan', 'workstreams', 'milestones', 'trunk shows', 'cost restructuring', 'wholesale', 'new products'], category: 'Strategy' },
+
   // Reports
   { label: 'Board Packs & Reports', href: '/reports', keywords: ['reports', 'board pack', 'board', 'pdf', 'export', 'generate report'], category: 'Reports' },
   { label: 'Create Report', href: '/reports/new', keywords: ['create report', 'new report', 'custom report', 'build report'], category: 'Reports' },

@@ -346,6 +346,14 @@ const navigation: NavGroup[] = [
     ],
   },
   {
+    group: 'Strategic Plan',
+    icon: 'Target',
+    href: '/strategy',
+    children: [
+      { href: '/strategy', label: 'Workstream Tracker' },
+    ],
+  },
+  {
     group: 'AI Strategy',
     icon: 'Sparkles',
     href: '/ai-solutions',

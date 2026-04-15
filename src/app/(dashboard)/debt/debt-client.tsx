@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
   AlertCircle,
@@ -539,6 +540,22 @@ function LendersTab({ facilities }: { facilities: DebtFacility[] }) {
           <p className="text-xs text-gray-500">{formatCurrency(monthly)}/mo</p>
         </div>
       </div>
+
+      {/* MCA Projections CTA */}
+      {lenders.some((f) => f.facility_type === 'mca') && (
+        <Link href="/debt/mca-projections" className="block">
+          <div className="rounded-xl border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-4 flex items-center gap-4 hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-100">
+              <Zap className="h-5 w-5 text-orange-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900">MCA Projections</p>
+              <p className="text-xs text-gray-600">View payoff scenarios for your merchant cash advances</p>
+            </div>
+            <ExternalLink className="h-4 w-4 text-orange-400 shrink-0" />
+          </div>
+        </Link>
+      )}
 
       {Object.entries(groups).map(([cls, list]) => (
         <ClassificationGroup key={cls} classification={cls as DebtClassification} facilities={list} />
