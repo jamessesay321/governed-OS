@@ -442,6 +442,55 @@ export async function POST() {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // ── Seed balance history for each facility ──
+    // Generate 6 months of declining balance history to populate sparklines
+    if (data && data.length > 0) {
+      const historyRows: Array<{
+        org_id: string;
+        facility_id: string;
+        period: string;
+        balance: number;
+        is_projected: boolean;
+      }> = [];
+
+      for (const facility of data) {
+        const match = ALONUKO_FACILITIES.find(
+          (f) => f.facility_name === (facility as Record<string, unknown>).facility_name
+        );
+        if (!match) continue;
+
+        const currentBalance = match.current_balance;
+        const originalAmount = match.original_amount;
+        const monthlyRepayment = match.monthly_repayment;
+
+        // Work backwards from current balance to generate 6 historical points
+        for (let i = 5; i >= 0; i--) {
+          const date = new Date();
+          date.setMonth(date.getMonth() - i);
+          const period = date.toISOString().slice(0, 7);
+
+          // Approximate past balance: current + (months_ago × monthly_repayment × 0.7)
+          // The 0.7 factor accounts for interest meaning not all payment is principal
+          const pastBalance = Math.min(
+            originalAmount,
+            currentBalance + (i * monthlyRepayment * 0.7)
+          );
+
+          historyRows.push({
+            org_id: orgId,
+            facility_id: (facility as Record<string, unknown>).id as string,
+            period,
+            balance: Math.round(pastBalance * 100) / 100,
+            is_projected: false,
+          });
+        }
+      }
+
+      if (historyRows.length > 0) {
+        await supabase.from('debt_balance_history').insert(historyRows);
+      }
+    }
+
     await logAudit({
       orgId,
       userId,
@@ -452,7 +501,7 @@ export async function POST() {
     });
 
     return NextResponse.json({
-      message: `Seeded ${data?.length} debt facilities`,
+      message: `Seeded ${data?.length} debt facilities with balance history`,
       seeded: true,
       facilities: data,
     }, { status: 201 });

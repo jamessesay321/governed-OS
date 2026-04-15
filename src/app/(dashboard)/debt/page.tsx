@@ -20,7 +20,7 @@ function classifyTaxAccount(name: string): TaxLiabilityFromBS['type'] | null {
   return null;
 }
 
-function computeSummary(facilities: DebtFacility[]): DebtSummary {
+function computeSummary(facilities: DebtFacility[], annualNetOperatingIncome?: number): DebtSummary {
   const active = facilities.filter((f) => f.status === 'active');
 
   const total_outstanding = active.reduce((sum, f) => sum + Number(f.current_balance), 0);
@@ -99,6 +99,13 @@ function computeSummary(facilities: DebtFacility[]): DebtSummary {
   const credit_impacting_total = creditImpacting.reduce((s, f) => s + Number(f.current_balance), 0);
   const credit_impacting_count = creditImpacting.length;
 
+  // DSCR = Net Operating Income / Total Debt Service
+  // Debt service = annual repayments (principal + interest already bundled in monthly_repayment)
+  let dscr: number | null = null;
+  if (annualNetOperatingIncome != null && total_annual_cost > 0) {
+    dscr = Math.round((annualNetOperatingIncome / total_annual_cost) * 100) / 100;
+  }
+
   return {
     total_outstanding,
     total_monthly_repayment,
@@ -110,7 +117,7 @@ function computeSummary(facilities: DebtFacility[]): DebtSummary {
     highest_rate_facility,
     next_maturity,
     next_payment,
-    dscr: null,
+    dscr,
     good_total,
     okay_total,
     bad_total,
@@ -182,7 +189,53 @@ export default async function DebtPage() {
     documents: [],
   })) as unknown as DebtFacility[];
 
-  const summary = computeSummary(facilities);
+  // ── Compute trailing 12-month Net Operating Income for DSCR ──
+  let annualNOI: number | undefined;
+  {
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - 12);
+    const cutoffStr = cutoff.toISOString().slice(0, 7); // YYYY-MM
+
+    // Revenue
+    const { data: revenueRows } = await supabase
+      .from('normalised_financials')
+      .select('amount, period, chart_of_accounts!inner(class)')
+      .eq('org_id', orgId)
+      .gte('period', cutoffStr)
+      .in('chart_of_accounts.class' as string, ['REVENUE', 'OTHERINCOME']);
+
+    const totalRevenue = ((revenueRows ?? []) as unknown as Array<{ amount: number }>)
+      .reduce((sum, r) => sum + Math.abs(Number(r.amount)), 0);
+
+    // Operating Expenses (excluding COGS which are DIRECTCOSTS)
+    const { data: expenseRows } = await supabase
+      .from('normalised_financials')
+      .select('amount, period, chart_of_accounts!inner(class)')
+      .eq('org_id', orgId)
+      .gte('period', cutoffStr)
+      .in('chart_of_accounts.class' as string, ['EXPENSE', 'OVERHEADS']);
+
+    const totalExpenses = ((expenseRows ?? []) as unknown as Array<{ amount: number }>)
+      .reduce((sum, r) => sum + Math.abs(Number(r.amount)), 0);
+
+    // COGS / Direct Costs
+    const { data: cogsRows } = await supabase
+      .from('normalised_financials')
+      .select('amount, period, chart_of_accounts!inner(class)')
+      .eq('org_id', orgId)
+      .gte('period', cutoffStr)
+      .in('chart_of_accounts.class' as string, ['DIRECTCOSTS']);
+
+    const totalCOGS = ((cogsRows ?? []) as unknown as Array<{ amount: number }>)
+      .reduce((sum, r) => sum + Math.abs(Number(r.amount)), 0);
+
+    // NOI = Revenue - COGS - Operating Expenses (before debt service)
+    if (totalRevenue > 0) {
+      annualNOI = totalRevenue - totalCOGS - totalExpenses;
+    }
+  }
+
+  const summary = computeSummary(facilities, annualNOI);
   const hasData = facilities.length > 0;
 
   // ── Pull tax/statutory liabilities from balance sheet (Xero GL) ──

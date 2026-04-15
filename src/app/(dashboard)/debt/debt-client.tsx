@@ -117,6 +117,61 @@ function FacilityTypeIcon({ type }: { type: FacilityType }) {
 }
 
 /* ================================================================== */
+/*  Shared: Balance Sparkline                                          */
+/* ================================================================== */
+
+function BalanceSparkline({ history }: { history: DebtFacility['balance_history'] }) {
+  if (!history || history.length < 2) return null;
+
+  const sorted = [...history].sort((a, b) => a.period.localeCompare(b.period));
+  const balances = sorted.map((h) => Number(h.balance));
+  const min = Math.min(...balances);
+  const max = Math.max(...balances);
+  const range = max - min || 1;
+
+  const width = 120;
+  const height = 28;
+  const padding = 2;
+
+  const points = balances.map((val, i) => {
+    const x = padding + (i / (balances.length - 1)) * (width - padding * 2);
+    const y = height - padding - ((val - min) / range) * (height - padding * 2);
+    return `${x},${y}`;
+  });
+
+  const first = balances[0];
+  const last = balances[balances.length - 1];
+  const trending = last < first ? 'down' : last > first ? 'up' : 'flat';
+  const strokeColor = trending === 'down' ? '#10b981' : trending === 'up' ? '#ef4444' : '#94a3b8';
+
+  return (
+    <div className="flex items-center gap-2">
+      <svg width={width} height={height} className="shrink-0">
+        <polyline
+          points={points.join(' ')}
+          fill="none"
+          stroke={strokeColor}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <div className="flex items-center gap-0.5">
+        {trending === 'down' ? (
+          <ArrowDownRight className="h-3 w-3 text-emerald-600" />
+        ) : trending === 'up' ? (
+          <ArrowUpRight className="h-3 w-3 text-red-500" />
+        ) : null}
+        <span className={cn('text-[10px] font-medium',
+          trending === 'down' ? 'text-emerald-600' : trending === 'up' ? 'text-red-500' : 'text-gray-400')}>
+          {Math.round(Math.abs(((last - first) / (first || 1)) * 100))}%
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================== */
 /*  Shared: Facility Card                                              */
 /* ================================================================== */
 
@@ -166,6 +221,12 @@ function FacilityCard({ facility, showCreditImpact }: { facility: DebtFacility; 
             {facility.lender && ` · ${facility.lender}`}
           </p>
         </div>
+        {/* Balance sparkline (hidden on narrow screens) */}
+        {facility.balance_history && facility.balance_history.length >= 2 && (
+          <div className="hidden sm:block shrink-0">
+            <BalanceSparkline history={facility.balance_history} />
+          </div>
+        )}
         <div className="text-right shrink-0">
           <p className="text-sm font-bold text-gray-900">{formatCurrency(balance)}</p>
           {monthly > 0 && <p className="text-xs text-gray-500">{formatCurrencyFull(monthly)}/mo</p>}
@@ -380,12 +441,33 @@ function OverviewTab({ summary, facilities }: { summary: DebtSummary; facilities
         </div>
       )}
 
-      {/* Rate + Maturity cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* DSCR + Rate + Maturity cards */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+        {/* Debt Service Coverage Ratio */}
+        <div className={cn('rounded-xl border p-5',
+          summary.dscr != null && summary.dscr < 1 ? 'border-red-200 bg-red-50/30' :
+          summary.dscr != null && summary.dscr < 1.25 ? 'border-amber-200 bg-amber-50/30' :
+          summary.dscr != null ? 'border-emerald-200 bg-emerald-50/30' : 'border-gray-200 bg-white'
+        )}>
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">DSCR</p>
+          <p className={cn('mt-1 text-2xl font-bold',
+            summary.dscr == null ? 'text-gray-400' :
+            summary.dscr < 1 ? 'text-red-600' :
+            summary.dscr < 1.25 ? 'text-amber-600' : 'text-emerald-600'
+          )}>
+            {summary.dscr != null ? `${summary.dscr.toFixed(2)}x` : '--'}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            {summary.dscr == null ? 'Needs P&L data' :
+             summary.dscr < 1 ? 'Cannot cover debt service' :
+             summary.dscr < 1.25 ? 'Tight — limited headroom' :
+             summary.dscr < 2 ? 'Adequate coverage' : 'Strong coverage'}
+          </p>
+        </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Weighted Avg Rate</p>
           <p className="mt-1 text-2xl font-bold text-gray-900">{formatRate(summary.weighted_average_rate)}</p>
-          <p className="mt-1 text-xs text-red-600">Highest: {summary.highest_rate_facility}</p>
+          <p className="mt-1 text-xs text-red-600 truncate">Highest: {summary.highest_rate_facility}</p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-5">
           <p className="text-xs font-medium uppercase tracking-wider text-gray-500">Next Maturity</p>
