@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { getUserProfile } from '@/lib/auth/get-user-profile';
 import { getLatestAssessment } from '@/lib/playbook/assessment';
 import { PlaybookClient } from '@/components/playbook/playbook-client';
@@ -22,11 +23,13 @@ export default async function PlaybookPage() {
         </p>
       </div>
 
-      <PlaybookClient
-        initialAssessment={assessment}
-        initialActions={[]}
-        orgId={orgId}
-      />
+      <Suspense>
+        <PlaybookClient
+          initialAssessment={assessment}
+          initialActions={[]}
+          orgId={orgId}
+        />
+      </Suspense>
     </div>
   );
 }

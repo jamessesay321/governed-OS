@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { OverallScore } from './overall-score';
 import { MaturityRadar } from './maturity-radar';
 import { DimensionCard } from './dimension-card';
@@ -22,6 +23,10 @@ export function PlaybookClient({
   const [actions, setActions] = useState(initialActions);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const hasAutoRun = useRef(false);
 
   async function runAssessment() {
     setLoading(true);
@@ -48,6 +53,17 @@ export function PlaybookClient({
       setLoading(false);
     }
   }
+
+  // Auto-trigger assessment when URL contains ?run=true (e.g. from /playbook/assessment redirect)
+  useEffect(() => {
+    if (searchParams.get('run') === 'true' && !hasAutoRun.current && !assessment && !loading) {
+      hasAutoRun.current = true;
+      // Clean the URL so a refresh doesn't re-trigger
+      router.replace('/playbook', { scroll: false });
+      runAssessment();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   async function handleStatusChange(actionId: string, status: ActionStatus) {
     try {
