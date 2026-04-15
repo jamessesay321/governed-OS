@@ -1,5 +1,5 @@
 import { getUserProfile } from '@/lib/auth/get-user-profile';
-import { createServiceClient } from '@/lib/supabase/server';
+import { createServiceClient, createUntypedServiceClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { AdvisorPortfolioClient } from './advisor-client';
 
@@ -14,6 +14,8 @@ interface ClientSummary {
   revenue: number | null;
   cash_position: number | null;
   health_score: number | null;
+  health_checked_at: string | null;
+  top_alert: string | null;
   last_sync: string | null;
 }
 
@@ -26,6 +28,7 @@ export default async function AdvisorPortfolioPage() {
   }
 
   const supabase = await createServiceClient();
+  const untypedSupabase = await createUntypedServiceClient();
 
   // Fetch advisor's client relationships
   const { data: relationships } = await supabase
@@ -47,13 +50,13 @@ export default async function AdvisorPortfolioPage() {
     const orgData = rel.organisations as Record<string, unknown> | null;
     const clientOrgId = rel.client_org_id as string;
 
-    // Fetch latest period revenue (sum of revenue accounts)
+    // Fetch latest period revenue and expenses using chart_of_accounts class
     let revenue: number | null = null;
     let cashPosition: number | null = null;
 
     try {
       // Get latest period
-      const { data: latestPeriod } = await supabase
+      const { data: latestPeriod } = await untypedSupabase
         .from('normalised_financials')
         .select('period')
         .eq('org_id', clientOrgId)
@@ -64,32 +67,36 @@ export default async function AdvisorPortfolioPage() {
       if (latestPeriod) {
         const period = (latestPeriod as Record<string, unknown>).period as string;
 
-        // Sum revenue for that period
-        const { data: revData } = await supabase
+        // Revenue: use chart_of_accounts class join
+        const { data: revData } = await untypedSupabase
           .from('normalised_financials')
-          .select('amount')
+          .select('amount, chart_of_accounts!inner(class)')
           .eq('org_id', clientOrgId)
           .eq('period', period)
-          .like('account_id', '%revenue%');
+          .in('chart_of_accounts.class' as string, ['REVENUE', 'OTHERINCOME']);
 
         if (revData && Array.isArray(revData)) {
-          revenue = revData.reduce(
-            (sum: number, r: Record<string, unknown>) => sum + (Number(r.amount) || 0),
+          revenue = (revData as unknown as Array<{ amount: number }>).reduce(
+            (sum, r) => sum + Math.abs(Number(r.amount)),
             0,
           );
         }
 
-        // Try to get cash/bank balance
-        const { data: cashData } = await supabase
+        // Cash: use ASSET class + bank pattern on account name
+        const { data: cashData } = await untypedSupabase
           .from('normalised_financials')
-          .select('amount')
+          .select('amount, chart_of_accounts!inner(class, name)')
           .eq('org_id', clientOrgId)
           .eq('period', period)
-          .like('account_id', '%bank%');
+          .eq('chart_of_accounts.class' as string, 'ASSET');
 
         if (cashData && Array.isArray(cashData)) {
-          cashPosition = cashData.reduce(
-            (sum: number, r: Record<string, unknown>) => sum + (Number(r.amount) || 0),
+          const bankRows = (cashData as unknown as Array<{
+            amount: number;
+            chart_of_accounts: { class: string; name: string };
+          }>).filter((r) => /bank|cash|current account/i.test(r.chart_of_accounts.name));
+          cashPosition = bankRows.reduce(
+            (sum, r) => sum + Number(r.amount),
             0,
           );
         }
@@ -98,8 +105,48 @@ export default async function AdvisorPortfolioPage() {
       // Financial data may not exist yet
     }
 
-    // Derive health score from revenue (placeholder until health_scores table exists)
-    const healthScore: number | null = revenue != null ? (revenue > 0 ? 75 : 30) : null;
+    // Fetch real health score from health_checks table (most recent)
+    let healthScore: number | null = null;
+    let healthCheckedAt: string | null = null;
+    let topAlert: string | null = null;
+
+    try {
+      const { data: healthCheck } = await untypedSupabase
+        .from('health_checks')
+        .select('overall_score, checked_at, alerts')
+        .eq('org_id', clientOrgId)
+        .order('checked_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (healthCheck) {
+        const hc = healthCheck as Record<string, unknown>;
+        healthScore = Number(hc.overall_score);
+        healthCheckedAt = hc.checked_at as string;
+
+        // Extract top alert (first critical, or first warning)
+        const alerts = hc.alerts as Array<{ severity: string; message: string }> | null;
+        if (alerts && alerts.length > 0) {
+          const critical = alerts.find((a) => a.severity === 'critical');
+          const warning = alerts.find((a) => a.severity === 'warning');
+          topAlert = (critical ?? warning)?.message ?? null;
+        }
+      }
+    } catch {
+      // Health checks table may not exist or have no data
+    }
+
+    // Fallback: compute lightweight score if no health check exists
+    if (healthScore == null && revenue != null) {
+      // Simple heuristic: revenue positive with cash = decent, no cash = watch
+      if (revenue > 0 && cashPosition != null && cashPosition > 0) {
+        healthScore = 70; // "adequate" — needs a real health check
+      } else if (revenue > 0) {
+        healthScore = 55; // Revenue but no cash data
+      } else {
+        healthScore = 25; // No revenue = at risk
+      }
+    }
 
     // Fetch last sync date
     let lastSync: string | null = null;
@@ -127,6 +174,8 @@ export default async function AdvisorPortfolioPage() {
       revenue,
       cash_position: cashPosition,
       health_score: healthScore,
+      health_checked_at: healthCheckedAt,
+      top_alert: topAlert,
       last_sync: lastSync,
     });
   }

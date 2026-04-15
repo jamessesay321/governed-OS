@@ -14,6 +14,8 @@ interface ClientSummary {
   revenue: number | null;
   cash_position: number | null;
   health_score: number | null;
+  health_checked_at: string | null;
+  top_alert: string | null;
   last_sync: string | null;
 }
 
@@ -130,9 +132,9 @@ export function AdvisorPortfolioClient({ clients }: AdvisorPortfolioClientProps)
         </Card>
       </div>
 
-      {/* Client cards grid */}
+      {/* Client cards grid — sorted worst health first */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {clients.map((client) => {
+        {[...clients].sort((a, b) => (a.health_score ?? 999) - (b.health_score ?? 999)).map((client) => {
           const health = getHealthColor(client.health_score);
           const isSwitching = switching === client.client_org_id;
 
@@ -182,10 +184,25 @@ export function AdvisorPortfolioClient({ clients }: AdvisorPortfolioClientProps)
                     </p>
                   </div>
                 </div>
+                {/* Top alert from health check */}
+                {client.top_alert && (
+                  <div className="rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 px-3 py-2">
+                    <p className="text-[10px] text-amber-800 dark:text-amber-300 line-clamp-2">
+                      ⚠ {client.top_alert}
+                    </p>
+                  </div>
+                )}
                 <div className="flex items-center justify-between border-t pt-2">
-                  <span className="text-[10px] text-muted-foreground">
-                    Last sync: {formatRelativeDate(client.last_sync)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground">
+                      Sync: {formatRelativeDate(client.last_sync)}
+                    </span>
+                    {client.health_checked_at && (
+                      <span className="text-[10px] text-muted-foreground">
+                        · Health: {formatRelativeDate(client.health_checked_at)}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-xs font-medium text-primary">
                     {isSwitching ? 'Switching...' : 'View'}
                     <svg className="inline-block ml-0.5 h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
