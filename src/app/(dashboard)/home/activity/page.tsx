@@ -1,12 +1,34 @@
-'use client'
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
+import { getUserProfile } from '@/lib/auth/get-user-profile';
+import { createClient } from '@/lib/supabase/server';
+import ActivityClient from './activity-client';
 
-import Link from 'next/link'
-import { cn } from '@/lib/utils'
-import { ArrowLeft, Activity, Bell } from 'lucide-react'
+export default async function ActivityPage() {
+  const { orgId } = await getUserProfile();
+  const supabase = await createClient();
 
-export default function ActivityPage() {
+  // Fetch last 50 audit log entries for this org
+  const { data: logs } = await supabase
+    .from('audit_logs')
+    .select('*')
+    .eq('org_id', orgId)
+    .order('created_at', { ascending: false })
+    .limit(50);
+
+  // Fetch profile names for display
+  const { data: profiles } = await supabase
+    .from('profiles')
+    .select('id, display_name')
+    .eq('org_id', orgId);
+
+  const nameMap: Record<string, string> = {};
+  for (const p of profiles ?? []) {
+    nameMap[p.id] = p.display_name;
+  }
+
   return (
-    <div className="mx-auto max-w-3xl space-y-8 p-6 lg:p-8">
+    <div className="mx-auto max-w-3xl space-y-6 p-6 lg:p-8">
       {/* Back Link */}
       <Link
         href="/home"
@@ -26,28 +48,8 @@ export default function ActivityPage() {
         </p>
       </div>
 
-      {/* Empty State */}
-      <div className="rounded-xl border border-dashed border-gray-300 bg-white py-16">
-        <div className="flex flex-col items-center justify-center text-center">
-          <div className={cn('mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-gray-100')}>
-            <Activity className="h-7 w-7 text-gray-400" />
-          </div>
-          <h2 className="text-lg font-semibold text-gray-700">
-            No activity yet
-          </h2>
-          <p className="mt-2 max-w-sm text-sm text-gray-500">
-            Once you start using Grove, your recent actions, system
-            events, and notifications will appear here.
-          </p>
-          <Link
-            href="/home/getting-started"
-            className="mt-6 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-          >
-            <Bell className="h-4 w-4" />
-            Complete Setup to Get Started
-          </Link>
-        </div>
-      </div>
+      {/* Activity Timeline */}
+      <ActivityClient logs={logs ?? []} nameMap={nameMap} />
     </div>
-  )
+  );
 }

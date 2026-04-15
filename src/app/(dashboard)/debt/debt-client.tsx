@@ -43,6 +43,12 @@ import { CLASSIFICATION_CONFIG, FACILITY_TYPE_LABELS } from '@/types/debt';
 import { ExportButton, type ExportColumn } from '@/components/shared/export-button';
 import { NumberLegend } from '@/components/data-primitives';
 import { RefinanceModeller } from '@/components/debt/refinance-modeller';
+import {
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartsTooltip,
+} from 'recharts';
 
 /* ================================================================== */
 /*  Props                                                              */
@@ -387,6 +393,240 @@ function ClassificationGroup({
 }
 
 /* ================================================================== */
+/*  Interest Breakdown                                                 */
+/* ================================================================== */
+
+const DRAFT_ACCOUNTS_INTEREST = 257_003; // £257K from draft accounts
+
+interface InterestRow {
+  name: string;
+  facilityType: FacilityType;
+  rate: number; // display rate (interest_rate or effective_apr)
+  effectiveApr: number | null;
+  annualInterest: number;
+  balance: number;
+}
+
+const INTEREST_DONUT_COLORS = [
+  '#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981',
+  '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280',
+];
+
+function computeInterestBreakdown(facilities: DebtFacility[]): InterestRow[] {
+  return facilities
+    .filter((f) => f.status === 'active' && f.current_balance > 0)
+    .map((f) => {
+      const balance = Number(f.current_balance);
+      const effectiveApr = f.effective_apr != null ? Number(f.effective_apr) : null;
+      const interestRate = Number(f.interest_rate) || 0;
+      const fixedFee = Number(f.fixed_fee) || 0;
+      const originalAmount = Number(f.original_amount) || 0;
+
+      let annualInterest: number;
+      if (f.facility_type === 'mca' && fixedFee > 0 && originalAmount > 0) {
+        // MCA: use fixed_fee × original_amount (fee is stored as decimal, e.g. 0.25)
+        annualInterest = fixedFee * originalAmount;
+      } else if (effectiveApr != null && effectiveApr > 0) {
+        annualInterest = effectiveApr * balance;
+      } else if (interestRate > 0) {
+        annualInterest = interestRate * balance;
+      } else {
+        annualInterest = 0;
+      }
+
+      return {
+        name: f.facility_name || f.lender,
+        facilityType: f.facility_type,
+        rate: effectiveApr ?? interestRate,
+        effectiveApr,
+        annualInterest,
+        balance,
+      };
+    })
+    .filter((r) => r.annualInterest > 0)
+    .sort((a, b) => b.annualInterest - a.annualInterest);
+}
+
+function aprColorClass(rate: number): string {
+  if (rate > 0.50) return 'text-red-600 font-semibold';
+  if (rate > 0.20) return 'text-amber-600 font-medium';
+  return 'text-emerald-600';
+}
+
+function aprBadge(rate: number): { label: string; className: string } | null {
+  if (rate > 0.50) return { label: 'HIGH', className: 'bg-red-100 text-red-700' };
+  if (rate > 0.20) return { label: 'MEDIUM', className: 'bg-amber-100 text-amber-700' };
+  return null;
+}
+
+function InterestBreakdownCard({ facilities }: { facilities: DebtFacility[] }) {
+  const rows = useMemo(() => computeInterestBreakdown(facilities), [facilities]);
+  const computedTotal = rows.reduce((s, r) => s + r.annualInterest, 0);
+  const variance = computedTotal - DRAFT_ACCOUNTS_INTEREST;
+  const variancePct = DRAFT_ACCOUNTS_INTEREST > 0 ? (variance / DRAFT_ACCOUNTS_INTEREST) * 100 : 0;
+
+  const pieData = rows.map((r) => ({
+    name: r.name,
+    value: Math.round(r.annualInterest),
+  }));
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-gray-900">Annual Interest Breakdown</h3>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Estimated interest cost by facility (active facilities with balance &gt; 0)
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-gray-900">{formatCurrency(computedTotal)}</p>
+          <p className="text-xs text-gray-500">computed annual interest</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col lg:flex-row gap-6">
+        {/* Donut chart */}
+        <div className="flex flex-col items-center justify-center shrink-0">
+          <PieChart width={240} height={220}>
+            <Pie
+              data={pieData}
+              cx={120}
+              cy={100}
+              innerRadius={55}
+              outerRadius={90}
+              paddingAngle={2}
+              dataKey="value"
+            >
+              {pieData.map((_, i) => (
+                <Cell key={`cell-${i}`} fill={INTEREST_DONUT_COLORS[i % INTEREST_DONUT_COLORS.length]} />
+              ))}
+            </Pie>
+            <RechartsTooltip
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              formatter={(value: any) => formatCurrency(Number(value))}
+              contentStyle={{ fontSize: '12px', borderRadius: '8px' }}
+            />
+          </PieChart>
+          {/* Legend */}
+          <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1">
+            {pieData.slice(0, 6).map((entry, i) => (
+              <div key={entry.name} className="flex items-center gap-1">
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: INTEREST_DONUT_COLORS[i % INTEREST_DONUT_COLORS.length] }}
+                />
+                <span className="text-[10px] text-gray-500 truncate max-w-[80px]">{entry.name}</span>
+              </div>
+            ))}
+            {pieData.length > 6 && (
+              <span className="text-[10px] text-gray-400">+{pieData.length - 6} more</span>
+            )}
+          </div>
+        </div>
+
+        {/* Table */}
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 text-left">
+                <th className="pb-2 text-xs font-medium text-gray-500 uppercase tracking-wider">Facility</th>
+                <th className="pb-2 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Balance</th>
+                <th className="pb-2 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Rate / APR</th>
+                <th className="pb-2 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Est. Annual Interest</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, i) => {
+                const badge = aprBadge(row.rate);
+                return (
+                  <tr key={row.name} className="border-b border-gray-50 last:border-0">
+                    <td className="py-2 pr-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: INTEREST_DONUT_COLORS[i % INTEREST_DONUT_COLORS.length] }}
+                        />
+                        <div>
+                          <span className="font-medium text-gray-900">{row.name}</span>
+                          <span className="ml-1.5 text-[10px] text-gray-400">
+                            {FACILITY_TYPE_LABELS[row.facilityType] ?? row.facilityType}
+                          </span>
+                        </div>
+                        {badge && (
+                          <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded-full', badge.className)}>
+                            {badge.label}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 text-right text-gray-700 tabular-nums">{formatCurrency(row.balance)}</td>
+                    <td className={cn('py-2 text-right tabular-nums', aprColorClass(row.rate))}>
+                      {row.rate > 0 ? formatRate(row.rate) : '--'}
+                      {row.effectiveApr != null && row.effectiveApr !== row.rate && (
+                        <span className="text-[10px] text-gray-400 ml-1">
+                          ({formatRate(Number(row.effectiveApr))} eff.)
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2 text-right font-semibold text-gray-900 tabular-nums">
+                      {formatCurrency(row.annualInterest)}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200">
+                <td className="pt-3 font-semibold text-gray-900" colSpan={3}>
+                  Computed Total
+                </td>
+                <td className="pt-3 text-right font-bold text-gray-900 tabular-nums">
+                  {formatCurrency(computedTotal)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Variance vs draft accounts */}
+      <div className={cn(
+        'mt-4 rounded-lg p-3 flex items-center justify-between',
+        Math.abs(variancePct) <= 5 ? 'bg-emerald-50 border border-emerald-200' :
+        Math.abs(variancePct) <= 15 ? 'bg-amber-50 border border-amber-200' :
+        'bg-red-50 border border-red-200'
+      )}>
+        <div className="flex items-center gap-2">
+          <Info className="h-4 w-4 text-gray-500 shrink-0" />
+          <div>
+            <span className="text-xs font-medium text-gray-700">
+              Draft Accounts Total: {formatCurrency(DRAFT_ACCOUNTS_INTEREST)}
+            </span>
+            <span className="text-xs text-gray-500 ml-2">
+              (BizCap £23K, Interest Expense £173K, Capital on Tap £11K, MaxCap £11K, Swift £10K, YouLend £14K, Iwoca £7K, GotCap £4K)
+            </span>
+          </div>
+        </div>
+        <div className="text-right shrink-0 ml-4">
+          <p className={cn('text-sm font-semibold',
+            Math.abs(variancePct) <= 5 ? 'text-emerald-700' :
+            Math.abs(variancePct) <= 15 ? 'text-amber-700' : 'text-red-700'
+          )}>
+            {variance >= 0 ? '+' : ''}{formatCurrency(variance)} variance
+          </p>
+          <p className="text-[10px] text-gray-500">
+            {Math.abs(variancePct).toFixed(1)}% {variance >= 0 ? 'over' : 'under'} draft accounts
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ================================================================== */
 /*  Overview Tab                                                       */
 /* ================================================================== */
 
@@ -508,6 +748,9 @@ function OverviewTab({ summary, facilities }: { summary: DebtSummary; facilities
           </div>
         </div>
       )}
+
+      {/* Interest breakdown by facility */}
+      <InterestBreakdownCard facilities={facilities} />
 
       {/* Payment timeline */}
       <PaymentTimeline facilities={facilities} />
