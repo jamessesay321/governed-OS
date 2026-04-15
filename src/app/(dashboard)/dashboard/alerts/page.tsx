@@ -59,11 +59,10 @@ const AVAILABLE_METRICS = [
 ];
 
 /**
- * Generate placeholder sparkline data based on metric key.
- * In production, this would come from actual historical KPI values.
+ * Fallback sparkline data when no real history is available.
+ * Uses deterministic noise so the chart is stable between renders.
  */
-function generateSparklineData(metricKey: string, threshold: number): number[] {
-  // Deterministic seed from metric key
+function generateFallbackSparklineData(metricKey: string, threshold: number): number[] {
   let seed = 0;
   for (let i = 0; i < metricKey.length; i++) {
     seed += metricKey.charCodeAt(i);
@@ -104,6 +103,9 @@ export default function DashboardAlertsPage() {
   const [success, setSuccess] = useState('');
   const [expandedRuleId, setExpandedRuleId] = useState<string | null>(null);
 
+  // Real KPI history data keyed by metric_key → number[]
+  const [kpiHistory, setKpiHistory] = useState<Record<string, number[]>>({});
+
   // Form state
   const [metricKey, setMetricKey] = useState(AVAILABLE_METRICS[0].key);
   const [condition, setCondition] = useState('below');
@@ -125,9 +127,38 @@ export default function DashboardAlertsPage() {
     }
   }, []);
 
+  // Fetch real KPI history for all metrics used by alert rules
+  const fetchKpiHistory = useCallback(async (alertRules: AlertRule[]) => {
+    if (alertRules.length === 0) return;
+    const uniqueKeys = [...new Set(alertRules.map((r) => r.metric_key))];
+    try {
+      const res = await fetch(`/api/kpi/history?metrics=${uniqueKeys.join(',')}&months=12`);
+      if (res.ok) {
+        const data = await res.json();
+        const history: Record<string, number[]> = {};
+        for (const key of uniqueKeys) {
+          const metricData = data.metrics?.[key];
+          if (metricData && Array.isArray(metricData) && metricData.length >= 2) {
+            history[key] = metricData.map((d: { value: number }) => d.value);
+          }
+        }
+        setKpiHistory(history);
+      }
+    } catch {
+      // Silently fall back to generated data
+    }
+  }, []);
+
   useEffect(() => {
     fetchRules();
   }, [fetchRules]);
+
+  // Fetch KPI history once rules are loaded
+  useEffect(() => {
+    if (rules.length > 0) {
+      fetchKpiHistory(rules);
+    }
+  }, [rules, fetchKpiHistory]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,7 +353,7 @@ export default function DashboardAlertsPage() {
       ) : (
         <div className="space-y-3">
           {rules.map((rule) => {
-            const sparklineData = generateSparklineData(rule.metric_key, rule.threshold);
+            const sparklineData = kpiHistory[rule.metric_key] ?? generateFallbackSparklineData(rule.metric_key, rule.threshold);
             const sparklineColor = SEVERITY_SPARKLINE_COLORS[rule.severity] ?? '#6366f1';
             const bulletRanges = getBulletRanges(rule.threshold, rule.condition);
             const currentValue = sparklineData[sparklineData.length - 1];
@@ -395,7 +426,7 @@ export default function DashboardAlertsPage() {
                           height={24}
                           color={sparklineColor}
                         />
-                        <span className="text-[9px] text-muted-foreground">12-period trend</span>
+                        <span className="text-[9px] text-muted-foreground">{kpiHistory[rule.metric_key] ? '12-month actual' : '12-period est.'}</span>
                       </div>
                       <div className="flex flex-col items-center gap-0.5">
                         <AlertBulletGraph
