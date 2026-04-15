@@ -1,13 +1,14 @@
 'use client';
 
+import { useState, useCallback } from 'react';
 import { IntelligencePageWrapper } from '@/components/intelligence/intelligence-page-wrapper';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { getMockRoadmap, getNextStep } from '@/lib/roadmap/roadmap-data';
-import type { RoadmapStep } from '@/lib/roadmap/roadmap-data';
+import { getNextStep } from '@/lib/roadmap/roadmap-data';
+import type { RoadmapStep, ActivationRoadmap, StepStatus } from '@/lib/roadmap/roadmap-data';
 
 /* ─── milestone unlock data ─── */
 interface MilestoneUnlock {
@@ -57,7 +58,17 @@ function categoryColor(cat: RoadmapStep['category']): string {
 }
 
 /* ─── timeline step component ─── */
-function TimelineStep({ step, isLast }: { step: RoadmapStep; isLast: boolean }) {
+function TimelineStep({
+  step,
+  isLast,
+  onUpdateStatus,
+  isUpdating,
+}: {
+  step: RoadmapStep;
+  isLast: boolean;
+  onUpdateStatus: (stepId: string, status: StepStatus) => void;
+  isUpdating: boolean;
+}) {
   const isCompleted = step.status === 'completed';
   const isInProgress = step.status === 'in_progress';
   const isAvailable = step.status === 'available';
@@ -157,13 +168,24 @@ function TimelineStep({ step, isLast }: { step: RoadmapStep; isLast: boolean }) 
           {/* action buttons */}
           <div className="flex-shrink-0">
             {isInProgress && (
-              <Button size="sm" className="w-full sm:w-auto">
-                Continue
+              <Button
+                size="sm"
+                className="w-full sm:w-auto"
+                disabled={isUpdating}
+                onClick={() => onUpdateStatus(step.id, 'completed')}
+              >
+                {isUpdating ? 'Saving...' : 'Mark Complete'}
               </Button>
             )}
             {isAvailable && (
-              <Button size="sm" variant="outline" className="w-full sm:w-auto">
-                Start
+              <Button
+                size="sm"
+                variant="outline"
+                className="w-full sm:w-auto"
+                disabled={isUpdating}
+                onClick={() => onUpdateStatus(step.id, 'in_progress')}
+              >
+                {isUpdating ? 'Saving...' : 'Start'}
               </Button>
             )}
           </div>
@@ -174,11 +196,33 @@ function TimelineStep({ step, isLast }: { step: RoadmapStep; isLast: boolean }) 
 }
 
 /* ─── main client component ─── */
-export function RoadmapClient() {
-  const roadmap = getMockRoadmap();
+export function RoadmapClient({ initialRoadmap }: { initialRoadmap: ActivationRoadmap }) {
+  const [roadmap, setRoadmap] = useState(initialRoadmap);
+  const [isUpdating, setIsUpdating] = useState(false);
+
   const nextStep = getNextStep(roadmap);
   const completedCount = roadmap.steps.filter((s) => s.status === 'completed').length;
   const totalCount = roadmap.steps.length;
+
+  const handleUpdateStatus = useCallback(async (stepId: string, status: StepStatus) => {
+    setIsUpdating(true);
+    try {
+      const res = await fetch('/api/roadmap', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepId, status }),
+      });
+
+      if (res.ok) {
+        const updated: ActivationRoadmap = await res.json();
+        setRoadmap(updated);
+      }
+    } catch {
+      // Silently fail — roadmap stays at current state
+    } finally {
+      setIsUpdating(false);
+    }
+  }, []);
 
   return (
     <IntelligencePageWrapper
@@ -216,6 +260,8 @@ export function RoadmapClient() {
               key={step.id}
               step={step}
               isLast={idx === roadmap.steps.length - 1}
+              onUpdateStatus={handleUpdateStatus}
+              isUpdating={isUpdating}
             />
           ))}
         </div>

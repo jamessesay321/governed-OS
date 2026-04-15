@@ -1,12 +1,29 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { getMockRoadmap, getNextStep } from '@/lib/roadmap/roadmap-data';
+import type { ActivationRoadmap } from '@/lib/roadmap/roadmap-data';
 
 export function RoadmapWidget() {
-  const roadmap = getMockRoadmap();
+  // Start with mock data for instant render, then hydrate from API
+  const [roadmap, setRoadmap] = useState<ActivationRoadmap>(getMockRoadmap);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/roadmap')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: ActivationRoadmap | null) => {
+        if (!cancelled && data) setRoadmap(data);
+      })
+      .catch(() => {
+        // Keep mock data on error
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const nextStep = getNextStep(roadmap);
 
   return (
