@@ -5,10 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatCurrency, formatCurrencyCompact } from '@/lib/formatting/currency';
+import { HorizonRow, type HorizonKey } from '@/components/kpi/horizon-row';
 import {
   AlertTriangle, Skull, Clock, CheckCircle, ArrowRight,
   ExternalLink, Filter,
 } from 'lucide-react';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 
 // ---------------------------------------------------------------------------
 // Types (mirrors the API response)
@@ -96,6 +98,7 @@ function getHealthBg(score: number): string {
 // ---------------------------------------------------------------------------
 
 export function PipelineClient() {
+  const { openDrill } = useDrillDown();
   const [data, setData] = useState<StaleDealsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -167,6 +170,84 @@ export function PipelineClient() {
           Stale deal detection across both HubSpot pipelines. For Tanisha to review and action.
         </p>
       </div>
+
+      {/* Time-horizon row — buckets stale deals by close date, with the
+          stalled total on the right. */}
+      {(() => {
+        const allStaleDeals = [
+          ...data.sales.staleAnalysis.staleDeals,
+          ...data.unconfirmed.staleAnalysis.staleDeals,
+        ];
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const dayMs = 86_400_000;
+        const buckets = {
+          today: { amount: 0, count: 0 },
+          next_1_7: { amount: 0, count: 0 },
+          next_8_30: { amount: 0, count: 0 },
+        };
+        for (const deal of allStaleDeals) {
+          if (!deal.closedate) continue;
+          const closeMs = new Date(deal.closedate).getTime();
+          const daysUntil = Math.floor((closeMs - startOfToday) / dayMs);
+          if (daysUntil === 0) {
+            buckets.today.amount += deal.amount;
+            buckets.today.count += 1;
+          } else if (daysUntil >= 1 && daysUntil <= 7) {
+            buckets.next_1_7.amount += deal.amount;
+            buckets.next_1_7.count += 1;
+          } else if (daysUntil >= 8 && daysUntil <= 30) {
+            buckets.next_8_30.amount += deal.amount;
+            buckets.next_8_30.count += 1;
+          }
+        }
+        const stalledTotal = data.meta.totalStaleValue;
+        const stalledCount = data.meta.totalStaleDeals;
+
+        const horizonData = {
+          today: { ...buckets.today, subtitle: 'Stale deals closing today' },
+          next_1_7: { ...buckets.next_1_7, subtitle: 'Stale deals closing in a week' },
+          next_8_30: { ...buckets.next_8_30, subtitle: 'Stale deals closing this month' },
+          overdue_or_balance: {
+            amount: stalledTotal,
+            count: stalledCount,
+            subtitle: 'Total deals flagged as stale or dead',
+          },
+        };
+
+        const horizonClick = (key: HorizonKey) => {
+          const bucketDeals = allStaleDeals.filter((deal) => {
+            if (key === 'overdue_or_balance') return true;
+            if (!deal.closedate) return false;
+            const days = Math.floor((new Date(deal.closedate).getTime() - startOfToday) / dayMs);
+            if (key === 'today') return days === 0;
+            if (key === 'next_1_7') return days >= 1 && days <= 7;
+            return days >= 8 && days <= 30;
+          });
+          openDrill({
+            type: 'custom',
+            title: 'Pipeline horizon',
+            subtitle: `${bucketDeals.length} deal${bucketDeals.length === 1 ? '' : 's'} in this horizon`,
+            rows: bucketDeals.length === 0
+              ? [{ label: 'No deals in this horizon', value: '—' }]
+              : bucketDeals.map((deal) => ({
+                  label: deal.dealname || 'Unnamed Deal',
+                  sublabel: `${deal.stageLabel} · ${deal.daysInStage}d in stage`,
+                  value: formatCurrency(deal.amount),
+                })),
+          });
+        };
+
+        return (
+          <HorizonRow
+            variant="hubspot-pipeline"
+            title="Deal close horizons"
+            subtitle="Stale deals bucketed by close date · stalled = all flagged deals"
+            data={horizonData}
+            onCardClick={horizonClick}
+          />
+        );
+      })()}
 
       {/* Health Score + Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
