@@ -138,6 +138,7 @@ const navigation: NavGroup[] = [
       { href: '/forecast', label: 'P&L Forecast' },
       { href: '/forecast/drivers', label: 'Drivers' },
       { href: '/cashflow-forecast', label: 'Cash Forecast' },
+      { href: '/cash/cash-in', label: 'Cash In / Invoices' },
       { href: '/forecast-accuracy', label: 'Accuracy Tracking' },
     ],
   },
