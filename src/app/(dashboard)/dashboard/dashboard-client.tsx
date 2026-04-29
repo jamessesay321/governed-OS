@@ -12,6 +12,7 @@ import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
 import { DataFreshness } from '@/components/dashboard/data-freshness';
 import { DataHealthWidget } from '@/components/dashboard/data-health-widget';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { HorizonRow, type HorizonKey } from '@/components/kpi/horizon-row';
 import { WaterfallChart } from '@/components/dashboard/waterfall-chart';
 import { VariancePanel } from '@/components/dashboard/variance-panel';
 import { RoadmapWidget } from '@/components/dashboard/roadmap-widget';
@@ -423,6 +424,59 @@ export function DashboardClient({
               </div>
             ))}
           </div>
+        );
+      })()}
+
+      {/* Cash horizons — Syft-style. Derived from monthly net profit
+          (today/1-7d/8-30d) and free cash after debt service (balance). */}
+      {(() => {
+        const monthlyNet = pnl.netProfit ?? 0;
+        const dailyAvg = monthlyNet / 30;
+        const balance = cashFlowDiagnosis?.debtMetrics?.freeCashAfterDebt ?? monthlyNet;
+        const horizonData = {
+          today: {
+            amount: dailyAvg,
+            subtitle: 'Avg daily net (from monthly P&L)',
+          },
+          next_1_7: {
+            amount: dailyAvg * 7,
+            subtitle: 'Projected net (7 days)',
+          },
+          next_8_30: {
+            amount: dailyAvg * 23,
+            subtitle: 'Projected net (8-30 days)',
+          },
+          overdue_or_balance: {
+            amount: balance,
+            subtitle: cashFlowDiagnosis?.debtMetrics?.hasDebt
+              ? 'Monthly free cash after debt'
+              : 'Monthly net (no debt service)',
+          },
+        };
+        const handleHorizonClick = (key: HorizonKey) => {
+          openDrill({
+            type: 'custom',
+            title: 'Cash horizon detail',
+            subtitle: 'Derived from this period’s P&L',
+            rows: [
+              { label: 'Net profit (period)', value: formatCurrency(monthlyNet) },
+              { label: 'Avg daily net', value: formatCurrency(dailyAvg) },
+              { label: 'Next 7 days projected', value: formatCurrency(dailyAvg * 7) },
+              { label: 'Next 8-30 days projected', value: formatCurrency(dailyAvg * 23) },
+              { label: 'Free cash / balance proxy', value: formatCurrency(balance) },
+              { label: 'Selected horizon', value: key },
+            ],
+          });
+        };
+        return (
+          <HorizonRow
+            variant="cash"
+            title="Cash horizons"
+            subtitle="Today / 1-7d / 8-30d projected from this period’s net profit"
+            data={horizonData}
+            period={selectedPeriod}
+            onCardClick={handleHorizonClick}
+          />
         );
       })()}
 
