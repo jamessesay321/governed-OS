@@ -187,6 +187,34 @@ export type AssumptionValue = {
 };
 
 // === Scenario ===
+export type ScenarioCreatedVia =
+  | 'manual'
+  | 'prior_year'
+  | 'this_year'
+  | 'copy'
+  | 'seed_strategic_plan'
+  | 'ai_chat'
+  | 'driver_template'
+  | 'hubspot_pipeline'
+  | 'multi_source';
+
+export type ScenarioPopulateConfig = {
+  source_range?: { start: string; end: string };
+  target_range?: { start: string; end: string };
+  forecast_horizon_months?: number;
+  overrides?: Record<string, number | undefined>;
+  rolling?: boolean;
+  auto_vat?: boolean;
+  aggregates_snapshot?: Record<string, number>;
+  generated_at?: string;
+  // copy-source / multi-source variants
+  source_scenario_id?: string;
+  pipeline_ids?: string[];
+  sources?: string[];
+  weights?: Record<string, number>;
+  blend_method?: string;
+};
+
 export type Scenario = {
   id: string;
   org_id: string;
@@ -200,6 +228,8 @@ export type Scenario = {
   locked_by: string | null;
   created_at: string;
   updated_at: string;
+  created_via?: ScenarioCreatedVia;
+  populate_config?: ScenarioPopulateConfig | null;
 };
 
 // === Scenario Version ===
