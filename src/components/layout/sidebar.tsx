@@ -75,6 +75,7 @@ const navigation: NavGroup[] = [
       { href: '/financials/balance-sheet', label: 'Balance Sheet' },
       { href: '/financials/cash-flow', label: 'Cash Flow' },
       { href: '/financials/budget', label: 'Budget vs Actual' },
+      { href: '/financials/reconciliation', label: 'Reconciliation Centre' },
     ],
   },
   {
