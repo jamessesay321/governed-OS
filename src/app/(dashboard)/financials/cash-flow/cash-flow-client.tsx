@@ -19,6 +19,7 @@ import {
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { HorizonRow, type HorizonKey } from '@/components/kpi/horizon-row';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
@@ -821,6 +822,57 @@ export function CashFlowClient({
         exportTitle="cash-flow"
         exportData={csvData}
       />
+
+      {/* Time-horizon row — Syft-style horizon cards. Today / 1-7d / 8-30d
+          are projected from the current period's operating cash flow; the
+          balance card shows actual cash on hand from the latest BS. */}
+      {(() => {
+        const operatingCF = sections[0]?.subtotal ?? 0;
+        const dailyAvg = operatingCF / 30;
+        const horizonRows = {
+          today: {
+            amount: dailyAvg,
+            subtitle: 'Avg daily operating cash flow',
+          },
+          next_1_7: {
+            amount: dailyAvg * 7,
+            subtitle: 'Projected from latest period',
+          },
+          next_8_30: {
+            amount: dailyAvg * 23,
+            subtitle: 'Projected from latest period',
+          },
+          overdue_or_balance: {
+            amount: closingCash,
+            subtitle: 'Cash on hand at period close',
+          },
+        };
+        const apHorizonClick = (key: HorizonKey) => {
+          openDrill({
+            type: 'custom',
+            title: 'Cash horizon detail',
+            subtitle: formatPeriodLabel(currentPeriod),
+            rows: [
+              { label: 'Today (avg daily)', value: formatCurrency(horizonRows.today.amount) },
+              { label: 'Next 1-7 days', value: formatCurrency(horizonRows.next_1_7.amount) },
+              { label: 'Next 8-30 days', value: formatCurrency(horizonRows.next_8_30.amount) },
+              { label: 'Current balance', value: formatCurrency(closingCash) },
+              { label: 'Period operating CF', value: formatCurrency(operatingCF) },
+              { label: 'Selected horizon', value: key },
+            ],
+          });
+        };
+        return (
+          <HorizonRow
+            variant="cash"
+            title="Cash horizons"
+            subtitle="Projected cash movement and balance — derived from operating cash flow"
+            data={horizonRows}
+            period={currentPeriod ?? undefined}
+            onCardClick={apHorizonClick}
+          />
+        );
+      })()}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
