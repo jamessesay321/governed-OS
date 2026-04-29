@@ -14,6 +14,8 @@ import type {
   RevenueByType,
   ClientFrequency,
 } from '@/lib/integrations/acuity';
+import { HorizonRow, type HorizonKey } from '@/components/kpi/horizon-row';
+import { useDrillDown } from '@/components/shared/drill-down-sheet';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -67,6 +69,7 @@ function formatRelativeDate(datetime: string): string {
 // ---------------------------------------------------------------------------
 
 export function SchedulingClient({ orgId, role, acuityConfigured }: Props) {
+  const { openDrill } = useDrillDown();
   const [state, setState] = useState<LoadingState>(acuityConfigured ? 'idle' : 'idle');
   const [data, setData] = useState<SchedulingSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -221,6 +224,84 @@ export function SchedulingClient({ orgId, role, acuityConfigured }: Props) {
           Acuity Scheduling overview &mdash; appointments, revenue, and utilisation.
         </p>
       </div>
+
+      {/* Time-horizon row — buckets upcoming appointments by date and shows
+          cancelled (no-show proxy) on the right. */}
+      {(() => {
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+        const dayMs = 86_400_000;
+
+        const upcoming = data.upcoming;
+        const buckets = {
+          today: { amount: 0, count: 0 } as { amount: number; count: number },
+          next_1_7: { amount: 0, count: 0 } as { amount: number; count: number },
+          next_8_30: { amount: 0, count: 0 } as { amount: number; count: number },
+        };
+        for (const appt of upcoming) {
+          if (appt.canceled) continue;
+          const apptMs = new Date(appt.datetime).getTime();
+          const days = Math.floor((apptMs - startOfToday) / dayMs);
+          const price = parseFloat(appt.price) || 0;
+          if (days === 0) {
+            buckets.today.amount += price;
+            buckets.today.count += 1;
+          } else if (days >= 1 && days <= 7) {
+            buckets.next_1_7.amount += price;
+            buckets.next_1_7.count += 1;
+          } else if (days >= 8 && days <= 30) {
+            buckets.next_8_30.amount += price;
+            buckets.next_8_30.count += 1;
+          }
+        }
+
+        const noShows = upcoming.filter((a) => a.canceled);
+        const noShowAmount = noShows.reduce((s, a) => s + (parseFloat(a.price) || 0), 0);
+
+        const horizonData = {
+          today: { ...buckets.today, subtitle: 'Booking revenue today' },
+          next_1_7: { ...buckets.next_1_7, subtitle: 'Bookings in the next week' },
+          next_8_30: { ...buckets.next_8_30, subtitle: 'Bookings in the next month' },
+          overdue_or_balance: {
+            amount: noShowAmount,
+            count: noShows.length,
+            subtitle: 'Cancelled appointments (no-show proxy)',
+          },
+        };
+
+        const horizonClick = (key: HorizonKey) => {
+          const bucketAppts = upcoming.filter((appt) => {
+            if (key === 'overdue_or_balance') return appt.canceled;
+            if (appt.canceled) return false;
+            const days = Math.floor((new Date(appt.datetime).getTime() - startOfToday) / dayMs);
+            if (key === 'today') return days === 0;
+            if (key === 'next_1_7') return days >= 1 && days <= 7;
+            return days >= 8 && days <= 30;
+          });
+          openDrill({
+            type: 'custom',
+            title: 'Booking horizon',
+            subtitle: `${bucketAppts.length} appointment${bucketAppts.length === 1 ? '' : 's'}`,
+            rows: bucketAppts.length === 0
+              ? [{ label: 'No appointments in this horizon', value: '—' }]
+              : bucketAppts.map((appt) => ({
+                  label: `${appt.firstName} ${appt.lastName}`.trim() || 'Unknown client',
+                  sublabel: `${appt.type} · ${formatDate(appt.datetime)}`,
+                  value: formatCurrency(parseFloat(appt.price) || 0),
+                })),
+          });
+        };
+
+        return (
+          <HorizonRow
+            variant="acuity-bookings"
+            title="Booking horizons"
+            subtitle="Upcoming appointment revenue by date"
+            data={horizonData}
+            onCardClick={horizonClick}
+          />
+        );
+      })()}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
