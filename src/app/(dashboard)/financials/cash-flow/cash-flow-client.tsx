@@ -874,6 +874,72 @@ export function CashFlowClient({
         );
       })()}
 
+      {/* Bills payable horizon row. AP balance is split across horizons using
+          aging heuristics (no invoice-level due dates available). */}
+      {(() => {
+        const apKeywords = ['payable', 'creditor', 'trade creditor'];
+        const apSection = currentBS.find((s) => s.class === 'LIABILITY');
+        const apAccounts = apSection?.accounts.filter((a) =>
+          apKeywords.some((kw) => a.name.toLowerCase().includes(kw)),
+        ) ?? [];
+        const apTotal = apAccounts.reduce((sum, a) => sum + Math.abs(a.amount), 0);
+        const apCount = apAccounts.length;
+
+        // Heuristic split — same shape as aged-analysis bucketing
+        const todayPart = apTotal * 0.05;
+        const week1Part = apTotal * 0.20;
+        const month1Part = apTotal * 0.45;
+        const overduePart = apTotal * 0.30;
+
+        const billsHorizons = {
+          today: {
+            amount: todayPart,
+            subtitle: apTotal > 0 ? 'Estimated urgent payments' : 'No payables on file',
+          },
+          next_1_7: {
+            amount: week1Part,
+            subtitle: 'Estimated near-term obligations',
+          },
+          next_8_30: {
+            amount: month1Part,
+            subtitle: 'Estimated mid-term obligations',
+          },
+          overdue_or_balance: {
+            amount: overduePart,
+            count: apCount,
+            subtitle: 'Estimated overdue to vendors',
+          },
+        };
+
+        const billsClick = (key: HorizonKey) => {
+          openDrill({
+            type: 'custom',
+            title: 'Bills payable horizon',
+            subtitle: `${formatPeriodLabel(currentPeriod)} · split is estimated from AP balance`,
+            rows: [
+              ...apAccounts.map((a) => ({
+                label: a.name,
+                sublabel: a.code,
+                value: formatCurrency(Math.abs(a.amount)),
+              })),
+              { label: 'Total payables', value: formatCurrency(apTotal) },
+              { label: 'Selected horizon', value: key },
+            ],
+          });
+        };
+
+        return (
+          <HorizonRow
+            variant="bills-payable"
+            title="Bills payable"
+            subtitle="Estimated split of accounts payable across due-date horizons"
+            data={billsHorizons}
+            period={currentPeriod ?? undefined}
+            onCardClick={billsClick}
+          />
+        );
+      })()}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
