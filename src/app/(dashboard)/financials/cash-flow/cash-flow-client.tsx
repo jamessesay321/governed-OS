@@ -18,6 +18,7 @@ import {
 } from '@/components/financial/report-controls';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
+import { usePersistentReportState } from '@/lib/hooks/use-persistent-report-state';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
@@ -561,8 +562,10 @@ export function CashFlowClient({
 
   const globalPeriod = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
-  const [controls, setControls] = useState<ReportControlsState>(() =>
-    getDefaultReportState(availablePeriods, yearEndMonth)
+  const [controls, setControls] = usePersistentReportState(
+    'cash-flow',
+    getDefaultReportState(availablePeriods, yearEndMonth),
+    availablePeriods
   );
 
   // Cash flow method toggle
@@ -579,19 +582,26 @@ export function CashFlowClient({
     setExpandedSections((prev) => ({ ...prev, [id]: !prev[id] }));
   }
 
-  // Sync from global period selector when it changes
-  const prevGlobalPeriodRef = useRef(globalPeriod.period);
+  // Sync from global period selector when period OR mode changes.
+  // Previously only selectedPeriods was synced — we now also sync periodMode
+  // so clicking "Annual" in the global top bar updates the page-local pills too.
+  const prevGlobalSigRef = useRef(`${globalPeriod.period}|${globalPeriod.mode}`);
   useEffect(() => {
-    if (globalPeriod.period && globalPeriod.period !== prevGlobalPeriodRef.current) {
-      prevGlobalPeriodRef.current = globalPeriod.period;
-      setControls((prev) => ({
-        ...prev,
-        selectedPeriods: globalPeriod.selectedPeriods.filter((p) =>
-          availablePeriods.includes(p)
-        ),
-      }));
+    const sig = `${globalPeriod.period}|${globalPeriod.mode}`;
+    if (sig !== prevGlobalSigRef.current) {
+      prevGlobalSigRef.current = sig;
+      const filtered = globalPeriod.selectedPeriods.filter((p) =>
+        availablePeriods.includes(p)
+      );
+      setControls({
+        ...controls,
+        periodMode: globalPeriod.mode,
+        selectedPeriods: filtered.length > 0 ? filtered : controls.selectedPeriods,
+      });
     }
-  }, [globalPeriod.period, globalPeriod.selectedPeriods, availablePeriods]);
+    // controls intentionally omitted — sync should fire on global change, not local
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalPeriod.period, globalPeriod.mode, globalPeriod.selectedPeriods, availablePeriods]);
 
   // Derive current, prior, and pre-prior periods from controls.selectedPeriods
   const { currentPeriod, priorPeriod, prePriorPeriod, netProfit, priorNetProfit, depreciation, priorDepreciation, currentBS, priorBS, prePriorBS } = useMemo(() => {

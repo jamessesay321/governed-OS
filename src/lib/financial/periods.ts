@@ -86,18 +86,49 @@ export function getYTDPeriods(
 }
 
 /**
- * Get default display periods: current financial year's months.
- * Falls back to last 12 months if no periods fall in current FY.
+ * Get default display periods for the three Financials pages.
+ *
+ * Behaviour:
+ * - If the current FY has 6+ months of data → use current FY-to-date.
+ * - Otherwise → use the trailing 12 months (Syft-style default).
+ *
+ * This gives users a useful multi-month view on first visit without forcing
+ * them to tick 12 checkboxes to see their full year.
  */
 export function getDefaultDisplayPeriods(
   availablePeriods: string[],
   yearEndMonth: number
 ): string[] {
   const ytd = getYTDPeriods(availablePeriods, yearEndMonth);
-  if (ytd.length > 0) return ytd;
+  // Use YTD if we have a decent chunk of the current FY to show.
+  if (ytd.length >= 6) return ytd;
 
-  // Fallback: last 12 months
+  // Otherwise show the trailing 12 months (more useful for trend analysis).
+  return getTrailing12Months(availablePeriods);
+}
+
+/**
+ * Get the trailing 12 months of available periods, in ascending order.
+ * If fewer than 12 periods are available, returns all of them.
+ */
+export function getTrailing12Months(availablePeriods: string[]): string[] {
   return [...availablePeriods].sort().reverse().slice(0, 12).reverse();
+}
+
+/**
+ * Get the trailing quarter (3 months) of available periods, ascending.
+ * Used as the default when user picks the "Quarterly" mode.
+ */
+export function getTrailingQuarter(availablePeriods: string[]): string[] {
+  return [...availablePeriods].sort().reverse().slice(0, 3).reverse();
+}
+
+/**
+ * Get the single most recent period — default for "Monthly" mode.
+ */
+export function getLatestPeriod(availablePeriods: string[]): string[] {
+  const sorted = [...availablePeriods].sort();
+  return sorted.length ? [sorted[sorted.length - 1]] : [];
 }
 
 // ─── Financial Year Labels ──────────────────────────────────────────

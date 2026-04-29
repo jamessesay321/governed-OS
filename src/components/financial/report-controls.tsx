@@ -4,7 +4,14 @@ import { useState, useCallback } from 'react';
 import { Download, Filter, ChevronDown, Calendar, BarChart3, Table2 } from 'lucide-react';
 import { useCurrency } from '@/components/providers/currency-context';
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
-import { getYTDPeriods, getDefaultDisplayPeriods, getFinancialQuarter } from '@/lib/financial/periods';
+import {
+  getYTDPeriods,
+  getDefaultDisplayPeriods,
+  getFinancialQuarter,
+  getTrailing12Months,
+  getTrailingQuarter,
+  getLatestPeriod,
+} from '@/lib/financial/periods';
 
 // ─── Types ───────────────────────────────────────────────────────────
 export type PeriodMode = 'monthly' | 'quarterly' | 'annual';
@@ -103,24 +110,50 @@ function exportCSV(data: Record<string, unknown>[], filename: string) {
 }
 
 // ─── Default State ───────────────────────────────────────────────────
+/**
+ * Default for the three Financials pages (Income Statement, Balance Sheet, Cash Flow).
+ * Lands on an ANNUAL view of the trailing 12 months (or current FY-to-date if we
+ * already have 6+ months of the FY). Users can flip to Monthly/Quarterly from the
+ * pills without having to manually tick checkboxes.
+ */
 export function getDefaultReportState(
   availablePeriods: string[],
   yearEndMonth?: number
 ): ReportControlsState {
-  // If we have a year-end config, default to current FY periods
-  let defaultPeriods = availablePeriods;
-  if (yearEndMonth) {
-    const ytd = getYTDPeriods(availablePeriods, yearEndMonth);
-    defaultPeriods = ytd.length > 0 ? ytd : getDefaultDisplayPeriods(availablePeriods, yearEndMonth);
-  }
+  const defaultPeriods = yearEndMonth
+    ? getDefaultDisplayPeriods(availablePeriods, yearEndMonth)
+    : getTrailing12Months(availablePeriods);
+
   return {
-    periodMode: 'monthly',
+    periodMode: 'annual',
     selectedPeriods: defaultPeriods,
     comparisonMode: 'none',
     accountFilter: null,
     viewMode: 'summary',
     searchQuery: '',
   };
+}
+
+/**
+ * Returns the periods that SHOULD be selected when the user clicks a given mode pill.
+ * This is the fix for "clicking Annual doesn't actually do anything" — the mode pill
+ * now drives the period selection directly instead of requiring manual checkbox ticks.
+ */
+export function periodsForMode(
+  mode: PeriodMode,
+  availablePeriods: string[],
+  yearEndMonth?: number
+): string[] {
+  switch (mode) {
+    case 'monthly':
+      return getLatestPeriod(availablePeriods);
+    case 'quarterly':
+      return getTrailingQuarter(availablePeriods);
+    case 'annual':
+      return yearEndMonth
+        ? getDefaultDisplayPeriods(availablePeriods, yearEndMonth)
+        : getTrailing12Months(availablePeriods);
+  }
 }
 
 // ─── Component ───────────────────────────────────────────────────────
@@ -147,10 +180,13 @@ export function ReportControls({
   const sortedPeriods = [...availablePeriods].sort();
 
   const handlePeriodMode = useCallback((mode: PeriodMode) => {
-    const newPeriods = [...availablePeriods];
+    // Clicking Monthly/Quarterly/Annual now SELECTS THE RIGHT PERIODS automatically
+    // (last month / last 3 months / last 12 months or current FY).
+    // Users can still refine via the checkbox picker if they want something custom.
+    const newPeriods = periodsForMode(mode, availablePeriods, accountingConfig.yearEndMonth);
     setPendingPeriods(newPeriods);
     onChange({ ...state, periodMode: mode, selectedPeriods: newPeriods });
-  }, [state, onChange, availablePeriods]);
+  }, [state, onChange, availablePeriods, accountingConfig.yearEndMonth]);
 
   const handleComparison = useCallback((mode: ComparisonMode) => {
     onChange({ ...state, comparisonMode: mode });

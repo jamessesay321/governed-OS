@@ -12,6 +12,7 @@ import {
 import { useAccountingConfig } from '@/components/providers/accounting-config-context';
 import { useGlobalPeriodContext } from '@/components/providers/global-period-provider';
 import { useDrillDown } from '@/components/shared/drill-down-sheet';
+import { usePersistentReportState } from '@/lib/hooks/use-persistent-report-state';
 import { ChallengeButton } from '@/components/shared/challenge-panel';
 import { CrossRef } from '@/components/shared/in-page-link';
 import { NarrativeSummary } from '@/components/dashboard/narrative-summary';
@@ -56,8 +57,10 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
 
   const globalPeriod = useGlobalPeriodContext();
   const { openDrill } = useDrillDown();
-  const [controls, setControls] = useState<ReportControlsState>(() =>
-    getDefaultReportState(availablePeriods, yearEndMonth)
+  const [controls, setControls] = usePersistentReportState(
+    'balance-sheet',
+    getDefaultReportState(availablePeriods, yearEndMonth),
+    availablePeriods
   );
 
   // Track which sections are expanded (all expanded by default)
@@ -71,19 +74,23 @@ export function BalanceSheetClient({ connected, availablePeriods, allPeriodsData
     setExpandedSections((prev) => ({ ...prev, [cls]: !prev[cls] }));
   }
 
-  // Sync from global period selector when it changes
-  const prevGlobalPeriodRef = useRef(globalPeriod.period);
+  // Sync global selector -> local controls: period AND mode.
+  const prevGlobalSigRef = useRef(`${globalPeriod.period}|${globalPeriod.mode}`);
   useEffect(() => {
-    if (globalPeriod.period && globalPeriod.period !== prevGlobalPeriodRef.current) {
-      prevGlobalPeriodRef.current = globalPeriod.period;
-      setControls((prev) => ({
-        ...prev,
-        selectedPeriods: globalPeriod.selectedPeriods.filter((p) =>
-          availablePeriods.includes(p)
-        ),
-      }));
+    const sig = `${globalPeriod.period}|${globalPeriod.mode}`;
+    if (sig !== prevGlobalSigRef.current) {
+      prevGlobalSigRef.current = sig;
+      const filtered = globalPeriod.selectedPeriods.filter((p) =>
+        availablePeriods.includes(p)
+      );
+      setControls({
+        ...controls,
+        periodMode: globalPeriod.mode,
+        selectedPeriods: filtered.length > 0 ? filtered : controls.selectedPeriods,
+      });
     }
-  }, [globalPeriod.period, globalPeriod.selectedPeriods, availablePeriods]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [globalPeriod.period, globalPeriod.mode, globalPeriod.selectedPeriods, availablePeriods]);
 
   // Derive current and prior periods from controls.selectedPeriods
   const { currentPeriod, priorPeriod, currentData, priorData } = useMemo(() => {
