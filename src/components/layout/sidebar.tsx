@@ -48,7 +48,7 @@ const investorNavigation: NavGroup[] = [
 
 const navigation: NavGroup[] = [
   // ══════════════════════════════════════════════════════════════════
-  //  OVERVIEW
+  //  TOOLS
   // ══════════════════════════════════════════════════════════════════
   {
     group: 'Dashboard',
@@ -66,20 +66,6 @@ const navigation: NavGroup[] = [
     ],
   },
   {
-    group: 'Business Profile',
-    icon: 'Building',
-    href: '/interview',
-    children: [
-      { href: '/interview', label: 'Company Info' },
-      { href: '/interview/team', label: 'Team' },
-      { href: '/interview/documents', label: 'Documents' },
-    ],
-  },
-
-  // ══════════════════════════════════════════════════════════════════
-  //  ANALYTICS
-  // ══════════════════════════════════════════════════════════════════
-  {
     group: 'Financials',
     icon: 'Table',
     href: '/financials',
@@ -92,42 +78,28 @@ const navigation: NavGroup[] = [
     ],
   },
   {
-    group: 'KPIs',
+    group: 'Analytics',
     icon: 'Activity',
     href: '/kpi',
     children: [
-      { href: '/kpi', label: 'Dashboard' },
-      { href: '/kpi/targets', label: 'Targets' },
+      { href: '/kpi', label: 'KPI Dashboard' },
+      { href: '/kpi/targets', label: 'KPI Targets' },
       { href: '/kpi/custom', label: 'Custom KPIs' },
-    ],
-  },
-  {
-    group: 'Variance',
-    icon: 'GitCompare',
-    href: '/variance',
-    children: [
-      { href: '/variance', label: 'Period Comparison' },
-      { href: '/variance/budget', label: 'Budget vs Actual' },
-      { href: '/variance/drill-down', label: 'Drill-Down' },
-    ],
-  },
-  {
-    group: 'Graph Studio',
-    icon: 'TrendingUp',
-    href: '/graphs',
-    children: [
-      { href: '/graphs', label: 'Gallery' },
+      { href: '/variance', label: 'Variance — Period Comparison' },
+      { href: '/variance/budget', label: 'Variance — Budget vs Actual' },
+      { href: '/variance/drill-down', label: 'Variance — Drill-Down' },
+      { href: '/graphs', label: 'Graph Studio Gallery' },
       { href: '/graphs/builder', label: 'Graph Builder' },
       { href: '/graphs/saved', label: 'Saved Charts' },
-    ],
-  },
-  {
-    group: 'Spreadsheets',
-    icon: 'Sheet',
-    href: '/spreadsheets',
-    children: [
-      { href: '/spreadsheets/workspace', label: 'Workspace' },
-      { href: '/spreadsheets/templates', label: 'Templates' },
+      { href: '/dashboard/unit-economics', label: 'Unit Economics' },
+      { href: '/spreadsheets/workspace', label: 'Spreadsheets Workspace' },
+      { href: '/spreadsheets/templates', label: 'Spreadsheet Templates' },
+      { href: '/valuation', label: 'Business Valuation' },
+      { href: '/breakeven', label: 'Breakeven & Normalised P&L' },
+      { href: '/revenue', label: 'Revenue Breakdown' },
+      { href: '/costs', label: 'Cost Analysis' },
+      { href: '/staff-costs', label: 'Staff Costs' },
+      { href: '/headcount', label: 'Headcount Register' },
     ],
   },
   {
@@ -139,191 +111,67 @@ const navigation: NavGroup[] = [
       { href: '/forecast/drivers', label: 'Drivers' },
       { href: '/cashflow-forecast', label: 'Cash Forecast' },
       { href: '/forecast-accuracy', label: 'Accuracy Tracking' },
-    ],
-  },
-  {
-    group: 'Scenarios',
-    icon: 'Layers',
-    href: '/scenarios',
-    children: [
       { href: '/scenarios', label: 'Scenario Builder' },
       { href: '/scenarios/goalseek', label: 'Goalseek' },
-      { href: '/scenarios/compare', label: 'Compare' },
+      { href: '/scenarios/compare', label: 'Compare Scenarios' },
+      { href: '/assumptions', label: 'Assumptions' },
     ],
   },
   {
-    group: 'Assumptions',
-    icon: 'Sliders',
-    href: '/assumptions',
-    children: [],
-  },
-  {
-    group: 'Revenue & Costs',
-    icon: 'Receipt',
-    href: '/revenue',
-    children: [
-      { href: '/revenue', label: 'Revenue Breakdown' },
-      { href: '/costs', label: 'Cost Analysis' },
-      { href: '/staff-costs', label: 'Staff Costs' },
-      { href: '/headcount', label: 'Headcount Register' },
-      { href: '/trunk-shows', label: 'Trunk Shows' },
-      { href: '/trunk-shows/planner', label: 'Planner & Roadmap' },
-    ],
-  },
-  {
-    group: 'Unit Economics',
-    icon: 'TrendingUp',
-    href: '/dashboard/unit-economics',
-    children: [
-      { href: '/dashboard/unit-economics', label: 'Per-Bride & Production' },
-    ],
-  },
-  {
-    group: 'CRM & Orders',
+    group: 'Operations',
     icon: 'ClipboardList',
     href: '/orders',
     children: [
       { href: '/orders', label: 'Order Management' },
       { href: '/crm/pipeline', label: 'Pipeline Health' },
-    ],
-  },
-  {
-    group: 'Debt',
-    icon: 'Landmark',
-    href: '/debt',
-    children: [
-      { href: '/debt', label: 'Command Centre' },
-      { href: '/debt/mca-projections', label: 'MCA Projections' },
-      { href: '/aged-analysis', label: 'Aged Analysis' },
-    ],
-  },
-  {
-    group: 'Production',
-    icon: 'Blocks',
-    href: '/production',
-    children: [
-      { href: '/production', label: 'WIP & Inventory' },
-    ],
-  },
-  {
-    group: 'Valuation',
-    icon: 'TrendingUp',
-    href: '/valuation',
-    children: [
-      { href: '/valuation', label: 'Business Valuation' },
-    ],
-  },
-  {
-    group: 'Breakeven',
-    icon: 'Target',
-    href: '/breakeven',
-    children: [
-      { href: '/breakeven', label: 'Breakeven & Normalised P&L' },
-    ],
-  },
-  {
-    group: 'Anomalies',
-    icon: 'Activity',
-    href: '/anomalies',
-    children: [
-      { href: '/anomalies', label: 'Anomaly Detection' },
-    ],
-  },
-
-  // ══════════════════════════════════════════════════════════════════
-  //  OPERATIONS
-  // ══════════════════════════════════════════════════════════════════
-  {
-    group: 'Marketing',
-    icon: 'Megaphone',
-    href: '/marketing',
-    children: [
-      { href: '/marketing/overview', label: 'Overview' },
-      { href: '/marketing/organic', label: 'Organic Social' },
-      { href: '/marketing/paid', label: 'Paid Ads' },
-      { href: '/marketing/seo', label: 'SEO' },
-      { href: '/marketing/content', label: 'Content Calendar' },
-    ],
-  },
-  {
-    group: 'Procurement',
-    icon: 'ShoppingCart',
-    href: '/procurement',
-    children: [
-      { href: '/procurement/overview', label: 'Overview' },
+      { href: '/production', label: 'Production WIP & Inventory' },
+      { href: '/procurement/overview', label: 'Procurement Overview' },
       { href: '/procurement/suppliers', label: 'Suppliers' },
       { href: '/procurement/rfq', label: 'RFQ' },
       { href: '/procurement/spend', label: 'Spend Analytics' },
       { href: '/procurement/approvals', label: 'Approvals' },
-    ],
-  },
-  {
-    group: 'Workflow (ERP)',
-    icon: 'Blocks',
-    href: '/erp',
-    children: [
-      { href: '/erp', label: 'Overview' },
-      { href: '/erp/boards', label: 'Boards' },
-      { href: '/erp/clients', label: 'Client Tracker' },
-      { href: '/erp/orders', label: 'Orders' },
-    ],
-  },
-  {
-    group: 'Storefront',
-    icon: 'ShoppingCart',
-    href: '/storefront',
-    children: [
-      { href: '/storefront', label: 'Overview' },
-      { href: '/storefront/orders', label: 'Orders' },
-      { href: '/storefront/products', label: 'Products' },
-      { href: '/storefront/analytics', label: 'Sales Analytics' },
-    ],
-  },
-  {
-    group: 'Sales CRM',
-    icon: 'Briefcase',
-    href: '/crm',
-    children: [
-      { href: '/crm', label: 'Pipeline' },
-      { href: '/crm/contacts', label: 'Contacts' },
-      { href: '/crm/deals', label: 'Deals' },
-      { href: '/crm/activity', label: 'Activity' },
-    ],
-  },
-  {
-    group: 'Email & Retention',
-    icon: 'Megaphone',
-    href: '/retention',
-    children: [
-      { href: '/retention', label: 'Overview' },
-      { href: '/retention/campaigns', label: 'Campaigns' },
-      { href: '/retention/flows', label: 'Flows' },
-      { href: '/retention/segments', label: 'Segments' },
-    ],
-  },
-  {
-    group: 'Scheduling',
-    icon: 'Activity',
-    href: '/scheduling',
-    children: [
-      { href: '/scheduling', label: 'Calendar' },
+      { href: '/marketing/overview', label: 'Marketing Overview' },
+      { href: '/marketing/organic', label: 'Organic Social' },
+      { href: '/marketing/paid', label: 'Paid Ads' },
+      { href: '/marketing/seo', label: 'SEO' },
+      { href: '/marketing/content', label: 'Content Calendar' },
+      { href: '/debt', label: 'Debt Command Centre' },
+      { href: '/debt/mca-projections', label: 'MCA Projections' },
+      { href: '/aged-analysis', label: 'Aged Analysis' },
+      { href: '/erp', label: 'Workflow (ERP) Overview' },
+      { href: '/erp/boards', label: 'ERP Boards' },
+      { href: '/erp/clients', label: 'ERP Client Tracker' },
+      { href: '/erp/orders', label: 'ERP Orders' },
+      { href: '/storefront', label: 'Storefront Overview' },
+      { href: '/storefront/orders', label: 'Storefront Orders' },
+      { href: '/storefront/products', label: 'Storefront Products' },
+      { href: '/storefront/analytics', label: 'Storefront Sales Analytics' },
+      { href: '/crm', label: 'Sales CRM Pipeline' },
+      { href: '/crm/contacts', label: 'CRM Contacts' },
+      { href: '/crm/deals', label: 'CRM Deals' },
+      { href: '/crm/activity', label: 'CRM Activity' },
+      { href: '/retention', label: 'Email & Retention Overview' },
+      { href: '/retention/campaigns', label: 'Retention Campaigns' },
+      { href: '/retention/flows', label: 'Retention Flows' },
+      { href: '/retention/segments', label: 'Retention Segments' },
+      { href: '/scheduling', label: 'Scheduling Calendar' },
       { href: '/scheduling/bookings', label: 'Bookings' },
       { href: '/scheduling/availability', label: 'Availability' },
     ],
   },
   {
-    group: 'Team Comms',
-    icon: 'MessageSquare',
-    href: '/comms',
+    group: 'Business Profile',
+    icon: 'Building',
+    href: '/interview',
     children: [
-      { href: '/comms', label: 'Overview' },
-      { href: '/comms/channels', label: 'Channels' },
-      { href: '/comms/alerts', label: 'Alert Rules' },
+      { href: '/interview', label: 'Company Info' },
+      { href: '/interview/team', label: 'Team' },
+      { href: '/interview/documents', label: 'Documents' },
     ],
   },
 
   // ══════════════════════════════════════════════════════════════════
-  //  STRATEGY
+  //  INSIGHTS
   // ══════════════════════════════════════════════════════════════════
   {
     group: 'Intelligence',
@@ -354,20 +202,13 @@ const navigation: NavGroup[] = [
     ],
   },
   {
-    group: 'AI Strategy',
-    icon: 'Sparkles',
-    href: '/ai-solutions',
+    group: 'Anomalies',
+    icon: 'Activity',
+    href: '/anomalies',
     children: [
-      { href: '/ai-solutions', label: 'Overview' },
-      { href: '/ai-solutions/audit', label: 'AI Stack Audit', free: true },
-      { href: '/proposal', label: 'Your Proposal' },
-      { href: '/ai-solutions/packages', label: 'Packages' },
+      { href: '/anomalies', label: 'Anomaly Detection' },
     ],
   },
-
-  // ══════════════════════════════════════════════════════════════════
-  //  INSIGHTS & INVESTORS
-  // ══════════════════════════════════════════════════════════════════
   {
     group: 'Reports',
     icon: 'FileText',
@@ -381,23 +222,12 @@ const navigation: NavGroup[] = [
     ],
   },
   {
-    group: 'Knowledge Vault',
-    icon: 'Archive',
-    href: '/vault',
+    group: 'Trunk Shows',
+    icon: 'Receipt',
+    href: '/trunk-shows',
     children: [
-      { href: '/vault', label: 'Documents' },
-      { href: '/vault/guides', label: 'Guides' },
-      { href: '/vault/ai-outputs', label: 'AI Outputs' },
-    ],
-  },
-  {
-    group: 'Investor Portal',
-    icon: 'Briefcase',
-    href: '/investors',
-    children: [
-      { href: '/investors', label: 'Dashboard' },
-      { href: '/investors/updates', label: 'Updates' },
-      { href: '/investors/documents', label: 'Document Vault' },
+      { href: '/trunk-shows', label: 'Trunk Shows' },
+      { href: '/trunk-shows/planner', label: 'Planner & Roadmap' },
     ],
   },
 
@@ -412,6 +242,16 @@ const navigation: NavGroup[] = [
       { href: '/modules', label: 'Marketplace' },
       { href: '/modules/active', label: 'Active Modules' },
       { href: '/modules/credits', label: 'Credits' },
+    ],
+  },
+  {
+    group: 'Knowledge Vault',
+    icon: 'Archive',
+    href: '/vault',
+    children: [
+      { href: '/vault', label: 'Documents' },
+      { href: '/vault/guides', label: 'Guides' },
+      { href: '/vault/ai-outputs', label: 'AI Outputs' },
     ],
   },
   {
@@ -442,10 +282,40 @@ const navigation: NavGroup[] = [
       { href: '/custom-builds/projects', label: 'My Projects' },
     ],
   },
+  {
+    group: 'Investor Portal',
+    icon: 'Briefcase',
+    href: '/investors',
+    children: [
+      { href: '/investors', label: 'Dashboard' },
+      { href: '/investors/updates', label: 'Updates' },
+      { href: '/investors/documents', label: 'Document Vault' },
+    ],
+  },
+  {
+    group: 'AI Strategy',
+    icon: 'Sparkles',
+    href: '/ai-solutions',
+    children: [
+      { href: '/ai-solutions', label: 'Overview' },
+      { href: '/ai-solutions/audit', label: 'AI Stack Audit', free: true },
+      { href: '/proposal', label: 'Your Proposal' },
+      { href: '/ai-solutions/packages', label: 'Packages' },
+    ],
+  },
 
   // ══════════════════════════════════════════════════════════════════
-  //  DATA & GOVERNANCE
+  //  CONFIGURE
   // ══════════════════════════════════════════════════════════════════
+  {
+    group: 'Integrations',
+    icon: 'Plug',
+    href: '/integrations',
+    children: [
+      { href: '/integrations', label: 'Connected' },
+      { href: '/integrations/catalogue', label: 'Catalogue' },
+    ],
+  },
   {
     group: 'Data Pipeline',
     icon: 'ShieldCheck',
@@ -458,26 +328,6 @@ const navigation: NavGroup[] = [
     ],
   },
   {
-    group: 'Integrations',
-    icon: 'Plug',
-    href: '/integrations',
-    children: [
-      { href: '/integrations', label: 'Connected' },
-      { href: '/integrations/catalogue', label: 'Catalogue' },
-    ],
-  },
-  {
-    group: 'Data Commerce',
-    icon: 'Database',
-    href: '/data-commerce',
-    children: [
-      { href: '/data-commerce/overview', label: 'Overview' },
-      { href: '/data-commerce/products', label: 'Data Products' },
-      { href: '/data-commerce/compliance', label: 'GDPR Compliance' },
-      { href: '/data-commerce/pricing', label: 'Pricing' },
-    ],
-  },
-  {
     group: 'Trust Centre',
     icon: 'Lock',
     href: '/governance',
@@ -487,10 +337,6 @@ const navigation: NavGroup[] = [
       { href: '/audit', label: 'Audit Log' },
     ],
   },
-
-  // ══════════════════════════════════════════════════════════════════
-  //  ADMIN
-  // ══════════════════════════════════════════════════════════════════
   {
     group: 'Billing & Plans',
     icon: 'CreditCard',
@@ -517,6 +363,27 @@ const navigation: NavGroup[] = [
       { href: '/settings/exports', label: 'Data Exports' },
       { href: '/settings/data', label: 'Data & Privacy' },
       { href: '/settings/account-mappings', label: 'Account Mappings' },
+    ],
+  },
+  {
+    group: 'Team Comms',
+    icon: 'MessageSquare',
+    href: '/comms',
+    children: [
+      { href: '/comms', label: 'Overview' },
+      { href: '/comms/channels', label: 'Channels' },
+      { href: '/comms/alerts', label: 'Alert Rules' },
+    ],
+  },
+  {
+    group: 'Data Commerce',
+    icon: 'Database',
+    href: '/data-commerce',
+    children: [
+      { href: '/data-commerce/overview', label: 'Overview' },
+      { href: '/data-commerce/products', label: 'Data Products' },
+      { href: '/data-commerce/compliance', label: 'GDPR Compliance' },
+      { href: '/data-commerce/pricing', label: 'Pricing' },
     ],
   },
   {
@@ -762,14 +629,10 @@ const icons: Record<string, React.ReactNode> = {
 /* ------------------------------------------------------------------ */
 
 const sectionBreaks: Record<number, string> = {
-  0: 'OVERVIEW',              // Dashboard, Business Profile
-  2: 'ANALYTICS',             // Financials, KPIs, Variance, Graph Studio, Spreadsheets, Forecast, Scenarios, Assumptions, Revenue & Costs, Debt, Production, Valuation, Breakeven, Anomalies
-  17: 'OPERATIONS',           // Marketing, Procurement, Workflow (ERP), Storefront, Sales CRM, Email & Retention, Scheduling, Team Comms
-  25: 'STRATEGY',             // Intelligence, Playbook, AI Strategy
-  28: 'INSIGHTS & INVESTORS', // Reports, Knowledge Vault, Investor Portal
-  31: 'MARKETPLACE',          // Modules, AI Agents, Consultants, Custom AI Builds
-  35: 'DATA & GOVERNANCE',    // Data Pipeline, Integrations, Data Commerce, Trust Centre
-  39: 'ADMIN',                // Billing & Plans, Settings, Help & Support
+  0: 'TOOLS',         // Dashboard, Financials, Analytics, Forecast, Operations, Business Profile [, Portfolio (advisor)]
+  6: 'INSIGHTS',      // Intelligence, Playbook, Strategic Plan, Anomalies, Reports, Trunk Shows
+  12: 'MARKETPLACE',  // Modules, Knowledge Vault, AI Agents, Consultants, Custom AI Builds, Investor Portal, AI Strategy
+  19: 'CONFIGURE',    // Integrations, Data Pipeline, Trust Centre, Billing & Plans, Settings, Team Comms, Data Commerce, Help & Support
 };
 
 /* ------------------------------------------------------------------ */
@@ -803,7 +666,8 @@ export function Sidebar({ className, onClose }: SidebarProps = {}) {
     if (isInvestor) return investorNavigation;
     if (!isAdvisor) return navigation;
     const nav = [...navigation];
-    nav.splice(2, 0, advisorNavGroup);
+    // Portfolio sits at the end of the TOOLS section, after Business Profile (index 5)
+    nav.splice(6, 0, advisorNavGroup);
     return nav;
   }, [isAdvisor, isInvestor]);
 
@@ -811,20 +675,11 @@ export function Sidebar({ className, onClose }: SidebarProps = {}) {
   const finalSectionBreaks = useMemo(() => {
     if (isInvestor) return { 0: 'INVESTOR' } as Record<number, string>;
     if (!isAdvisor) return sectionBreaks;
-    // Shift all section break keys >= 2 by +1 to account for inserted group
+    // Portfolio inserted at index 6; shift any section break >= 6 by +1
     const adjusted: Record<number, string> = {};
     for (const [key, value] of Object.entries(sectionBreaks)) {
       const k = Number(key);
-      if (k < 2) {
-        adjusted[k] = value;
-      } else if (k === 2) {
-        // Insert ADVISOR section at index 2
-        adjusted[2] = 'ADVISOR';
-        // Push OVERVIEW to 3
-        adjusted[k + 1] = value;
-      } else {
-        adjusted[k + 1] = value;
-      }
+      adjusted[k < 6 ? k : k + 1] = value;
     }
     return adjusted;
   }, [isAdvisor, isInvestor]);
@@ -861,37 +716,18 @@ export function Sidebar({ className, onClose }: SidebarProps = {}) {
       </Link>
 
       <nav className="flex-1 py-2 px-3">
-        {/* Pinned quick-access items — hidden for investor role */}
-        {!isInvestor && <div className="mb-2 space-y-0.5">
-          {[
-            { href: '/dashboard', label: 'Dashboard', icon: 'BarChart3' },
-            { href: '/kpi', label: 'KPIs', icon: 'Activity' },
-            { href: '/intelligence', label: 'Intelligence', icon: 'Sparkles' },
-          ].map((pin) => {
-            const isPinActive = pathname === pin.href || pathname.startsWith(pin.href + '/');
-            return (
-              <Link
-                key={pin.href}
-                href={pin.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-                  isPinActive
-                    ? 'bg-primary/10 text-primary font-semibold'
-                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-                )}
-              >
-                {icons[pin.icon]}
-                {pin.label}
-                <span className="ml-auto">
-                  <svg className="h-3 w-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                  </svg>
-                </span>
-              </Link>
-            );
-          })}
-        </div>}
-        {!isInvestor && <div className="border-t border-border/40 mb-2" />}
+        {/* Favourites — empty placeholder header (no logic yet) */}
+        {!isInvestor && (
+          <div className="px-3 pt-2 pb-1 flex items-center gap-1.5">
+            <svg className="h-3 w-3 text-amber-400" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+            </svg>
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/60">
+              Favourites
+            </span>
+          </div>
+        )}
+        {!isInvestor && <div className="border-t border-border/40 mb-2 mt-2" />}
 
         {finalNavigation.map((nav, idx) => {
           const isGroupActive =
