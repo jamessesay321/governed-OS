@@ -3,10 +3,7 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  AlertCircle,
-  Calendar,
   CheckCircle2,
-  Clock,
   Repeat,
   Search,
   Wallet,
@@ -17,13 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from '@/components/ui/card';
+import { HorizonRow } from '@/components/kpi/horizon-row';
 import {
   Dialog,
   DialogContent,
@@ -303,38 +294,30 @@ export function CashInClient({
         </p>
       </div>
 
-      {/* Horizon KPI cards */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-        <HorizonCard
-          label="Today"
-          icon={<Clock className="size-4 text-blue-600" />}
-          count={horizonTotals.today.count}
-          amount={horizonTotals.today.amount}
-          currency={currency}
-        />
-        <HorizonCard
-          label="Next 1-7 days"
-          icon={<Calendar className="size-4 text-emerald-600" />}
-          count={horizonTotals.next_7.count}
-          amount={horizonTotals.next_7.amount}
-          currency={currency}
-        />
-        <HorizonCard
-          label="Next 8-30 days"
-          icon={<Calendar className="size-4 text-zinc-600" />}
-          count={horizonTotals.next_8_30.count}
-          amount={horizonTotals.next_8_30.amount}
-          currency={currency}
-        />
-        <HorizonCard
-          label="Overdue"
-          icon={<AlertCircle className="size-4 text-red-600" />}
-          count={horizonTotals.overdue.count}
-          amount={horizonTotals.overdue.amount}
-          currency={currency}
-          tone="negative"
-        />
-      </div>
+      {/* Horizon KPI cards — using shared HorizonRow for visual consistency
+          across cash-flow, dashboard, CRM pipeline, scheduling. */}
+      <HorizonRow
+        variant="invoices-receivable"
+        currencyCode={currency}
+        data={{
+          today: {
+            amount: horizonTotals.today.amount,
+            count: horizonTotals.today.count,
+          },
+          next_1_7: {
+            amount: horizonTotals.next_7.amount,
+            count: horizonTotals.next_7.count,
+          },
+          next_8_30: {
+            amount: horizonTotals.next_8_30.amount,
+            count: horizonTotals.next_8_30.count,
+          },
+          overdue_or_balance: {
+            amount: horizonTotals.overdue.amount,
+            count: horizonTotals.overdue.count,
+          },
+        }}
+      />
 
       {errorMsg && (
         <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
@@ -490,43 +473,6 @@ export function CashInClient({
 /* ──────────────────────────────────────────────────────────── */
 /*  Sub-components                                               */
 /* ──────────────────────────────────────────────────────────── */
-
-function HorizonCard({
-  label,
-  icon,
-  count,
-  amount,
-  currency,
-  tone,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  count: number;
-  amount: number;
-  currency: string;
-  tone?: 'negative';
-}) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardDescription className="flex items-center gap-2">
-          {icon}
-          {label}
-        </CardDescription>
-        <CardTitle
-          className={cn('text-2xl tabular-nums', tone === 'negative' && 'text-red-700')}
-        >
-          {formatCurrency(amount, currency)}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <p className="text-xs text-zinc-500">
-          {count} invoice{count === 1 ? '' : 's'}
-        </p>
-      </CardContent>
-    </Card>
-  );
-}
 
 function InvoiceTable({
   invoices,
