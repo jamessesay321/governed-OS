@@ -140,16 +140,38 @@ async function syncChartOfAccounts(
  */
 function getSyncDateTimeFilter(): string {
   const d = new Date();
-  d.setMonth(d.getMonth() - 13); // 1 financial year + current month
+  d.setMonth(d.getMonth() - 25); // 2 full financial years + buffer
   d.setDate(1); // Start of month
   return `DateTime(${d.getFullYear()},${d.getMonth() + 1},1)`;
+}
+
+/**
+ * Generate all YYYY-MM-01 period strings from 25 months ago to now.
+ * Used by the P&L report sync to fetch periods even if raw transaction data
+ * is missing (e.g. months outside the old 13-month window).
+ */
+function getExpectedSyncPeriods(): string[] {
+  const periods: string[] = [];
+  const now = new Date();
+  const start = new Date();
+  start.setMonth(start.getMonth() - 25);
+  start.setDate(1);
+
+  const current = new Date(start);
+  while (current <= now) {
+    const y = current.getFullYear();
+    const m = current.getMonth() + 1;
+    periods.push(`${y}-${String(m).padStart(2, '0')}-01`);
+    current.setMonth(current.getMonth() + 1);
+  }
+  return periods;
 }
 
 /**
  * Sync invoices (both sales and bills) from Xero.
  * Paginates through all pages (100 per page).
  * Filters to AUTHORISED + PAID only (DRAFT/VOIDED/DELETED excluded).
- * Only fetches last 25 months to stay within Vercel's 5-min function limit.
+ * Only fetches last 25 months (2 FYs + buffer) to stay within Vercel's 5-min function limit.
  */
 async function syncInvoices(
   orgId: string,
@@ -285,13 +307,16 @@ async function syncBalanceSheetData(
 ): Promise<number> {
   const supabase = await createServiceClient();
 
-  // Get all periods that have transaction data
+  // Build comprehensive period list: merge DB periods with expected sync window.
   const { data: periodsData } = await supabase
     .from('normalised_financials')
     .select('period')
     .eq('org_id', orgId);
 
-  const periods = [...new Set((periodsData ?? []).map((p) => p.period))].sort().reverse();
+  const dbPeriods = new Set((periodsData ?? []).map((p) => p.period));
+  const expectedPeriods = getExpectedSyncPeriods();
+  const allPeriods = new Set([...dbPeriods, ...expectedPeriods]);
+  const periods = [...allPeriods].sort().reverse();
   console.log(`[XERO SYNC] Fetching balance sheet data for ${periods.length} periods`);
 
   if (periods.length === 0) return 0;
@@ -317,9 +342,9 @@ async function syncBalanceSheetData(
 
   let totalUpserted = 0;
 
-  // Fetch Trial Balance for each period (latest periods first, cap at 6 to stay within rate limits)
-  // Fetch only 3 most recent periods to stay within Vercel's 60s function limit
-  const periodsToFetch = periods.slice(0, 3);
+  // Fetch Trial Balance for each period (latest periods first).
+  // Cap at 13 to stay within Xero rate limits (60/min) while covering prior year-end.
+  const periodsToFetch = periods.slice(0, 13);
 
   for (const period of periodsToFetch) {
     try {
@@ -469,13 +494,18 @@ async function syncProfitAndLossData(
 ): Promise<number> {
   const supabase = await createServiceClient();
 
-  // Get all periods that have transaction data
+  // Build a comprehensive period list: merge DB periods with expected sync window.
+  // This ensures we fetch P&L reports for months that may have been missed by
+  // a previous narrower sync window (e.g. Jan-Feb 2025 outside old 13-month range).
   const { data: periodsData } = await supabase
     .from('normalised_financials')
     .select('period')
     .eq('org_id', orgId);
 
-  const periods = [...new Set((periodsData ?? []).map((p) => p.period))].sort().reverse();
+  const dbPeriods = new Set((periodsData ?? []).map((p) => p.period));
+  const expectedPeriods = getExpectedSyncPeriods();
+  const allPeriods = new Set([...dbPeriods, ...expectedPeriods]);
+  const periods = [...allPeriods].sort().reverse();
   if (periods.length === 0) return 0;
 
   // Build account lookup by Xero UUID and by code
@@ -504,9 +534,9 @@ async function syncProfitAndLossData(
   // Track accounts that need their type updated to DIRECTCOSTS
   const cogsAccountIds = new Set<string>();
 
-  // Fetch P&L for the 13 most recent periods (matching the invoice sync date window).
-  // 13 API calls is well within Xero's 60/min rate limit.
-  const periodsToFetch = periods.slice(0, 13);
+  // Fetch P&L for up to 25 most recent periods (matching the 25-month sync window).
+  // 25 API calls is within Xero's 60/min rate limit.
+  const periodsToFetch = periods.slice(0, 25);
   console.log(`[XERO SYNC] Fetching P&L report for ${periodsToFetch.length} periods`);
 
   for (const period of periodsToFetch) {
